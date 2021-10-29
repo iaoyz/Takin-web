@@ -4,15 +4,20 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import cn.hutool.core.collection.CollectionUtil;
+import com.google.common.collect.Sets;
 import com.pamirs.pradar.log.parser.ProtocolParserFactory;
 import com.pamirs.pradar.log.parser.trace.RpcBased;
 import com.pamirs.pradar.log.parser.trace.RpcStack;
+import com.pamirs.takin.common.util.DateUtils;
+import io.shulie.amdb.common.request.trace.EntryTraceQueryParam;
+import io.shulie.surge.data.deploy.pradar.link.model.TTrackClickhouseModel;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.amdb.api.TraceClient;
 import io.shulie.takin.web.amdb.bean.common.AmdbResult;
 import io.shulie.takin.web.amdb.bean.query.script.QueryLinkDetailDTO;
 import io.shulie.takin.web.amdb.bean.query.trace.EntranceRuleDTO;
 import io.shulie.takin.web.amdb.bean.query.trace.TraceInfoQueryDTO;
+import io.shulie.takin.web.amdb.bean.query.trace.TraceLogQueryDTO;
 import io.shulie.takin.web.amdb.bean.result.trace.EntryTraceInfoDTO;
 import io.shulie.takin.web.amdb.util.AmdbHelper;
 import io.shulie.takin.web.common.constant.AppConstants;
@@ -21,8 +26,10 @@ import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
 import io.shulie.takin.web.common.util.ActivityUtil;
 import io.shulie.takin.web.common.util.ActivityUtil.EntranceJoinEntity;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.takin.properties.AmdbClientProperties;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
@@ -37,6 +44,11 @@ public class TraceClientImpl implements TraceClient {
     private static final String QUERY_TRACE_PATH = "/amdb/trace/getTraceDetail?traceId=@TraceId@";
 
     private static final String ENTRY_TRACE_PATH = "/amdb/trace/getEntryTraceList";
+
+    /**
+     * trace日志
+     */
+    private static final String ENTRY_TRACE_LOG_PATH = "/amdb/trace/getAllTraceList";
 
     /**
      * 根据压测任务 id 获得对应的请求流量明细
@@ -130,8 +142,7 @@ public class TraceClientImpl implements TraceClient {
                     .list(RpcBased.class);
             return ProtocolParserFactory.getFactory().parseRpcStackByRpcBase(traceId, amdbResponse.getData());
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR, e.getMessage());
+            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR, e.getMessage(),e);
         }
     }
 
@@ -146,6 +157,53 @@ public class TraceClientImpl implements TraceClient {
             return amdbResponse.getData();
         } catch (Exception e) {
             log.error(e.getMessage(), e);
+            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * 企业版本使用
+     * @param query
+     * @return
+     */
+    @Override
+    public PagingList<TTrackClickhouseModel> listTraceLog(TraceLogQueryDTO query) {
+        String url = properties.getUrl().getAmdb() + ENTRY_TRACE_LOG_PATH;
+        EntryTraceQueryParam param = new EntryTraceQueryParam();
+        param.setAppNames(query.getAppNames());
+        if(StringUtils.isNotBlank(query.getAppName())) {
+            param.setAppName(query.getAppName());
+        }
+
+        if(StringUtils.isNotBlank(query.getServiceName())) {
+            param.setServiceName(query.getServiceName());
+        }
+        if(StringUtils.isNotBlank(query.getTraceId())) {
+            param.setTraceIdList(Sets.newHashSet(query.getTraceId()));
+        }
+        if(StringUtils.isBlank(query.getStartTime()) && StringUtils.isBlank(query.getEndTime())) {
+            // 查一天的
+            return PagingList.empty();
+        }
+        if(StringUtils.isNotBlank(query.getStartTime())) {
+            param.setStartTime(DateUtils.transferTime(query.getStartTime()).getTime());
+        }
+        if(StringUtils.isNotBlank(query.getEndTime())) {
+            param.setEndTime(DateUtils.transferTime(query.getEndTime()).getTime());
+        }
+
+        param.setCurrentPage(query.getCurrentPage() + 1);
+        param.setPageSize(query.getPageSize());
+
+        try {
+            AmdbResult<List<TTrackClickhouseModel>> response = AmdbHelper.newInStance().url(url)
+                .httpMethod(HttpMethod.POST)
+                .param(param)
+                .exception(TakinWebExceptionEnum.APPLICATION_TRACE_LOG_AGENT_ERROR)
+                .eventName("查询trace日志列表")
+                .list(TTrackClickhouseModel.class);
+            return PagingList.of(response.getData(), response.getTotal());
+        } catch (Exception e) {
             throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR, e.getMessage());
         }
     }
@@ -174,5 +232,6 @@ public class TraceClientImpl implements TraceClient {
 
         }).collect(Collectors.joining(AppConstants.COMMA));
     }
+
 
 }
