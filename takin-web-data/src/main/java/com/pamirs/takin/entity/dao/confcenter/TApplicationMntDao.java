@@ -14,7 +14,7 @@ import org.apache.ibatis.annotations.Param;
  *
  * @author shulie
  * @version v1.0
- * @2018年4月26日
+ * @date 2018年4月26日
  */
 @Mapper
 public interface TApplicationMntDao {
@@ -249,18 +249,26 @@ public interface TApplicationMntDao {
 
     /**
      * 返回id
+     *
      * @param names
-     * @param userId
+     * @param tenantId
+     * @param envCode
      * @return
      */
-    List<String> queryIdsByNameAndTenant(@Param("names") List<String> names, @Param("userId") Long userId);
-
+    List<String> queryIdsByNameAndTenant(@Param("names") List<String> names,
+        @Param("tenantId") Long tenantId,@Param("envCode") String envCode);
 
     List<TApplicationMnt> getAllApplications();
 
+    /**
+     * 查询
+     *
+     * @param statusList
+     * @return
+     */
     List<TApplicationMnt> getAllApplicationByStatus(@Param("statusList") List<Integer> statusList);
 
-    List<TApplicationMnt> getApplicationsByTenants(@Param("userIdList") List<Long> userIdList);
+    List<TApplicationMnt> getApplicationsByUserIdList(@Param("userIdList") List<Long> userIdList);
 
     String getIdByName(@Param("applicationName") String applicationName);
 

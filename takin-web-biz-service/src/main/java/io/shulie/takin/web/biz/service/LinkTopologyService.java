@@ -1,13 +1,41 @@
 package io.shulie.takin.web.biz.service;
 
-import cn.hutool.core.util.StrUtil;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import com.alibaba.fastjson.JSON;
+
+import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.pamirs.pradar.MiddlewareType;
 import com.pamirs.takin.common.util.DateUtils;
 import com.pamirs.takin.common.util.MD5Util;
-import io.shulie.amdb.common.dto.link.topology.*;
+import io.shulie.amdb.common.dto.link.topology.LinkEdgeDTO;
+import io.shulie.amdb.common.dto.link.topology.LinkNodeDTO;
+import io.shulie.amdb.common.dto.link.topology.LinkTopologyDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoBaseDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForCacheDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForDBDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForMQDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForOSSDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForSearchDTO;
 import io.shulie.amdb.common.enums.NodeTypeEnum;
 import io.shulie.amdb.common.enums.NodeTypeGroupEnum;
 import io.shulie.takin.common.beans.page.PagingList;
@@ -18,7 +46,27 @@ import io.shulie.takin.web.amdb.bean.result.application.ApplicationNodeDTO;
 import io.shulie.takin.web.biz.common.CommonService;
 import io.shulie.takin.web.biz.pojo.request.application.ApplicationEntranceTopologyQueryRequest;
 import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse;
-import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.*;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AbstractTopologyNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppCallDatasourceInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppCallInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppProvider;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppProviderInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.ApplicationEntranceTopologyEdgeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.DbInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.ExceptionListResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.MqInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.NodeDetailDatasourceInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.NodeTypeResponseEnum;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.OssInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyAppNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyCacheNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyDbNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyMqNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyOssNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyOtherNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologySearchNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyUnknownNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyVirtualNodeResponse;
 import io.shulie.takin.web.biz.service.application.ApplicationMiddlewareService;
 import io.shulie.takin.web.common.enums.activity.info.FlowTypeEnum;
 import io.shulie.takin.web.common.enums.activity.info.RpcTypeEnum;
@@ -39,16 +87,6 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 /**
@@ -202,8 +240,8 @@ public class LinkTopologyService extends CommonService {
 
         // 查询 瓶颈阈值 配置
         List<E2eExceptionConfigInfoExt> bottleneckConfig = Lists.newArrayList();
-        if (WebPluginUtils.checkUserData() && E2ePluginUtils.checkE2ePlugin()) {
-            bottleneckConfig = E2ePluginUtils.getExceptionConfig(WebPluginUtils.getCustomerId());
+        if (WebPluginUtils.checkUserPlugin() && E2ePluginUtils.checkE2ePlugin()) {
+            bottleneckConfig = E2ePluginUtils.getExceptionConfig(WebPluginUtils.traceTenantId());
         }
         // 查询 该业务活动 的所有开关状态
         List<ActivityNodeState> dbActivityNodeServiceState = activityService.getActivityNodeServiceState(activityId);
@@ -221,14 +259,15 @@ public class LinkTopologyService extends CommonService {
 
                 // 设置 拓扑图中节点上显示哪一个服务性能指标
                 setTopologyNodeServiceMetrics(node, appProviderInfos);
-                // 设置业务活动层级的瓶颈
-                setTopologyLevelBottleneck(topologyResponse);
             }
 
             if (node.getRoot()) {
                 rootNode = node;
             }
         }
+
+        // 设置业务活动层级的瓶颈
+        setTopologyLevelBottleneck(topologyResponse);
 
         /*
         填充 Edge
@@ -276,7 +315,9 @@ public class LinkTopologyService extends CommonService {
             if (edge.getTarget().equals(node.getId())) {
                 // 获取 节点 所有服务
                 List<AppProviderInfo> providerService = node.getProviderService();
-                if (providerService == null) continue;
+                if (providerService == null) {
+                    continue;
+                }
 
                 for (AppProviderInfo appProviderInfo : providerService) {
                     for (AppProvider appProvider : appProviderInfo.getDataSource()) {
@@ -462,7 +503,7 @@ public class LinkTopologyService extends CommonService {
         appProvider.setServiceAllMaxRt(serviceAllMaxRt);
     }
 
-    private void computeBottleneck(
+    public void computeBottleneck(
             LocalDateTime startDateTime, Long activityId,
             List<E2eExceptionConfigInfoExt> bottleneckConfig, AppProvider appProvider) {
 
@@ -483,10 +524,11 @@ public class LinkTopologyService extends CommonService {
         E2eBaseStorageParam baseStorageParam = new E2eBaseStorageParam();
         baseStorageParam.setSuccessRate(appProvider.getServiceAllSuccessRate());
         baseStorageParam.setRt(appProvider.getServiceAvgRt()); // 预设
-        baseStorageParam.setEdgeId(appProvider.getEagleId());
         baseStorageParam.setStartTime(DateUtils.convertLocalDateTimeToUDate(startDateTime.plusHours(8)));
         baseStorageParam.setServiceName(appProvider.getOwnerApps() + "#" + appProvider.getServiceName());
         baseStorageParam.setRpcType(appProvider.getRpcType());
+        // 应用详情模块使用时，不传这两个值
+        baseStorageParam.setEdgeId(appProvider.getEagleId());
         baseStorageParam.setActivityId(activityId);
 
         // 卡慢 rt
@@ -578,7 +620,10 @@ public class LinkTopologyService extends CommonService {
                         " where" +
                         " edgeId = '" + eagleId + "'" +
                         " and time >= " + formatTimestamp(startMilli) +
-                        " and time <= " + formatTimestamp(endMilli);
+                        " and time <= " + formatTimestamp(endMilli) +
+                    // 加租户
+                        " and tenant_id = '" + WebPluginUtils.traceTenantId() + "'" +
+                        " and env_code = '" + WebPluginUtils.traceEnvCode() + "'";
 
         // 如果不是 混合流量 则需要增加条件
         if (null != metricsType) {
@@ -652,6 +697,9 @@ public class LinkTopologyService extends CommonService {
                         " where" +
                         " time >= " + formatTimestamp(startMilli) +
                         " and time <= " + formatTimestamp(endMilli) +
+                    // 增加租户
+                        " and tenant_id = '" + WebPluginUtils.traceTenantId() + "'" +
+                        " and env_code = '" + WebPluginUtils.traceEnvCode() + "'" +
                         " order by time desc" +
                         " limit 1";
 
@@ -708,7 +756,9 @@ public class LinkTopologyService extends CommonService {
         }
 
         // 连线集合 为空，说明没有下游了
-        if (edgeListOfNode.size() == 0) return;
+        if (edgeListOfNode.size() == 0) {
+            return;
+        }
 
         // 找出 连线集合中 总调用量 最大的一条
         // 如果下游 调用量 均为 0， 则其中一条为主干
@@ -1070,8 +1120,10 @@ public class LinkTopologyService extends CommonService {
 
                 for (String id : keyList) {
                     LinkNodeDTO linkNodeDTO = nodeMap.get(id);
-                    String nodeName = linkNodeDTO.getNodeName();
-                    sourceIdToNodeName.put(id, nodeName);
+                    if (linkNodeDTO != null) {
+                        String nodeName = linkNodeDTO.getNodeName();
+                        sourceIdToNodeName.put(id, nodeName);
+                    }
                 }
 
                 String collect = item.getValue().stream()

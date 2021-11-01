@@ -1,0 +1,37 @@
+package io.shulie.takin.web.data.param.dictionary;
+
+import io.shulie.takin.web.data.common.BaseTenantBean;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * @author caijianying
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+public class DictionaryParam{
+    /**
+     * 字典别名
+     */
+    private String typeAlias;
+
+    /**
+     * 字典值ID
+     */
+    private String tDictionaryId;
+
+    private String active;
+
+    /**
+     * 租户ID
+     */
+    private Long tenantId;
+
+    /**
+     * 环境编码
+     */
+    private String envCode;
+
+}
