@@ -73,9 +73,12 @@ import io.shulie.takin.web.biz.common.CommonService;
 import io.shulie.takin.web.biz.service.linkManage.AppRemoteCallService;
 import io.shulie.takin.web.biz.service.linkManage.impl.WhiteListFileService;
 import io.shulie.takin.web.common.common.Response;
+import io.shulie.takin.web.common.common.Separator;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
+import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
+import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.common.util.whitelist.WhitelistUtil;
 import io.shulie.takin.web.data.dao.application.ApplicationDAO;
 import io.shulie.takin.web.data.dao.application.ApplicationPluginsConfigDAO;
@@ -94,7 +97,6 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,20 +112,19 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Slf4j
 public class ConfCenterService extends CommonService {
-    /**
-     * session 令牌
-     */
-    public static final String CONST_CAS_ASSERTION = "_const_cas_assertion_";
+
+    private Integer number;
+
     @Autowired
     @Qualifier("modifyMonitorThreadPool")
     protected ThreadPoolExecutor modifyMonitorExecutor;
 
     @Autowired
     private WhiteListFileService whiteListFileService;
-    @Value("${spring.config.whiteListPath}")
-    private String whiteListPath;
+
     @Autowired
     private BlackListDAO blackListDAO;
+
     @Autowired
     private ApplicationDAO applicationDAO;
 
@@ -139,19 +140,13 @@ public class ConfCenterService extends CommonService {
     @Autowired
     private AgentConfigCacheManager agentConfigCacheManager;
 
-    @Value("${whitelist.number.limit:5}")
-    private Integer number;
-
-    /**
-     * 是否更新版本
-     * true:更新
-     * false 不更新
-     */
-    @Value("${agent.http.update.version:true}")
-    private Boolean isUpdateAgentVersion;
-
     @Autowired
     private ApplicationService applicationService;
+
+    @PostConstruct
+    public void init() {
+        number = ConfigServerHelper.getWrapperIntegerValueByKey(ConfigServerKeyEnum.TAKIN_WHITE_LIST_NUMBER_LIMIT);
+    }
 
     /**
      * 说明: 先校验该应用是否已经存在,不存在则进行添加,存在则返回提示信息
@@ -162,7 +157,7 @@ public class ConfCenterService extends CommonService {
     @Transactional(rollbackFor = Exception.class)
     public void saveApplication(TApplicationMnt tApplicationMnt) throws TakinModuleException {
         int applicationExist = tApplicationMntDao.applicationExistByCustomerIdAndAppName(
-            WebPluginUtils.getCustomerId(), tApplicationMnt.getApplicationName());
+            WebPluginUtils.traceTenantId(), tApplicationMnt.getApplicationName());
         if (applicationExist > 0) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_ADD_APPLICATION_DUPICATE_EXCEPTION);
         }
@@ -187,7 +182,7 @@ public class ConfCenterService extends CommonService {
 
     @Transactional(rollbackFor = Exception.class)
     public void saveAgentRegisteApplication(TApplicationMnt tApplicationMnt) {
-        int applicationExist = tApplicationMntDao.applicationExistByCustomerIdAndAppName(WebPluginUtils.getCustomerId(), tApplicationMnt.getApplicationName());
+        int applicationExist = tApplicationMntDao.applicationExistByCustomerIdAndAppName(WebPluginUtils.traceTenantId(), tApplicationMnt.getApplicationName());
         if (applicationExist > 0) {
             OperationLogContextHolder.ignoreLog();
             return;
@@ -367,6 +362,7 @@ public class ConfCenterService extends CommonService {
                 redisManager.removeKey(
                     WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY_METRIC + tApplicationMnt.getApplicationName());
                 // 采用租户的userAppKey
+                //todo Aganet改造点
                 agentConfigCacheManager.evictRecallCalls(tApplicationMnt.getApplicationName());
             });
             //删除白名单需要更新缓存
@@ -410,8 +406,6 @@ public class ConfCenterService extends CommonService {
 
         return list;
     }
-
-    //    private static final String whiteListPath = "/opt/takin/conf/takin-remote/api/confcenter/wbmnt/query/";
 
     /**
      * 说明: 根据应用id更新应用信息
@@ -507,6 +501,7 @@ public class ConfCenterService extends CommonService {
 
     private void writeWhiteListFile() {
         try {
+            String whiteListPath = ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_WHITE_LIST_CONFIG_PATH);
             Map<String, List<Map<String, Object>>> result = queryBlackWhiteList("");
             if (null != result && result.size() > 0) {
                 File file = new File(whiteListPath);
@@ -694,8 +689,8 @@ public class ConfCenterService extends CommonService {
         param.setCreateTime(new Date());
         param.setUpdateTime(new Date());
         blackListDAO.insert(param);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile();
     }
 
     /**
@@ -717,8 +712,8 @@ public class ConfCenterService extends CommonService {
     public void updateBlackListById(TBList tBlackList) {
         TBList originBlackList = tBListMntDao.querySingleBListById(String.valueOf(tBlackList.getBlistId()));
         tBListMntDao.updateBListById(tBlackList);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**
@@ -732,9 +727,9 @@ public class ConfCenterService extends CommonService {
         List<String> blistIdList = Arrays.stream(blistIds.split(",")).filter(StringUtils::isNotEmpty).distinct()
             .collect(Collectors.toList());
         tBListMntDao.deleteBListByIds(blistIdList);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
         List<TBList> deleteBlackLists = tBListMntDao.queryBListByIds(blistIdList);
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     public List<TBList> queryBlackListByIds(List<Long> blistIds) {
@@ -1819,9 +1814,10 @@ public class ConfCenterService extends CommonService {
     public void updateAppAgentVersion(String appName, String agentVersion, String pradarVersion) throws
         TakinModuleException {
         // 是否执行
-        if (!isUpdateAgentVersion) {
+        if (!ConfigServerHelper.getBooleanValueByKey(ConfigServerKeyEnum.AGENT_HTTP_UPDATE_VERSION)) {
             return;
         }
+
         if (StringUtils.isEmpty(appName)) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_UPDATE_APPLICATION_AGENT_VERSION_EXCEPTION);
         }
@@ -2005,8 +2001,8 @@ public class ConfCenterService extends CommonService {
         param.setCreateTime(new Date());
         param.setUpdateTime(new Date());
         blackListDAO.insert(param);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**
@@ -2030,7 +2026,7 @@ public class ConfCenterService extends CommonService {
     public void updateBListById(TBList tBList) {
         TBList originBList = tBListMntDao.querySingleBListById(String.valueOf(tBList.getBlistId()));
         tBListMntDao.updateBListById(tBList);
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**
@@ -2044,8 +2040,8 @@ public class ConfCenterService extends CommonService {
         List<String> blistIdList = Arrays.stream(blistIds.split(",")).filter(StringUtils::isNotEmpty).distinct()
             .collect(Collectors.toList());
         tBListMntDao.deleteBListByIds(blistIdList);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**

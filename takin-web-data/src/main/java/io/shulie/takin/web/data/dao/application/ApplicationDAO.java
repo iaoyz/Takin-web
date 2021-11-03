@@ -21,6 +21,7 @@ import java.util.Map;
 import com.pamirs.takin.entity.domain.vo.application.NodeNumParam;
 import io.shulie.takin.web.data.model.mysql.ApplicationAttentionListEntity;
 import io.shulie.takin.web.data.model.mysql.ApplicationMntEntity;
+import io.shulie.takin.web.data.param.application.ApplicationAttentionParam;
 import io.shulie.takin.web.data.param.application.ApplicationCreateParam;
 import io.shulie.takin.web.data.param.application.ApplicationQueryParam;
 import io.shulie.takin.web.data.param.application.ApplicationUpdateParam;
@@ -37,7 +38,21 @@ public interface ApplicationDAO {
 
     List<ApplicationDetailResult> getApplications(List<String> appNames);
 
+    /**
+     * 根据应用查
+     * @param appNames
+     * @return
+     */
     List<ApplicationResult> getApplicationByName(List<String> appNames);
+
+    /**
+     * 根据租户查询
+     * @param appNames
+     * @param userAppKey
+     * @param envCode
+     * @return
+     */
+    List<ApplicationResult> getApplicationByName(List<String> appNames,String userAppKey,String envCode);
 
     List<ApplicationDetailResult> getApplicationListByUserIds(List<Long> userIdList);
 
@@ -121,7 +136,7 @@ public interface ApplicationDAO {
      */
     void batchUpdateAppNodeNum(List<NodeNumParam> paramList, Long customerId);
 
-    List<ApplicationAttentionListEntity> getAttentionList(String applicationName);
+    List<ApplicationAttentionListEntity> getAttentionList(ApplicationAttentionParam param);
 
     void attendApplicationService(Map<String, String> param);
 }

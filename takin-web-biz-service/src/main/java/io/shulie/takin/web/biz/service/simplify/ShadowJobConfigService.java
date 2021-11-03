@@ -87,7 +87,7 @@ public class ShadowJobConfigService {
         BeanUtils.copyProperties(tShadowJobConfig, shadowJobCreateParam);
         WebPluginUtils.fillUserData(shadowJobCreateParam);
         applicationShadowJobDAO.insert(shadowJobCreateParam);
-        configSyncService.syncShadowJob(WebPluginUtils.getTenantUserAppKey(), tShadowJobConfig.getApplicationId(), null);
+        configSyncService.syncShadowJob(WebPluginUtils.traceTenantCommonExt(), tShadowJobConfig.getApplicationId(), null);
         TApplicationMnt tApplicationMnt = tApplicationMntDao.queryApplicationinfoById(
             tShadowJobConfig.getApplicationId());
         if (null == tApplicationMnt) {
@@ -159,7 +159,7 @@ public class ShadowJobConfigService {
         if (null == tApplicationMnt) {
             return Response.fail("未查询到相关应用信息");
         }
-        configSyncService.syncShadowJob(WebPluginUtils.getTenantUserAppKey(), shadowJobConfig.getApplicationId(), null);
+        configSyncService.syncShadowJob(WebPluginUtils.traceTenantCommonExt(), shadowJobConfig.getApplicationId(), null);
         agentConfigCacheManager.evictShadowJobs(tApplicationMnt.getApplicationName());
         return Response.success();
     }
@@ -175,7 +175,7 @@ public class ShadowJobConfigService {
             return Response.fail("未查询到相关应用信息");
         }
         tShadowJobConfigMapper.delete(id);
-        configSyncService.syncShadowJob(WebPluginUtils.getTenantUserAppKey(), shadowJobConfig.getApplicationId(), null);
+        configSyncService.syncShadowJob(WebPluginUtils.traceTenantCommonExt(), shadowJobConfig.getApplicationId(), null);
         agentConfigCacheManager.evictShadowJobs(tApplicationMnt.getApplicationName());
         return Response.success();
     }
