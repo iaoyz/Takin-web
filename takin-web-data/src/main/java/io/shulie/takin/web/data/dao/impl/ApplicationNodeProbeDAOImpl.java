@@ -12,6 +12,7 @@ import io.shulie.takin.web.data.param.application.CreateApplicationNodeProbePara
 import io.shulie.takin.web.data.param.probe.UpdateOperateResultParam;
 import io.shulie.takin.web.data.result.application.ApplicationNodeProbeResult;
 import io.shulie.takin.web.data.util.MPUtil;
+import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -70,7 +71,7 @@ public class ApplicationNodeProbeDAOImpl implements ApplicationNodeProbeDAO, MPU
     public void delByAppNamesAndOperate(Long customerId, Integer operate, List<String> appNames) {
         applicationNodeProbeMapper.delete(this.getCustomerLambdaQueryWrapper()
             .eq(ApplicationNodeProbeEntity::getOperate, operate)
-            .in(CollectionUtil.isNotEmpty(appNames), ApplicationNodeProbeEntity::getApplicationName, appNames));
+            .in(CollectionUtils.isNotEmpty(appNames), ApplicationNodeProbeEntity::getApplicationName, appNames));
     }
 
     @Override

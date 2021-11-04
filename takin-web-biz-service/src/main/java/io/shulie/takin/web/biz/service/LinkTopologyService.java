@@ -1,24 +1,77 @@
 package io.shulie.takin.web.biz.service;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import com.alibaba.fastjson.JSON;
+
+import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.pamirs.pradar.MiddlewareType;
 import com.pamirs.takin.common.util.DateUtils;
 import com.pamirs.takin.common.util.MD5Util;
-import io.shulie.amdb.common.dto.link.topology.*;
+import io.shulie.amdb.common.dto.link.topology.LinkEdgeDTO;
+import io.shulie.amdb.common.dto.link.topology.LinkNodeDTO;
+import io.shulie.amdb.common.dto.link.topology.LinkTopologyDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoBaseDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForCacheDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForDBDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForMQDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForOSSDTO;
+import io.shulie.amdb.common.dto.link.topology.NodeExtendInfoForSearchDTO;
 import io.shulie.amdb.common.enums.NodeTypeEnum;
 import io.shulie.amdb.common.enums.NodeTypeGroupEnum;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.amdb.api.ApplicationClient;
 import io.shulie.takin.web.amdb.api.ApplicationEntranceClient;
 import io.shulie.takin.web.amdb.bean.query.application.ApplicationNodeQueryDTO;
+import io.shulie.takin.web.amdb.bean.query.application.TempTopologyQuery1;
+import io.shulie.takin.web.amdb.bean.query.application.TempTopologyQuery2;
 import io.shulie.takin.web.amdb.bean.result.application.ApplicationNodeDTO;
 import io.shulie.takin.web.biz.common.CommonService;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityInfoQueryRequest;
 import io.shulie.takin.web.biz.pojo.request.application.ApplicationEntranceTopologyQueryRequest;
 import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse;
-import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.*;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AbstractTopologyNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppCallDatasourceInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppCallInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppProvider;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.AppProviderInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.ApplicationEntranceTopologyEdgeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.DbInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.ExceptionListResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.MqInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.NodeDetailDatasourceInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.NodeTypeResponseEnum;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.OssInfo;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyAppNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyCacheNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyDbNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyMqNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyOssNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyOtherNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologySearchNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyUnknownNodeResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationEntranceTopologyResponse.TopologyVirtualNodeResponse;
 import io.shulie.takin.web.biz.service.application.ApplicationMiddlewareService;
 import io.shulie.takin.web.common.enums.activity.info.FlowTypeEnum;
 import io.shulie.takin.web.common.enums.activity.info.RpcTypeEnum;
@@ -39,16 +92,6 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 /**
@@ -164,22 +207,21 @@ public class LinkTopologyService extends CommonService {
     }
 
     /**
-     * @param activityId 业务活动 id
      * @param startDateTime 拓扑图的 开始时间
      * @param endDateTime   拓扑图的 结束时间
      * @param allTotalCountStartDateTime    拓扑图的 线上总调用量指标的 开始时间
      */
-    public void fillMetrics(Long activityId,
+    public void fillMetrics(ActivityInfoQueryRequest request,
                             ApplicationEntranceTopologyResponse topologyResponse,
                             LocalDateTime startDateTime,
                             LocalDateTime endDateTime,
-                            LocalDateTime allTotalCountStartDateTime, FlowTypeEnum flowTypeEnum) {
+                            LocalDateTime allTotalCountStartDateTime) {
 
         Boolean metricsType = null;
         // 压测流量(true)，业务流量(false)，混合流量(null)
-        if (FlowTypeEnum.PRESSURE_MEASUREMENT.equals(flowTypeEnum)) {
+        if (FlowTypeEnum.PRESSURE_MEASUREMENT.equals(request.getFlowTypeEnum())) {
             metricsType = true;
-        } else if (FlowTypeEnum.BUSINESS.equals(flowTypeEnum)) {
+        } else if (FlowTypeEnum.BUSINESS.equals(request.getFlowTypeEnum())) {
             metricsType = false;
         }
 
@@ -202,11 +244,11 @@ public class LinkTopologyService extends CommonService {
 
         // 查询 瓶颈阈值 配置
         List<E2eExceptionConfigInfoExt> bottleneckConfig = Lists.newArrayList();
-        if (WebPluginUtils.checkUserData() && E2ePluginUtils.checkE2ePlugin()) {
-            bottleneckConfig = E2ePluginUtils.getExceptionConfig(WebPluginUtils.getCustomerId());
+        if (WebPluginUtils.checkUserPlugin() && E2ePluginUtils.checkE2ePlugin()) {
+            bottleneckConfig = E2ePluginUtils.getExceptionConfig(WebPluginUtils.traceTenantId());
         }
         // 查询 该业务活动 的所有开关状态
-        List<ActivityNodeState> dbActivityNodeServiceState = activityService.getActivityNodeServiceState(activityId);
+        List<ActivityNodeState> dbActivityNodeServiceState = activityService.getActivityNodeServiceState(request.getActivityId());
 
         List<AbstractTopologyNodeResponse> allNodes = topologyResponse.getNodes();
         for (AbstractTopologyNodeResponse node : allNodes) {
@@ -215,20 +257,21 @@ public class LinkTopologyService extends CommonService {
             if (appnode.getProviderService() != null) {
                 List<AppProviderInfo> appProviderInfos =
                         fillAppNodeServiceSuccessRateAndRt(
-                                activityId, appnode, startDateTime, startMilli,
+                                request, appnode, startDateTime, endDateTime, startMilli,
                                 endMilli, realSeconds, metricsType, bottleneckConfig,
                                 dbActivityNodeServiceState);
 
                 // 设置 拓扑图中节点上显示哪一个服务性能指标
                 setTopologyNodeServiceMetrics(node, appProviderInfos);
-                // 设置业务活动层级的瓶颈
-                setTopologyLevelBottleneck(topologyResponse);
             }
 
             if (node.getRoot()) {
                 rootNode = node;
             }
         }
+
+        // 设置业务活动层级的瓶颈
+        setTopologyLevelBottleneck(topologyResponse);
 
         /*
         填充 Edge
@@ -276,7 +319,9 @@ public class LinkTopologyService extends CommonService {
             if (edge.getTarget().equals(node.getId())) {
                 // 获取 节点 所有服务
                 List<AppProviderInfo> providerService = node.getProviderService();
-                if (providerService == null) continue;
+                if (providerService == null) {
+                    continue;
+                }
 
                 for (AppProviderInfo appProviderInfo : providerService) {
                     for (AppProvider appProvider : appProviderInfo.getDataSource()) {
@@ -320,7 +365,7 @@ public class LinkTopologyService extends CommonService {
     }
 
     private List<AppProviderInfo> fillAppNodeServiceSuccessRateAndRt(
-            Long activityId, TopologyAppNodeResponse node, LocalDateTime startDateTime, long startMilli, long endMilli,
+            ActivityInfoQueryRequest request, TopologyAppNodeResponse node, LocalDateTime startDateTime, LocalDateTime endDateTime, long startMilli, long endMilli,
             long realSeconds, Boolean metricsType, List<E2eExceptionConfigInfoExt> bottleneckConfig,
             List<ActivityNodeState> dbActivityNodeServiceState) {
 
@@ -335,11 +380,18 @@ public class LinkTopologyService extends CommonService {
 
                 for (LinkEdgeDTO linkEdgeDTO : appProvider.getContainEdgeList()) {
                     String eagleId = linkEdgeDTO.getEagleId();
-                    // 根据服务边，查询指标
-                    AppProvider appProviderFromDb =
-                            queryMetricsFromDb(startMilli, endMilli, realSeconds, metricsType, eagleId);
+                    String beforeApps = appProvider.getBeforeAppsMap().get(linkEdgeDTO.getSourceId());
 
-                    appProviderFromDb.setBeforeApps(appProvider.getBeforeAppsMap().get(linkEdgeDTO.getSourceId()));
+                    // 根据服务边，查询指标
+                    AppProvider appProviderFromDb;
+                    if (request.isTempActivity()) {
+                        if (StringUtils.isBlank(beforeApps)) continue;
+                        appProviderFromDb = queryMetricsFromAMDB(beforeApps, appProvider.getOwnerApps(), appProvider.getServiceName(), request, startDateTime, endDateTime);
+                    } else {
+                        appProviderFromDb = queryMetricsFromDb(startMilli, endMilli, realSeconds, metricsType, eagleId);
+                    }
+
+                    appProviderFromDb.setBeforeApps(beforeApps);
                     appProviderFromDb.setOwnerApps(appProvider.getOwnerApps());
                     appProviderFromDb.setEagleId(eagleId);
                     appProviderFromDb.setSource(linkEdgeDTO.getSourceId());
@@ -356,7 +408,7 @@ public class LinkTopologyService extends CommonService {
 
                     if (!appProviderFromDb.getServiceAllTotalCount().equals(INIT)) { // 如果不是初始值，再计算瓶颈
                         //SY:瓶颈计算+落库
-                        computeBottleneck(startDateTime, activityId, bottleneckConfig, appProviderFromDb);
+                        computeBottleneck(startDateTime, request.getActivityId(), bottleneckConfig, appProviderFromDb);
                     }
 
                     appProvider.getContainRealAppProvider().add(appProviderFromDb);
@@ -372,12 +424,74 @@ public class LinkTopologyService extends CommonService {
 
         if (!allAppProviderServiceList.isEmpty()) {
             // 查询 并 设置 节点服务 开关状态
-            setNodeServiceState(activityId, node, dbActivityNodeServiceState, allAppProviderServiceList);
+            setNodeServiceState(request.getActivityId(), node, dbActivityNodeServiceState, allAppProviderServiceList);
             // 设置 节点层次的瓶颈数据
             setNodeBottleneck(node, allAppProviderServiceList);
         }
 
         return providerService;
+    }
+
+    private AppProvider queryMetricsFromAMDB(
+            String beforeApps, String appName, String serviceName, ActivityInfoQueryRequest request, LocalDateTime startDateTime, LocalDateTime endDateTime) {
+
+        String[] split = serviceName.split("#");
+        String service = split[0];
+        String method = split[1];
+
+        String startTime = DateUtils.formatLocalDateTime(startDateTime.plusHours(8));
+        String endTime = DateUtils.formatLocalDateTime(endDateTime.plusHours(8));
+
+        TempTopologyQuery1 query1 = TempTopologyQuery1.builder()
+                .inAppName(appName)
+                .inService(service)
+                .inMethod(method)
+                .startTime(startTime)
+                .endTime(endTime)
+//                .startTime("2021-11-01 10:30:00")
+//                .endTime("2021-11-01 19:59:00")
+                .build();
+
+        String response1 = applicationEntranceClient.queryMetricsFromAMDB1(query1);
+
+        ArrayList<TraceMetricsResult> traceMetricsResultList = new ArrayList<>();
+        Integer realSeconds = 0;
+
+        if (StringUtils.isNotBlank(response1)) {
+            TempTopologyQuery2 query2 = TempTopologyQuery2.builder()
+                    .fromAppName(beforeApps)
+                    .appName(appName)
+                    .service(service)
+                    .method(method)
+                    .entranceStr(response1)
+                    .clusterTest(request.getFlowTypeEnum().getType())
+                    .startTime(startTime)
+                    .endTime(endTime)
+                    .build();
+
+            JSONObject jsonObject = applicationEntranceClient.queryMetricsFromAMDB2(query2);
+
+            TraceMetricsResult traceMetricsResult = new TraceMetricsResult();
+
+            Integer allTotalCount = (Integer) jsonObject.get("allTotalCount");
+            traceMetricsResult.setAllTotalCount(allTotalCount.doubleValue());
+
+            Integer allSuccessCount = (Integer) jsonObject.get("allSuccessCount");
+            traceMetricsResult.setAllSuccessCount(allSuccessCount.doubleValue());
+
+            Integer allTotalRt = (Integer) jsonObject.get("allTotalRt");
+            traceMetricsResult.setAllTotalRt(allTotalRt.doubleValue());
+
+            Integer allMaxRt = (Integer) jsonObject.get("allMaxRt");
+            traceMetricsResult.setAllMaxRt(allMaxRt.doubleValue());
+
+            traceMetricsResultList.add(traceMetricsResult);
+
+            realSeconds = (Integer) jsonObject.get("realSeconds");
+        }
+
+        AppProvider appProvider = getAppProvider(realSeconds, traceMetricsResultList);
+        return appProvider;
     }
 
     private void setNodeBottleneck(TopologyAppNodeResponse node, List<AppProvider> allAppProviderServiceList) {
@@ -462,7 +576,7 @@ public class LinkTopologyService extends CommonService {
         appProvider.setServiceAllMaxRt(serviceAllMaxRt);
     }
 
-    private void computeBottleneck(
+    public void computeBottleneck(
             LocalDateTime startDateTime, Long activityId,
             List<E2eExceptionConfigInfoExt> bottleneckConfig, AppProvider appProvider) {
 
@@ -483,10 +597,11 @@ public class LinkTopologyService extends CommonService {
         E2eBaseStorageParam baseStorageParam = new E2eBaseStorageParam();
         baseStorageParam.setSuccessRate(appProvider.getServiceAllSuccessRate());
         baseStorageParam.setRt(appProvider.getServiceAvgRt()); // 预设
-        baseStorageParam.setEdgeId(appProvider.getEagleId());
         baseStorageParam.setStartTime(DateUtils.convertLocalDateTimeToUDate(startDateTime.plusHours(8)));
         baseStorageParam.setServiceName(appProvider.getOwnerApps() + "#" + appProvider.getServiceName());
         baseStorageParam.setRpcType(appProvider.getRpcType());
+        // 应用详情模块使用时，不传这两个值
+        baseStorageParam.setEdgeId(appProvider.getEagleId());
         baseStorageParam.setActivityId(activityId);
 
         // 卡慢 rt
@@ -578,7 +693,10 @@ public class LinkTopologyService extends CommonService {
                         " where" +
                         " edgeId = '" + eagleId + "'" +
                         " and time >= " + formatTimestamp(startMilli) +
-                        " and time <= " + formatTimestamp(endMilli);
+                        " and time <= " + formatTimestamp(endMilli) +
+                    // 加租户
+                        " and tenant_id = '" + WebPluginUtils.traceTenantId() + "'" +
+                        " and env_code = '" + WebPluginUtils.traceEnvCode() + "'";
 
         // 如果不是 混合流量 则需要增加条件
         if (null != metricsType) {
@@ -587,17 +705,22 @@ public class LinkTopologyService extends CommonService {
         Collection<TraceMetricsResult> allTotalTpsAndRtCountResult = influxDBManager.query(TraceMetricsResult.class, allTotalTpsAndRtCountQuerySql, pradarDatabase);
         ArrayList<TraceMetricsResult> allTotalTpsAndRtCountResults = new ArrayList<>(allTotalTpsAndRtCountResult);
 
+        AppProvider appProvider = getAppProvider(realSeconds, allTotalTpsAndRtCountResults);
+        return appProvider;
+    }
+
+    public AppProvider getAppProvider(long realSeconds, ArrayList<TraceMetricsResult> allTotalTpsAndRtCountResults) {
         AppProvider appProvider = new AppProvider();
 
         // 指标 初始化
         appProvider.setServiceAllTotalCount(INIT); // 总调用量
         appProvider.setServiceAllSuccessRate(INIT); // 总成功率
-            appProvider.setAllSuccessCount(INIT); // 总成功调用次数
+        appProvider.setAllSuccessCount(INIT); // 总成功调用次数
         appProvider.setServiceAllTotalTps(INIT); // 总Tps
 
         appProvider.setServiceRt(INIT); // 总Rt
         appProvider.setServiceAvgRt(INIT); // 平均Rt
-            appProvider.setAllTotalRt(INIT); // 总调用Rt
+        appProvider.setAllTotalRt(INIT); // 总调用Rt
         appProvider.setServiceAllMaxRt(INIT); // maxRt
 
         if (allTotalTpsAndRtCountResults.size() != 0) {
@@ -652,6 +775,9 @@ public class LinkTopologyService extends CommonService {
                         " where" +
                         " time >= " + formatTimestamp(startMilli) +
                         " and time <= " + formatTimestamp(endMilli) +
+                    // 增加租户
+                        " and tenant_id = '" + WebPluginUtils.traceTenantId() + "'" +
+                        " and env_code = '" + WebPluginUtils.traceEnvCode() + "'" +
                         " order by time desc" +
                         " limit 1";
 
@@ -708,7 +834,9 @@ public class LinkTopologyService extends CommonService {
         }
 
         // 连线集合 为空，说明没有下游了
-        if (edgeListOfNode.size() == 0) return;
+        if (edgeListOfNode.size() == 0) {
+            return;
+        }
 
         // 找出 连线集合中 总调用量 最大的一条
         // 如果下游 调用量 均为 0， 则其中一条为主干
@@ -1070,8 +1198,10 @@ public class LinkTopologyService extends CommonService {
 
                 for (String id : keyList) {
                     LinkNodeDTO linkNodeDTO = nodeMap.get(id);
-                    String nodeName = linkNodeDTO.getNodeName();
-                    sourceIdToNodeName.put(id, nodeName);
+                    if (linkNodeDTO != null) {
+                        String nodeName = linkNodeDTO.getNodeName();
+                        sourceIdToNodeName.put(id, nodeName);
+                    }
                 }
 
                 String collect = item.getValue().stream()

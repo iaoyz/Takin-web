@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 
 import com.alibaba.druid.filter.config.ConfigTools;
@@ -41,7 +42,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 
 import com.github.pagehelper.Page;
-
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
@@ -78,8 +78,8 @@ import com.pamirs.takin.entity.dao.pressureready.TDataBuildDao;
 import com.pamirs.takin.entity.dao.pressureready.TLinkDetectionDao;
 import com.pamirs.takin.entity.dao.preventcheat.TApplicationInfoUploadDao;
 import com.pamirs.takin.entity.dao.preventcheat.TApplicationMntConfigDao;
-import com.pamirs.takin.entity.domain.entity.BTRelationLink;
 import com.pamirs.takin.entity.domain.entity.AbstractRelationLinkModel;
+import com.pamirs.takin.entity.domain.entity.BTRelationLink;
 import com.pamirs.takin.entity.domain.query.Conf;
 import com.pamirs.takin.entity.domain.vo.TLinkApplicationInterfaceVo;
 import io.shulie.takin.web.biz.init.sync.ConfigSyncService;
@@ -88,6 +88,12 @@ import io.shulie.takin.web.biz.service.TAlarmService;
 import io.shulie.takin.web.biz.service.TFirstLinkMntService;
 import io.shulie.takin.web.biz.service.TReportService;
 import io.shulie.takin.web.biz.service.TSecondLinkMntService;
+import io.shulie.takin.web.common.common.Separator;
+import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
+import io.shulie.takin.web.data.mapper.mysql.BaseConfigMapper;
+import io.shulie.takin.web.data.util.ConfigServerHelper;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
+import lombok.Getter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -99,7 +105,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -122,6 +127,8 @@ public class CommonService {
     private static AtomicInteger cursor = new AtomicInteger(1);
 
     public final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
+
+    private String basePath;
 
     @Autowired
     protected TApplicationMntDao tApplicationMntDao;
@@ -238,11 +245,12 @@ public class CommonService {
     protected TApplicationInfoUploadDao tApplicationInfoUploadDao;
     @Autowired
     protected TLinkTopologyInfoDao tLinkTopologyInfoDao;
-    @Value("${basePath}")
-    private String basePath;
+
+    @Autowired
+    protected BaseConfigMapper baseConfigMapper;
 
     public String getBasePath() {
-        return basePath;
+        return ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_BASE_PATH)+ WebPluginUtils.traceTenantCode()+ Separator.Separator1.getValue();
     }
 
     /**
@@ -570,7 +578,7 @@ public class CommonService {
      * @author shulie
      */
     public Map<String, Object> queryDicList(TakinDictTypeEnum takinDictTypeEnum) {
-        List<Map<String, Object>> queryWListDic = tDicDao.queryDicList(takinDictTypeEnum.toString());
+        List<Map<String, Object>> queryWListDic = tDicDao.queryDicList(takinDictTypeEnum.toString(),WebPluginUtils.traceTenantId(),WebPluginUtils.traceEnvCode());
         if (queryWListDic.isEmpty()) {
             return Maps.newHashMap();
         }

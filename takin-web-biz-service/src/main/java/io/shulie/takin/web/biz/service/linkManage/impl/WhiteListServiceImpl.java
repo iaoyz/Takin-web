@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
@@ -55,11 +56,12 @@ import io.shulie.takin.web.biz.pojo.request.whitelist.WhiteListDeleteRequest;
 import io.shulie.takin.web.biz.pojo.request.whitelist.WhiteListUpdateRequest;
 import io.shulie.takin.web.biz.service.linkManage.WhiteListService;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
+import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
 import io.shulie.takin.web.common.enums.whitelist.WhitelistTagEnum;
 import io.shulie.takin.web.common.exception.ExceptionCode;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
+import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.common.util.whitelist.WhitelistUtil;
 import io.shulie.takin.web.common.vo.whitelist.WhiteListVO;
 import io.shulie.takin.web.common.vo.whitelist.WhitelistPartVO;
@@ -82,12 +84,13 @@ import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.shulie.takin.web.data.result.whitelist.WhitelistEffectiveAppResult;
 import io.shulie.takin.web.data.result.whitelist.WhitelistResult;
 import io.shulie.takin.web.ext.entity.UserExt;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,11 +129,16 @@ public class WhiteListServiceImpl implements WhiteListService {
     /**
      * 是否开启校验白名单重名
      */
-    @Value("${whitelist.duplicate.name.check:false}")
-    private String isCheckDuplicateName;
+    private boolean isCheckDuplicateName;
 
-    @Value("${whitelist.number.limit:5}")
     private Integer number;
+
+    @PostConstruct
+    public void init() {
+        isCheckDuplicateName = ConfigServerHelper.getBooleanValueByKey(
+            ConfigServerKeyEnum.TAKIN_WHITE_LIST_DUPLICATE_NAME_CHECK);
+        number = ConfigServerHelper.getWrapperIntegerValueByKey(ConfigServerKeyEnum.TAKIN_WHITE_LIST_NUMBER_LIMIT);
+    }
 
     private Integer getInterfaceIntType(String interfaceType) {
         int type = -1;
@@ -191,7 +199,7 @@ public class WhiteListServiceImpl implements WhiteListService {
                 // 白名单重复
                 if (WhitelistUtil.isDuplicate(existWhite,
                         WhitelistUtil.buildWhiteId(saveOrUpdateParam.getType(), saveOrUpdateParam.getInterfaceName()))) {
-                    saveOrUpdateParam.setIsGlobal(!Boolean.parseBoolean(isCheckDuplicateName));
+                    saveOrUpdateParam.setIsGlobal(!isCheckDuplicateName);
                 }
                 saveOrUpdateParam.setIsHandwork(input.getIsHandwork());
             } else {
@@ -201,12 +209,12 @@ public class WhiteListServiceImpl implements WhiteListService {
                 // 白名单重复
                 if (WhitelistUtil.isDuplicate(existWhite,
                         WhitelistUtil.buildWhiteId(saveOrUpdateParam.getType(), saveOrUpdateParam.getInterfaceName()))) {
-                    saveOrUpdateParam.setIsGlobal(!Boolean.parseBoolean(isCheckDuplicateName));
+                    saveOrUpdateParam.setIsGlobal(!isCheckDuplicateName);
                 }
                 saveOrUpdateParam.setIsHandwork(input.getIsHandwork());
             }
             // 导入导出
-            saveOrUpdateParam.setCustomerId(applicationDetailResult.getCustomerId());
+            saveOrUpdateParam.setTenantId(applicationDetailResult.getTenantId());
             saveOrUpdateParam.setUserId(applicationDetailResult.getUserId());
             saveOrUpdateParams.add(saveOrUpdateParam);
         });
@@ -228,7 +236,7 @@ public class WhiteListServiceImpl implements WhiteListService {
                 addPartAppNameParam.setInterfaceName(listResult.get(0).getInterfaceName());
                 addPartAppNameParam.setType(listResult.get(0).getType());
                 addPartAppNameParam.setEffectiveAppName(appName);
-                addPartAppNameParam.setCustomerId(applicationDetailResult.getCustomerId());
+                addPartAppNameParam.setTenantId(applicationDetailResult.getTenantId());
                 addPartAppNameParam.setUserId(applicationDetailResult.getUserId());
                 addPartAppNameParam.setWlistId(listResult.get(0).getWlistId());
                 addPartAppNameParams.add(addPartAppNameParam);
@@ -238,14 +246,15 @@ public class WhiteListServiceImpl implements WhiteListService {
         List<Long> wlistIds = addPartAppNameParams.stream().map(WhitelistAddPartAppNameParam::getWlistId).collect(
                 Collectors.toList());
         WhitelistEffectiveAppDeleteParam deleteParam = new WhitelistEffectiveAppDeleteParam();
-        deleteParam.setCustomerId(applicationDetailResult.getCustomerId());
+        deleteParam.setTenantId(applicationDetailResult.getTenantId());
         deleteParam.setWlistIds(wlistIds);
         whitelistEffectiveAppDao.batchDelete(deleteParam);
         // 新增
         whitelistEffectiveAppDao.addPartAppName(addPartAppNameParams);
         // 更新agent
         whiteListFileService.writeWhiteListFile();
-        configSyncService.syncAllowList(WebPluginUtils.getUserAppKey(applicationDetailResult.getUserId()), applicationId, applicationDetailResult.getApplicationName());
+        TenantCommonExt commonExt = WebPluginUtils.fillTenantCommonExt(applicationDetailResult.getTenantId(), applicationDetailResult.getEnvCode());
+        configSyncService.syncAllowList(commonExt, applicationId, applicationDetailResult.getApplicationName());
     }
 
     @Override
@@ -289,19 +298,20 @@ public class WhiteListServiceImpl implements WhiteListService {
             List<ApplicationWhiteListCreateParam> paramList = twLists.stream().map(twList -> {
                 ApplicationWhiteListCreateParam param = new ApplicationWhiteListCreateParam();
                 BeanUtils.copyProperties(twList, param);
-                param.setCustomerId(applicationDetailResult.getCustomerId());
+                param.setTenantId(applicationDetailResult.getTenantId());
                 param.setUserId(applicationDetailResult.getUserId());
                 param.setIsHandwork(true);
                 // 白名单重复
                 if (WhitelistUtil.isDuplicate(existWhite,
                         WhitelistUtil.buildWhiteId(param.getType(), param.getInterfaceName()))) {
-                    param.setIsGlobal(!Boolean.parseBoolean(isCheckDuplicateName));
+                    param.setIsGlobal(!isCheckDuplicateName);
                 }
                 return param;
             }).collect(Collectors.toList());
             applicationWhiteListDAO.insertBatch(paramList);
             whiteListFileService.writeWhiteListFile();
-            configSyncService.syncAllowList(WebPluginUtils.getUserAppKey(applicationDetailResult.getUserId()), applicationId, applicationDetailResult.getApplicationName());
+            TenantCommonExt commonExt = WebPluginUtils.fillTenantCommonExt(applicationDetailResult.getTenantId(), applicationDetailResult.getEnvCode());
+            configSyncService.syncAllowList(commonExt, applicationId, applicationDetailResult.getApplicationName());
             return;
         } else {
             List<String> existInterfaceList = twLists.stream().map(
@@ -315,7 +325,7 @@ public class WhiteListServiceImpl implements WhiteListService {
                             .findFirst()
                             .orElse(new TWList());
                     // 手工添加
-                    whitelist.setHandwork(true);
+                    whitelist.setIsHandwork(true);
                     if (String.valueOf(YNEnum.YES.getValue()).equals(whitelist.getUseYn())) {
                         //忽略重复的白名单接口
                         duplicateList.add(whitelist);
@@ -340,14 +350,14 @@ public class WhiteListServiceImpl implements WhiteListService {
             List<ApplicationWhiteListCreateParam> paramList = toAddList.stream().map(twList -> {
                 ApplicationWhiteListCreateParam param = new ApplicationWhiteListCreateParam();
                 BeanUtils.copyProperties(twList, param);
-                param.setCustomerId(applicationDetailResult.getCustomerId());
+                param.setTenantId(applicationDetailResult.getTenantId());
                 param.setUserId(applicationDetailResult.getUserId());
                 // 白名单重复
                 if (WhitelistUtil.isDuplicate(existWhite,
                         WhitelistUtil.buildWhiteId(param.getType(), param.getInterfaceName()))) {
-                    param.setIsGlobal(!Boolean.parseBoolean(isCheckDuplicateName));
+                    param.setIsGlobal(!isCheckDuplicateName);
                 }
-                if (twList.getHandwork() == null) {
+                if (twList.getIsHandwork() == null) {
                     param.setIsHandwork(true);
                 }
                 return param;
@@ -360,7 +370,8 @@ public class WhiteListServiceImpl implements WhiteListService {
             tWhiteListMntDao.batchEnableWhiteList(wlistIdList);
         }
         whiteListFileService.writeWhiteListFile();
-        configSyncService.syncAllowList(WebPluginUtils.getUserAppKey(applicationDetailResult.getUserId()), applicationId, applicationDetailResult.getApplicationName());
+        TenantCommonExt commonExt = WebPluginUtils.fillTenantCommonExt(applicationDetailResult.getTenantId(), WebPluginUtils.traceEnvCode());
+        configSyncService.syncAllowList(commonExt, applicationId, applicationDetailResult.getApplicationName());
     }
 
     @Override
@@ -397,14 +408,14 @@ public class WhiteListServiceImpl implements WhiteListService {
                         twList.setDictType("ca888ed801664c81815d8c4f5b8dff0c");
                         twList.setApplicationId(vo.getApplicationId() + "");
                         twList.setUseYn("1");
-                        twList.setCustomerId(applicationDetailResult.getCustomerId());
+                        twList.setTenantId(applicationDetailResult.getTenantId());
                         twList.setUserId(applicationDetailResult.getUserId());
-                        twList.setGlobal(true);
+                        twList.setIsGlobal(true);
                         // 全局设置
                         if (WhitelistUtil.isDuplicate(existWhite,
                                 WhitelistUtil.buildWhiteId(twList.getType(), twList.getInterfaceName()))) {
-                            if (Boolean.parseBoolean(isCheckDuplicateName)) {
-                                twList.setGlobal(false);
+                            if (isCheckDuplicateName) {
+                                twList.setIsGlobal(false);
                             }
                         }
                         beAddList.add(twList);
@@ -439,7 +450,8 @@ public class WhiteListServiceImpl implements WhiteListService {
         TApplicationMnt tApplicationMnt = applicationMntDao.queryApplicationinfoById(vo.getApplicationId());
 
         whiteListFileService.writeWhiteListFile();
-        configSyncService.syncAllowList(WebPluginUtils.getUserAppKey(tApplicationMnt.getUserId()), vo.getApplicationId(), tApplicationMnt.getApplicationName());
+        TenantCommonExt tenantCommonExt = WebPluginUtils.fillTenantCommonExt(tApplicationMnt.getTenantId(), tApplicationMnt.getEnvCode());
+        configSyncService.syncAllowList(tenantCommonExt, vo.getApplicationId(), tApplicationMnt.getApplicationName());
     }
 
     @Override
@@ -493,7 +505,7 @@ public class WhiteListServiceImpl implements WhiteListService {
     public PageInfo<WhiteListVO> queryWhitelist(WhiteListQueryVO vo) {
         Map<String, WhiteListVO> totalResult = Maps.newHashMap();
         // 如果是超级管理员
-        Long customerId = WebPluginUtils.getCustomerId();
+        Long customerId = WebPluginUtils.traceTenantId();
         if (WebPluginUtils.validateSuperAdmin()) {
             customerId = null;
         }
@@ -658,7 +670,7 @@ public class WhiteListServiceImpl implements WhiteListService {
             whiteListVO.setUseYn(0);
             whiteListVO.setInterfaceType(getInterfaceIntType(interfaceType));
             whiteListVO.setInterfaceName(graph.getInterfaceName());
-            whiteListVO.setCustomerId(applicationDetailResult.getCustomerId());
+            whiteListVO.setTenantId(applicationDetailResult.getTenantId());
             whiteListVO.setUserId(applicationDetailResult.getUserId());
             whiteListVO.setIsDbValue(false);
             // 默认全局生效
@@ -679,17 +691,16 @@ public class WhiteListServiceImpl implements WhiteListService {
 
             WhiteListVO whiteListVO = new WhiteListVO();
             // 全局配置
-            whiteListVO.setIsGlobal(dbResult.getGlobal());
+            whiteListVO.setIsGlobal(dbResult.getIsGlobal());
             //是否手工
-            whiteListVO.setIsHandwork(dbResult.getHandwork());
+            whiteListVO.setIsHandwork(dbResult.getIsHandwork());
             whiteListVO.setWlistId(id);
             whiteListVO.setUseYn(Integer.parseInt(dbResult.getUseYn()));
             Integer type = getInterfaceIntType(interfaceType);
             whiteListVO.setInterfaceType(type);
             whiteListVO.setInterfaceName(dbResult.getInterfaceName());
-            // todo 之后名字得改
             whiteListVO.setGmtUpdate(dbResult.getGmtModified());
-            whiteListVO.setCustomerId(dbResult.getCustomerId());
+            whiteListVO.setTenantId(dbResult.getTenantId());
             whiteListVO.setUserId(dbResult.getUserId());
             whiteListVO.setIsDbValue(true);
             whiteListVO.setGmtCreate(dbResult.getCreateTime());
@@ -757,8 +768,8 @@ public class WhiteListServiceImpl implements WhiteListService {
         }).collect(Collectors.toList());
         whitelistEffectiveAppDao.updatePartAppName(params);
         whiteListFileService.writeWhiteListFile();
-        configSyncService.syncAllowList(WebPluginUtils.getUser().getCustomerKey(), whiteListEntity.getApplicationId(),
-                null);
+        TenantCommonExt commonExt = WebPluginUtils.traceTenantCommonExt();
+        configSyncService.syncAllowList(commonExt, whiteListEntity.getApplicationId(), null);
     }
 
     @Override
@@ -777,8 +788,7 @@ public class WhiteListServiceImpl implements WhiteListService {
         deleteParam.setWlistIds(ids);
         whitelistEffectiveAppDao.batchDelete(deleteParam);
         whiteListFileService.writeWhiteListFile();
-        listEntities.forEach(entry -> configSyncService
-                .syncAllowList(WebPluginUtils.getUser().getCustomerKey(), entry.getApplicationId(), null));
+        listEntities.forEach(entry -> configSyncService.syncAllowList(WebPluginUtils.traceTenantCommonExt(), entry.getApplicationId(), null));
     }
 
     @Override
@@ -786,7 +796,7 @@ public class WhiteListServiceImpl implements WhiteListService {
         WhitelistPartVO vo = new WhitelistPartVO();
         // 生效应用
         WhitelistEffectiveAppSearchParam appSearchParam = new WhitelistEffectiveAppSearchParam();
-        appSearchParam.setCustomerId(WebPluginUtils.getCustomerId());
+        appSearchParam.setTenantId(WebPluginUtils.traceTenantId());
         appSearchParam.setWlistId(wlistId);
         List<WhitelistEffectiveAppResult> appResults = whitelistEffectiveAppDao.getList(appSearchParam);
         vo.setEffectiveAppNames(CollectionUtils.isNotEmpty(appResults) ?
@@ -794,7 +804,7 @@ public class WhiteListServiceImpl implements WhiteListService {
                 : Lists.newArrayList());
         // all
         ApplicationQueryParam queryParam = new ApplicationQueryParam();
-        queryParam.setCustomerId(WebPluginUtils.getCustomerId());
+        queryParam.setTenantId(WebPluginUtils.traceTenantId());
         List<String> allAppNames = applicationDAO.getAllApplicationName(queryParam);
         vo.setAllAppNames(allAppNames);
         return vo;
@@ -811,14 +821,14 @@ public class WhiteListServiceImpl implements WhiteListService {
         if (CollectionUtils.isEmpty(input.getEffectiveAppName())) {
             return;
         }
-        UserExt user = WebPluginUtils.getUser();
+        UserExt user = WebPluginUtils.traceUser();
         if (user == null) {
             throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_WHITELIST_VALIDATE_ERROR, "未找到登录账号信息");
         }
 
         // 先删除原先的
         WhitelistEffectiveAppDeleteParam deleteParam = new WhitelistEffectiveAppDeleteParam();
-        deleteParam.setCustomerId(user.getCustomerId());
+        deleteParam.setTenantId(WebPluginUtils.traceTenantId());
         deleteParam.setWlistId(input.getWlistId());
         whitelistEffectiveAppDao.delete(deleteParam);
         // 添加新的
@@ -828,7 +838,7 @@ public class WhiteListServiceImpl implements WhiteListService {
             param.setInterfaceName(whitelistResult.getInterfaceName());
             param.setType(whitelistResult.getType());
             param.setEffectiveAppName(appName);
-            param.setCustomerId(user.getCustomerId());
+            param.setTenantId(WebPluginUtils.traceTenantId());
             param.setUserId(user.getId());
             param.setWlistId(input.getWlistId());
             params.add(param);
@@ -841,8 +851,7 @@ public class WhiteListServiceImpl implements WhiteListService {
         whiteListDAO.updateWhitelistGlobal(param);
         // agent生效
         whiteListFileService.writeWhiteListFile();
-        configSyncService.syncAllowList(WebPluginUtils.getUser().getCustomerKey(), whitelistResult.getApplicationId(),
-                null);
+        configSyncService.syncAllowList(WebPluginUtils.traceTenantCommonExt(), whitelistResult.getApplicationId(), null);
     }
 
     @Override
@@ -854,7 +863,7 @@ public class WhiteListServiceImpl implements WhiteListService {
         }
 
         // 判断下不允许修改
-        if (Boolean.parseBoolean(isCheckDuplicateName)) {
+        if (isCheckDuplicateName) {
             // 重名白名单
             List<String> amdbString = Lists.newArrayList();
             amdbString.add(whitelistResult.getInterfaceName());
@@ -870,7 +879,7 @@ public class WhiteListServiceImpl implements WhiteListService {
         whiteListDAO.updateWhitelistGlobal(param);
         // agent生效
         whiteListFileService.writeWhiteListFile();
-        configSyncService.syncAllowList(WebPluginUtils.getUser().getCustomerKey(), whitelistResult.getApplicationId(),
+        configSyncService.syncAllowList(WebPluginUtils.traceTenantCommonExt(), whitelistResult.getApplicationId(),
                 null);
     }
 
@@ -904,11 +913,11 @@ public class WhiteListServiceImpl implements WhiteListService {
 
     private List<ApplicationDetailResult> getApplicationDetailResults() {
         ApplicationQueryParam queryParam = new ApplicationQueryParam();
-        if (WebPluginUtils.getUser() == null) {
+        if (WebPluginUtils.traceUser() == null) {
             // 启动不执行
             return Lists.newArrayList();
         }
-        queryParam.setCustomerId(WebPluginUtils.getCustomerId());
+        queryParam.setTenantId(WebPluginUtils.traceTenantId());
         return applicationDAO.getApplicationList(queryParam);
     }
 
@@ -989,15 +998,15 @@ public class WhiteListServiceImpl implements WhiteListService {
             param.setInterfaceNames(interfaceNames);
         }
         // 白名单租户数据隔离
-        UserExt user = WebPluginUtils.getUser();
+        UserExt user = WebPluginUtils.traceUser();
         if (user != null) {
-            param.setCustomerId(WebPluginUtils.getCustomerId());
+            param.setTenantId(WebPluginUtils.traceTenantId());
         }
         PagingList<WhiteListVO> pagingList = whiteListDAO.pagingList(param);
         // 生效应用
         // 获取所有生效效应，是否有局部应用
         WhitelistEffectiveAppSearchParam searchParam = new WhitelistEffectiveAppSearchParam();
-        searchParam.setCustomerId(WebPluginUtils.getCustomerId());
+        searchParam.setTenantId(WebPluginUtils.traceTenantId());
         List<WhitelistEffectiveAppResult> effectiveAppDaoList = whitelistEffectiveAppDao.getList(searchParam);
         Map<Long, List<WhitelistEffectiveAppResult>> appResultsMap = effectiveAppDaoList.stream()
                 .collect(Collectors.groupingBy(WhitelistEffectiveAppResult::getWlistId));
@@ -1028,7 +1037,7 @@ public class WhiteListServiceImpl implements WhiteListService {
         // 是否重复
         if (WhitelistUtil.isDuplicate(list, WhitelistUtil.buildWhiteId(vo.getInterfaceType(), vo.getInterfaceName()))) {
             tags.add(WhitelistTagEnum.DUPLICATE_NAME.getTagName());
-            if (Boolean.parseBoolean(isCheckDuplicateName)) {
+            if (isCheckDuplicateName) {
                 vo.setIsGlobal(false);
             }
         }
