@@ -19,6 +19,7 @@ import com.google.common.collect.Lists;
 import com.pamirs.takin.entity.dao.apimanage.TApplicationApiManageMapper;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.EnumResult;
 import com.pamirs.takin.entity.domain.entity.ApplicationApiManage;
+import com.pamirs.takin.entity.domain.query.ApplicationApiParam;
 import com.pamirs.takin.entity.domain.vo.entracemanage.ApiCreateVo;
 import com.pamirs.takin.entity.domain.vo.entracemanage.ApiUpdateVo;
 import com.pamirs.takin.entity.domain.vo.entracemanage.EntranceApiVo;
@@ -61,7 +62,6 @@ public class ApplicationApiServiveImpl implements ApplicationApiService {
     @Autowired
     private ApplicationDAO applicationDAO;
 
-
     @Override
     public Response registerApi(Map<String, List<String>> register) {
         List<ApplicationApiManage> batch = Lists.newArrayList();
@@ -76,7 +76,8 @@ public class ApplicationApiServiveImpl implements ApplicationApiService {
                     continue;
                 }
 
-                ApplicationDetailResult applicationDetailResult = applicationDAO.getApplicationByCustomerIdAndName(appName);
+                ApplicationDetailResult applicationDetailResult = applicationDAO.getApplicationByCustomerIdAndName(
+                    appName);
                 if (applicationDetailResult == null) {
                     throw new TakinWebException(TakinWebExceptionEnum.AGENT_REGISTER_API,
                         String.format("应用不存在, 应用名称: %s", appName));
@@ -104,7 +105,7 @@ public class ApplicationApiServiveImpl implements ApplicationApiService {
                             manage.setUpdateTime(new Date());
                             manage.setRequestMethod(requestMethod);
                             manage.setApplicationId(applicationDetailResult.getApplicationId());
-                            manage.setCustomerId(applicationDetailResult.getCustomerId());
+                            manage.setTenantId(applicationDetailResult.getTenantId());
                             manage.setUserId(applicationDetailResult.getUserId());
                             manage.setIsAgentRegiste(1);
                             batch.add(manage);
@@ -119,7 +120,7 @@ public class ApplicationApiServiveImpl implements ApplicationApiService {
                         manage.setRequestMethod(requestMethod);
                         manage.setUpdateTime(new Date());
                         manage.setApplicationId(applicationDetailResult.getApplicationId());
-                        manage.setCustomerId(applicationDetailResult.getCustomerId());
+                        manage.setTenantId(applicationDetailResult.getTenantId());
                         manage.setUserId(applicationDetailResult.getUserId());
                         manage.setIsAgentRegiste(1);
                         batch.add(manage);
@@ -143,7 +144,7 @@ public class ApplicationApiServiveImpl implements ApplicationApiService {
                     manage.setUpdateTime(single.getUpdateTime());
                     manage.setCreateTime(single.getCreateTime());
                     manage.setApplicationId(single.getApplicationId());
-                    manage.setCustomerId(single.getCustomerId());
+                    manage.setTenantId(single.getTenantId());
                     manage.setUserId(single.getUserId());
                     manage.setIsAgentRegiste(single.getIsAgentRegiste());
                     manageMapper.insertSelective(manage);
@@ -162,7 +163,9 @@ public class ApplicationApiServiveImpl implements ApplicationApiService {
 
     @Override
     public Response pullApi(String appName) {
-        List<ApplicationApiManage> all = manageMapper.querySimple(appName);
+        ApplicationApiParam apiParam = new ApplicationApiParam();
+        apiParam.setAppName(appName);
+        List<ApplicationApiManage> all = manageMapper.querySimple(apiParam);
         if (org.apache.commons.collections4.CollectionUtils.isEmpty(all)) {
             return Response.success(new HashMap<>());
         }
@@ -250,9 +253,10 @@ public class ApplicationApiServiveImpl implements ApplicationApiService {
         createParam.setIsDeleted((byte)0);
         createParam.setUpdateTime(new Date());
         createParam.setCreateTime(new Date());
-        ApplicationDetailResult applicationDetailResult = applicationDAO.getApplicationByCustomerIdAndName(vo.getApplicationName());
+        ApplicationDetailResult applicationDetailResult = applicationDAO.getApplicationByCustomerIdAndName(
+            vo.getApplicationName());
         //4.8.0.4以后入口规则的所属用户跟着应用走
-        createParam.setCustomerId(applicationDetailResult.getCustomerId());
+        createParam.setTenantId(applicationDetailResult.getTenantId());
         createParam.setUserId(applicationDetailResult.getUserId());
         applicationApiDAO.insert(createParam);
         return Response.success();
