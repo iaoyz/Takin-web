@@ -7,9 +7,10 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * @Description 异常日志查询对象
- * @Author ocean_wll
- * @Date 2021/8/18 4:05 下午
+ * 异常日志查询对象
+ *
+ * @author ocean_wll
+ * @date 2021/8/18 4:05 下午
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -33,9 +34,14 @@ public class ErrorLogQueryDTO extends PageBaseDTO {
     private String agentId;
 
     /**
-     * userAppKey
+     * tenantAppKey
      */
-    private String userAppKey;
+    private String tenantAppKey;
+
+    /**
+     * 环境编码
+     */
+    private String envCode;
 
     /**
      * 关键词
@@ -45,10 +51,10 @@ public class ErrorLogQueryDTO extends PageBaseDTO {
     /**
      * 开始时间
      */
-    private Date startDate;
+    private Long startDate;
 
     /**
      * 结束时间
      */
-    private Date endDate;
+    private Long endDate;
 }
