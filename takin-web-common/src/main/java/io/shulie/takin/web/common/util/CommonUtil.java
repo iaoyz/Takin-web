@@ -11,8 +11,16 @@ import java.util.stream.Collectors;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.pamirs.takin.common.constant.Constants;
+import io.shulie.takin.utils.string.StringUtil;
+import io.shulie.takin.web.common.common.Separator;
 import io.shulie.takin.web.common.constant.AppConstants;
+import io.shulie.takin.web.common.exception.TakinWebException;
+import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,6 +35,64 @@ import org.springframework.util.StringUtils;
  * @date 2021/6/3 4:43 下午
  */
 public class CommonUtil implements AppConstants {
+
+
+
+    /**
+     * 获得 zk 租户, 环境隔离后的路径
+     *
+     * @param path 节点路径, 前缀可以带 /, 也可以不带
+     * @return 租户, 环境隔离后的路径, /租户key/环境/xxx
+     */
+    public static String getZkTenantAndEnvPath(String path) {
+        return getZkPathPassTenantAppKeyAndEnvCode(WebPluginUtils.traceTenantAppKey(), WebPluginUtils.traceEnvCode(), path);
+    }
+
+    /**
+     * 传递 租户 key, 环境, zk 节点路径 来获得 zk 节点完整路径
+     *
+     * @param tenantAppKey 租户 key
+     * @param envCode      环境
+     * @param path         节点路径, 前缀可以带 /, 也可以不带
+     * @return zk 节点完整路径
+     */
+    public static String getZkPathPassTenantAppKeyAndEnvCode(String tenantAppKey, String envCode, String path) {
+        if (StrUtil.isBlank(path)) {
+            throw new IllegalArgumentException("zookeeper 的节点路径必须填写!");
+        }
+        String tenantAndEnv = String.format("/%s/%s", tenantAppKey, envCode);
+        // 传来的 path 开头是否带有 /
+        if (path.startsWith(Separator.Separator1.getValue())) {
+            return tenantAndEnv + path;
+        }
+
+        return String.format("%s/%s", tenantAndEnv, path);
+    }
+
+    /**
+     * 应用配置标识
+     */
+    public static final String APP = "apps";
+
+    /**
+     * 获得 zk 租户, 环境隔离后的路径
+     *
+     * @param path 节点路径
+     * @param commonExt 租户属性
+     * @return 租户, 环境隔离后的路径
+     */
+    public static String getZkTenantAndEnvPath(String path, TenantCommonExt commonExt) {
+        return generateRedisKeyWithSeparator(Separator.Separator1, commonExt.getTenantAppKey(), commonExt.getEnvCode(), path);
+    }
+
+    /**
+     * 获取NameSpace
+     * @param commonExt
+     * @return
+     */
+    public static String getZkNameSpace(TenantCommonExt commonExt) {
+        return commonExt != null ? CommonUtil.getZkTenantAndEnvPath(APP,commonExt): Constants.DEFAULT_NAMESPACE;
+    }
 
     /**
      * 按照Bean对象属性创建对应的Class对象，并忽略某些属性
@@ -87,7 +153,7 @@ public class CommonUtil implements AppConstants {
      * 根据租户id区分文件夹
      *
      * @param uploadPath 上传的文件夹
-     * @param folder 分类目录
+     * @param folder     分类目录
      * @return 文件所在文件夹的绝对路径
      */
     public static String getAbsoluteUploadPath(String uploadPath, String folder) {
@@ -101,7 +167,7 @@ public class CommonUtil implements AppConstants {
      * /data/path/probe/20210610/
      *
      * @param uploadPath 上传的文件路径
-     * @param folder 分类目录
+     * @param folder     分类目录
      * @return 上传文件的临时路径
      */
     public static String getUploadPath(String uploadPath, String folder) {
@@ -143,9 +209,9 @@ public class CommonUtil implements AppConstants {
      * 数据越多, 此方法愈快一些,
      * stream 方法加了 try/catch 是一部分原因, newInstance 可能也是一部分原因
      *
-     * @param sourceList 源list
+     * @param sourceList  源list
      * @param targetClazz 目标对象类对象
-     * @param <T> 要转换的类
+     * @param <T>         要转换的类
      * @return 另一个对象的list
      */
     public static <T> List<T> list2list(List<?> sourceList, Class<T> targetClazz) {
@@ -163,9 +229,9 @@ public class CommonUtil implements AppConstants {
      *
      * 100000 数据, 花费时间 1622712560395
      *
-     * @param sourceList 源list
+     * @param sourceList  源list
      * @param targetClazz 目标对象类对象
-     * @param <T> 要转换的类
+     * @param <T>         要转换的类
      * @return 另一个对象的list
      */
     public static <T> List<T> list2listByStream(List<?> sourceList, Class<T> targetClazz) {
@@ -180,9 +246,30 @@ public class CommonUtil implements AppConstants {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * redis key
+     * @param keyPart
+     * @return
+     */
+    public static String generateRedisKey(String... keyPart) {
+        return generateRedisKeyWithSeparator(Separator.defautSeparator(), keyPart);
+    }
+
+    public static String generateRedisKeyWithSeparator(Separator separator, String... keyPart) {
+        if (separator == null) {
+            throw new TakinWebException(TakinWebExceptionEnum.ERROR_COMMON, "separator cannot be null!");
+        }
+        return StringUtil.join(separator.getValue(), keyPart);
+    }
+
     /* ---------------- 测试 -------------- */
 
     public static void main(String[] args) {
+        TenantCommonExt ext = new TenantCommonExt();
+        ext.setTenantAppKey("sasa");
+        ext.setEnvCode("asaa");
+        System.out.println(getZkTenantAndEnvPath("apps",ext));;
+
         // 生成一万个A, 转B
         long startAt = System.currentTimeMillis();
 

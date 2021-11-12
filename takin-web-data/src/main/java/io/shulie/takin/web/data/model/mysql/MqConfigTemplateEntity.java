@@ -1,12 +1,12 @@
 package io.shulie.takin.web.data.model.mysql;
 
+import java.io.Serializable;
+
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.shulie.takin.web.data.model.mysql.base.CommonWithUserIdAndTenantIdEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-
-import java.io.Serializable;
-import java.util.Date;
 
 /**
  * MQ配置模版表(MqConfigTemplate)实体类
@@ -18,7 +18,7 @@ import java.util.Date;
 @EqualsAndHashCode(callSuper = true)
 @TableName(value = "t_mq_config_template")
 @ToString(callSuper = true)
-public class MqConfigTemplateEntity extends NewBaseEntity implements Serializable {
+public class MqConfigTemplateEntity extends CommonWithUserIdAndTenantIdEntity implements Serializable {
     private static final long serialVersionUID = -52813831963978645L;
 
     /**
@@ -60,16 +60,6 @@ public class MqConfigTemplateEntity extends NewBaseEntity implements Serializabl
      * 备注
      */
     private String commit;
-
-    /**
-     * 租户id
-     */
-    private Long customerId;
-
-    /**
-     * 用户id
-     */
-    private Long userId;
 
 
 }
