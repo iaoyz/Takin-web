@@ -10,7 +10,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.collect.Lists;
 import io.shulie.takin.common.beans.page.PagingList;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
 import io.shulie.takin.web.data.mapper.mysql.TakinDbresourceMapper;
 import io.shulie.takin.web.data.model.mysql.TakinDbresourceEntity;
 import io.shulie.takin.web.data.param.datasource.DataSourceCreateParam;
@@ -46,8 +45,6 @@ public class DataSourceDAOImpl implements DataSourceDAO {
             TakinDbresourceEntity::getName,
             TakinDbresourceEntity::getJdbcUrl,
             TakinDbresourceEntity::getUsername,
-            TakinDbresourceEntity::getCustomerId,
-            TakinDbresourceEntity::getUserId,
             TakinDbresourceEntity::getCreateTime,
             TakinDbresourceEntity::getUpdateTime);
         if (!Objects.isNull(queryParam.getType())) {
@@ -114,9 +111,7 @@ public class DataSourceDAOImpl implements DataSourceDAO {
         if (StringUtils.isNotBlank(queryParam.getJdbcUrl())) {
             queryWrapper.eq(TakinDbresourceEntity::getJdbcUrl, queryParam.getJdbcUrl());
         }
-        if (WebPluginUtils.checkUserData() && WebPluginUtils.getCustomerId() != null) {
-            queryWrapper.eq(TakinDbresourceEntity::getCustomerId, WebPluginUtils.getCustomerId());
-        }
+
         queryWrapper.eq(TakinDbresourceEntity::getIsDeleted, 0);
         List<TakinDbresourceEntity> datasourceEntityList = datasourceMapper.selectList(queryWrapper);
         if (CollectionUtils.isNotEmpty(datasourceEntityList)) {
@@ -133,7 +128,6 @@ public class DataSourceDAOImpl implements DataSourceDAO {
             dataSourceResult.setPassword(datasourceEntity.getPassword());
             dataSourceResult.setCreateTime(datasourceEntity.getCreateTime());
             dataSourceResult.setUpdateTime(datasourceEntity.getUpdateTime());
-            dataSourceResult.setCustomerId(datasourceEntity.getCustomerId());
             dataSourceResult.setUserId(datasourceEntity.getUserId());
             return dataSourceResult;
         }
