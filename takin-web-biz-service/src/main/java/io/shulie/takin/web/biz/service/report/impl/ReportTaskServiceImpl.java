@@ -1,6 +1,7 @@
 package io.shulie.takin.web.biz.service.report.impl;
 
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -8,8 +9,9 @@ import com.alibaba.fastjson.JSON;
 
 import com.pamirs.takin.entity.domain.dto.report.ReportDetailDTO;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
-import io.shulie.takin.cloud.open.req.report.UpdateReportConclusionReq;
+import io.shulie.takin.cloud.sdk.model.request.report.UpdateReportConclusionReq;
 import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.service.report.ReportService;
 import io.shulie.takin.web.biz.service.report.ReportTaskService;
@@ -18,6 +20,8 @@ import io.shulie.takin.web.common.domain.WebResponse;
 import io.shulie.takin.web.common.util.SceneTaskUtils;
 import io.shulie.takin.web.data.dao.leakverify.LeakVerifyResultDAO;
 import io.shulie.takin.web.diff.api.scenetask.SceneTaskApi;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -42,7 +46,6 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class ReportTaskServiceImpl implements ReportTaskService {
-
 
     private static AtomicBoolean RUNNINT = new AtomicBoolean(false);
 
@@ -74,6 +77,13 @@ public class ReportTaskServiceImpl implements ReportTaskService {
     @Qualifier("fastDebugThreadPool")
     private ThreadPoolExecutor fastDebugThreadPool;
 
+    @Override
+    public List<Long> getRunningReport() {
+        List<Long> reportIds = reportService.queryListRunningReport();
+        log.info("获取租户【{}】，环境【{}】的正在压测中的报告:{}",
+            WebPluginUtils.traceTenantId(), WebPluginUtils.traceEnvCode(), JsonHelper.bean2Json(reportIds));
+        return reportIds;
+    }
 
     @Override
     public void finishReport(Long reportId) {
@@ -88,7 +98,7 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 //Ready 数据准备
                 reportDataCache.readyCloudReportData(reportId);
             } catch (Exception e) {
-                log.error("finish report data preparation：{},errorMsg= {}", reportId,e.getMessage());
+                log.error("finish report data preparation：{},errorMsg= {}", reportId, e.getMessage());
             }
             ReportDetailDTO reportDetailDTO = reportDataCache.getReportDetailDTO(reportId);
             if (reportDetailDTO == null) {
@@ -106,11 +116,11 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 //删除redis数据
                 redisClientUtils.del(WebRedisKeyConstant.REPORT_WARN_PREFIX + reportId);
                 // 删除key
-                redisClientUtils.del(String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY,reportId));
-                Long startTime = System.currentTimeMillis();
-                WebResponse lockResponse = reportService.lockReport(reportId);
-                if (!lockResponse.getSuccess() || lockResponse.getData() == null || !((Boolean)lockResponse.getData())) {
-                    log.error("Lock Running Report Data Failure, reportId={},errorMsg= {}...", reportId,lockResponse.getError());
+                redisClientUtils.del(String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY, reportId));
+                long startTime = System.currentTimeMillis();
+                Boolean lockResponse = reportService.lockReport(reportId);
+                if (!lockResponse) {
+                    log.error("锁定运行报告数据失败, reportId={}", reportId);
                 }
                 log.info("finish report，total data  Running Report :{}", reportId);
 
@@ -118,11 +128,10 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 fastDebugThreadPool.execute(this.collectData(reportId));
 
                 // 停止报告
-                WebResponse webResponse = reportService.finishReport(reportId);
-                if (!webResponse.getSuccess() || !(Boolean)webResponse.getData()) {
+                Boolean webResponse = reportService.finishReport(reportId);
+                if (!webResponse) {
                     log.info("压测结束失败 Report :{}，cloud更新失败", reportId);
                 }
-
 
                 Boolean isLeaked = leakVerifyResultDAO.querySceneIsLeaked(reportId);
                 if (isLeaked) {
@@ -144,7 +153,7 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 reportClearService.clearReportData(reportId);
                 //压测结束，生成压测报告异常，解锁报告
                 reportService.unLockReport(reportId);
-                log.error("Unlock Report Success, reportId={} ,errorMsg= {}...", reportId,e.getMessage());
+                log.error("Unlock Report Success, reportId={} ,errorMsg= {}...", reportId, e.getMessage());
             }
         } catch (Exception e) {
             log.error("QueryRunningReport Error :{}", e.getMessage());
@@ -165,19 +174,19 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 // 检查风险机器
                 problemAnalysisService.checkRisk(reportId);
             } catch (Exception e) {
-                log.error("reportId = {}: Check the risk machine,errorMsg= {} ", reportId,e.getMessage());
+                log.error("reportId = {}: Check the risk machine,errorMsg= {} ", reportId, e.getMessage());
             }
             try {
                 // 瓶颈处理
                 problemAnalysisService.processBottleneck(reportId);
             } catch (Exception e) {
-                log.error("reportId = {}: Bottleneck handling,errorMsg= {} ", reportId,e.getMessage());
+                log.error("reportId = {}: Bottleneck handling,errorMsg= {} ", reportId, e.getMessage());
             }
             try {
                 //then 报告汇总接口
                 summaryService.calcReportSummay(reportId);
             } catch (Exception e) {
-                log.error("reportId = {}: total report ,errorMsg= {}", reportId,e.getMessage());
+                log.error("reportId = {}: total report ,errorMsg= {}", reportId, e.getMessage());
             }
         };
     }
@@ -192,7 +201,7 @@ public class ReportTaskServiceImpl implements ReportTaskService {
             problemAnalysisService.syncMachineData(reportId);
             log.info("reportId={} syncMachineData success，cost time={}s", reportId, (System.currentTimeMillis() - startTime) / 1000);
         } catch (Exception e) {
-            log.error("reportId={} syncMachineData false,errorMsg= {}", reportId,e.getMessage());
+            log.error("reportId={} syncMachineData false,errorMsg= {}", reportId, e.getMessage());
         }
     }
 
@@ -206,7 +215,7 @@ public class ReportTaskServiceImpl implements ReportTaskService {
             summaryService.calcTpsTarget(reportId);
             log.info("reportId={} calcTpsTarget success，cost time={}s", reportId, (System.currentTimeMillis() - startTime) / 1000);
         } catch (Exception e) {
-            log.error("reportId={} calcTpsTarget false,errorMsg= {}", reportId,e.getMessage());
+            log.error("reportId={} calcTpsTarget false,errorMsg= {}", reportId, e.getMessage());
         }
     }
 
@@ -220,7 +229,7 @@ public class ReportTaskServiceImpl implements ReportTaskService {
             summaryService.calcApplicationSummary(reportId);
             log.info("reportId={} calcApplicationSummary success，cost time={}s", reportId, (System.currentTimeMillis() - startTime) / 1000);
         } catch (Exception e) {
-            log.error("reportId={} calcApplicationSummary false,errorMsg= {}", reportId,e.getMessage());
+            log.error("reportId={} calcApplicationSummary false,errorMsg= {}", reportId, e.getMessage());
         }
     }
 }
