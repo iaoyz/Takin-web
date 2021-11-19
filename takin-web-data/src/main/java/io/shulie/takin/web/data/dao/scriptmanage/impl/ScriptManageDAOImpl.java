@@ -97,7 +97,7 @@ public class ScriptManageDAOImpl
         scriptManageDeployMapper.deleteById(scriptDeployId);
         LambdaQueryWrapper<ScriptManageDeployEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ScriptManageDeployEntity::getScriptId, scriptManageDeployEntity.getScriptId());
-        Integer count = scriptManageDeployMapper.selectCount(wrapper);
+        Long count = scriptManageDeployMapper.selectCount(wrapper);
         if (count == 0) {
             scriptManageMapper.deleteById(scriptManageDeployEntity.getScriptId());
         }
@@ -286,7 +286,7 @@ public class ScriptManageDAOImpl
             ScriptManageEntity::getName,
             ScriptManageEntity::getGmtUpdate,
             ScriptManageEntity::getScriptVersion,
-            ScriptManageEntity::getCustomerId,
+            ScriptManageEntity::getTenantId,
             ScriptManageEntity::getUserId
         );
         wrapper.in(ScriptManageEntity::getId, scriptIdList);
@@ -323,7 +323,7 @@ public class ScriptManageDAOImpl
                 .stream()
                 .filter(scriptManageEntity -> scriptManageEntity.getId().equals(result.getScriptId()))
                 .findFirst().get();
-            result.setCustomerId(entity.getCustomerId());
+            result.setTenantId(entity.getTenantId());
             result.setUserId(entity.getUserId());
         }
         return PagingList.of(scriptManageDeploys, scriptManageEntityPage.getTotal());
@@ -377,6 +377,8 @@ public class ScriptManageDAOImpl
         if (param.getScriptType() != null) {
             wrapper.eq(ScriptManageDeployEntity::getType, param.getScriptType());
         }
+
+
         wrapper.orderByDesc(ScriptManageDeployEntity::getGmtUpdate);
         List<ScriptManageDeployEntity> scriptManageDeployEntities = scriptManageDeployMapper.selectList(wrapper);
         if (CollectionUtils.isEmpty(scriptManageDeployEntities)) {

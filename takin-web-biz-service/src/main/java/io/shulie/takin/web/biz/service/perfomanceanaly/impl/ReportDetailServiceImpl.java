@@ -1,5 +1,12 @@
 package io.shulie.takin.web.biz.service.perfomanceanaly.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import cn.hutool.core.collection.CollStreamUtil;
 import cn.hutool.core.convert.Convert;
 import com.pamirs.takin.common.util.http.DateUtil;
@@ -21,13 +28,6 @@ import io.shulie.takin.web.ext.util.WebPluginUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * @author qianshui
@@ -68,10 +68,9 @@ public class ReportDetailServiceImpl implements ReportDetailService {
         }
         TApplicationMnt info = tApplicationMntDao.queryApplicationinfoByName(inputParam.getApplicationName());
         if(Objects.isNull(info)){
-            throw new TakinWebException(ExceptionCode.REMOTE_CALL_CONFIG_CHECK_ERROR, "应用不存在");
+            throw new TakinWebException(ExceptionCode.REMOTE_CALL_CONFIG_CHECK_ERROR, "应用【"+inputParam.getApplicationName()+"】不存在");
         }
 
-        Long customerId = WebPluginUtils.getCustomerId();
 
         List<CreateAppAgentConfigReportParam> saveList = new ArrayList<>();
 
@@ -87,8 +86,9 @@ public class ReportDetailServiceImpl implements ReportDetailService {
                 reportParam.setConfigType(global.getBizType());
                 reportParam.setConfigKey(global.getKey());
                 reportParam.setConfigValue(global.getValue());
-                reportParam.setCustomerId(customerId);
-                reportParam.setUserId(customerId);
+                reportParam.setTenantId(WebPluginUtils.traceTenantId());
+                reportParam.setEnvCode(WebPluginUtils.traceEnvCode());
+                reportParam.setUserId(WebPluginUtils.traceUserId());
                 saveList.add(reportParam);
             });
         }
@@ -102,8 +102,9 @@ public class ReportDetailServiceImpl implements ReportDetailService {
                 reportParam.setConfigType(appConfig.getBizType());
                 reportParam.setConfigKey(appConfig.getKey());
                 reportParam.setConfigValue(appConfig.getValue());
-                reportParam.setCustomerId(customerId);
-                reportParam.setUserId(customerId);
+                reportParam.setTenantId(WebPluginUtils.traceTenantId());
+                reportParam.setEnvCode(WebPluginUtils.traceEnvCode());
+                reportParam.setUserId(WebPluginUtils.traceUserId());
                 saveList.add(reportParam);
             });
         }

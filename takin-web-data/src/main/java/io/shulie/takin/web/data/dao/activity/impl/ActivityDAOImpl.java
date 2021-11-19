@@ -1,6 +1,15 @@
 package io.shulie.takin.web.data.dao.activity.impl;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
 import com.alibaba.fastjson.JSON;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -33,13 +42,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.Resource;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * @author shiyajian
@@ -78,6 +80,7 @@ public class ActivityDAOImpl implements ActivityDAO {
         }
 
         wrapper.eq(BusinessLinkManageTableEntity::getIsDeleted, 0);
+        wrapper.eq(BusinessLinkManageTableEntity::getTenantId,WebPluginUtils.traceTenantId());
         List<BusinessLinkManageTableEntity> businessLinkManageTableEntities = businessLinkManageTableMapper.selectList(
             wrapper);
         if (CollectionUtils.isEmpty(businessLinkManageTableEntities)) {
@@ -97,7 +100,6 @@ public class ActivityDAOImpl implements ActivityDAO {
         linkManageTableEntity.setChangeBefore(param.getChangeBefore());
         linkManageTableEntity.setChangeAfter(param.getChangeAfter());
         linkManageTableEntity.setIsChange(param.getIsChange() ? 1 : 0);
-        linkManageTableEntity.setCustomerId(param.getCustomerId());
         linkManageTableEntity.setUserId(param.getUserId());
         linkManageTableEntity.setIsChange(0);
         linkManageTableEntity.setApplicationName(param.getApplicationName());
@@ -108,6 +110,7 @@ public class ActivityDAOImpl implements ActivityDAO {
         map.put(FeaturesConstants.SERVICE_NAME_KEY, param.getServiceName());
         map.put(FeaturesConstants.SERVER_MIDDLEWARE_TYPE_KEY, param.getType().getType());
         linkManageTableEntity.setFeatures(JSON.toJSONString(map));
+        linkManageTableEntity.setPersistence(param.isPersistence());
 
         // 再创建业务链路
         int insert1 = linkManageTableMapper.insert(linkManageTableEntity);
@@ -133,7 +136,6 @@ public class ActivityDAOImpl implements ActivityDAO {
         businessLinkManageTableEntity.setIsCore(param.getIsCore());
         businessLinkManageTableEntity.setBusinessDomain(param.getBusinessDomain());
         businessLinkManageTableEntity.setIsDeleted(0);
-        businessLinkManageTableEntity.setCustomerId(param.getCustomerId());
         businessLinkManageTableEntity.setUserId(param.getUserId());
         businessLinkManageTableEntity.setCanDelete(0);
         if (null != param.getServerMiddlewareType()) {
@@ -145,6 +147,7 @@ public class ActivityDAOImpl implements ActivityDAO {
             // 虚拟业务活动
             businessLinkManageTableEntity.setBindBusinessId(param.getBindBusinessId());
         }
+        businessLinkManageTableEntity.setPersistence(param.isPersistence());
         return businessLinkManageTableMapper.insert(businessLinkManageTableEntity);
     }
 
@@ -209,8 +212,11 @@ public class ActivityDAOImpl implements ActivityDAO {
         result.setActivityId(businessLinkManageTableEntity.getLinkId());
         result.setActivityName(businessLinkManageTableEntity.getLinkName());
         result.setIsChange(businessLinkManageTableEntity.getIsChange() == 1);
+
         result.setUserId(businessLinkManageTableEntity.getUserId());
-        result.setCustomerId(businessLinkManageTableEntity.getCustomerId());
+        result.setTenantId(businessLinkManageTableEntity.getTenantId());
+        result.setEnvCode(businessLinkManageTableEntity.getEnvCode());
+
         result.setActivityLevel(businessLinkManageTableEntity.getLinkLevel());
         result.setIsCore(businessLinkManageTableEntity.getIsCore());
         result.setBusinessDomain(businessLinkManageTableEntity.getBusinessDomain());
@@ -320,6 +326,7 @@ public class ActivityDAOImpl implements ActivityDAO {
             lambdaQueryWrapper.in(BusinessLinkManageTableEntity::getUserId, param.getUserIdList());
         }
         lambdaQueryWrapper.eq(BusinessLinkManageTableEntity::getIsDeleted, 0);
+        lambdaQueryWrapper.eq(BusinessLinkManageTableEntity::isPersistence, 1);
 
         Page<BusinessLinkManageTableEntity> tableEntityPage = businessLinkManageTableMapper
             .selectPage(page, lambdaQueryWrapper);
@@ -440,8 +447,19 @@ public class ActivityDAOImpl implements ActivityDAO {
 
     @Override
     public List<Map<String,String>> findActivityIdByServiceName(String appName, String entrance) {
-        Long customerId = WebPluginUtils.getCustomerId();
-        return activityNodeStateTableMapper.findActivityIdByServiceName(customerId,appName,entrance);
+        Long tenantId = WebPluginUtils.traceTenantId();
+        return activityNodeStateTableMapper.findActivityIdByServiceName(tenantId,appName,entrance);
     }
 
+    @Override
+    public BusinessLinkManageTableEntity getActivityByName(String activityName) {
+        LambdaQueryWrapper<BusinessLinkManageTableEntity> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(BusinessLinkManageTableEntity::getLinkName,activityName);
+        return businessLinkManageTableMapper.selectOne(lambdaQueryWrapper);
+    }
+
+    @Override
+    public List<BusinessLinkManageTableEntity> findActivityAppName(String appName, String entrace) {
+        return businessLinkManageTableMapper.findActivityAppName(appName,entrace);
+    }
 }
