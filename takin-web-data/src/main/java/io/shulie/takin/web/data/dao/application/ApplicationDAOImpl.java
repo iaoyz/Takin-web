@@ -393,13 +393,10 @@ public class ApplicationDAOImpl
     @Override
     public List<ApplicationMntEntity> listByApplicationNamesAndTenantId(List<String> applicationNames) {
         LambdaQueryWrapper<ApplicationMntEntity> wrapper = this.getLambdaQueryWrapper().select(
-                ApplicationMntEntity::getApplicationId,
-                ApplicationMntEntity::getApplicationName, ApplicationMntEntity::getAccessStatus,
-                ApplicationMntEntity::getSwitchStatus, ApplicationMntEntity::getNodeNum)
+            ApplicationMntEntity::getApplicationId, ApplicationMntEntity::getApplicationName,
+            ApplicationMntEntity::getAccessStatus, ApplicationMntEntity::getSwitchStatus,
+            ApplicationMntEntity::getNodeNum)
             .in(ApplicationMntEntity::getApplicationName, applicationNames);
-        if (WebPluginUtils.checkUserPlugin()) {
-            wrapper.eq(ApplicationMntEntity::getTenantId, WebPluginUtils.traceTenantId());
-        }
         return applicationMntMapper.selectList(wrapper);
     }
 

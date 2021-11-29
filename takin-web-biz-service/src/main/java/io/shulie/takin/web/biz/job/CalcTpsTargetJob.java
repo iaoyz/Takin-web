@@ -39,12 +39,12 @@ public class CalcTpsTargetJob implements SimpleJob {
     @Autowired
     private ReportTaskService reportTaskService;
 
-    @Autowired
-    private ReportService reportService;
+    //@Autowired
+    //private ReportService reportService;
 
     @Autowired
-    @Qualifier("jobThreadPool")
-    private ThreadPoolExecutor jobThreadPool;
+    @Qualifier("calcTpsTargetJobThreadPool")
+    private ThreadPoolExecutor calcTpsTargetJobThreadPool;
 
     @Autowired
     @Qualifier("fastDebugThreadPool")
@@ -83,7 +83,7 @@ public class CalcTpsTargetJob implements SimpleJob {
                             continue;
                         }
 
-                        jobThreadPool.execute(() -> {
+                        calcTpsTargetJobThreadPool.execute(() -> {
                             this.calcTpsTarget(tenantCommonExt);
                         });
                     }
@@ -97,7 +97,7 @@ public class CalcTpsTargetJob implements SimpleJob {
         WebPluginUtils.setTraceTenantContext(tenantCommonExt);
         List<Long> reportIds = reportTaskService.getRunningReport();
         if (CollectionUtils.isEmpty(reportIds)){
-            log.warn("暂无压测中的报告！");
+            log.debug("暂无压测中的报告！");
             return;
         }
         log.info("获取租户【{}】【{}】正在压测中的报告:{}", WebPluginUtils.traceTenantId(), WebPluginUtils.traceEnvCode(),
