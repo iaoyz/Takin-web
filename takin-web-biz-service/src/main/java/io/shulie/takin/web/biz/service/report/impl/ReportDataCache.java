@@ -95,12 +95,12 @@ public class ReportDataCache {
             WebPluginUtils.setTraceTenantContext(reportDetail.getTenantId(),tenantAppKey,reportDetail.getEnvCode(),commonExt.getTenantCode(),
                 ContextSourceEnum.JOB.getCode());
             redisTemplate.opsForValue().set(getReportDetailKey(reportId), reportApplication.getReportDetail());
-            log.info("Report Id={}, Status={}，endTime = {}", reportId, reportApplication.getReportDetail().getTaskStatus(),
+            log.debug("Report Id={}, Status={}，endTime = {}", reportId, reportApplication.getReportDetail().getTaskStatus(),
                 reportApplication.getReportDetail().getEndTime());
         }
         if (CollectionUtils.isNotEmpty(reportApplication.getApplicationNames())) {
             redisTemplate.opsForSet().add(getReportApplicationKey(reportId), reportApplication.getApplicationNames().toArray());
-            log.info("Report Id={}, applicationName={}", reportId, JSON.toJSONString(reportApplication.getApplicationNames()));
+            log.debug("Report Id={}, applicationName={}", reportId, JSON.toJSONString(reportApplication.getApplicationNames()));
         }
     }
 
@@ -147,11 +147,11 @@ public class ReportDataCache {
         List<MetricesResponse> metricsList = reportService.queryMetrics(reportId, reportDetail.getSceneId());
 
         if (CollectionUtils.isEmpty(metricsList)) {
-            log.error("ReportDataCache Cache Jmeter Metric is null");
+            log.debug("ReportDataCache Cache Jmeter Metric is null");
             return;
         }
 
-        log.info("ReportDataCache Cache Jmeter Metrics Data Size={}, One Sample: {}",
+        log.debug("ReportDataCache Cache Jmeter Metrics Data Size={}, One Sample: {}",
             metricsList.size(), metricsList.get(0));
 
         // 指标 redis key
@@ -192,26 +192,26 @@ public class ReportDataCache {
             return;
         }
         if (CollectionUtils.isEmpty(reportDetail.getBusinessActivity())) {
-            log.error("报告中关联的业务活动为空");
+            log.debug("报告中关联的业务活动为空");
             return;
         }
         Set<Long> appSet = Sets.newHashSet();
         reportDetail.getBusinessActivity().forEach(
             data -> appSet.addAll(splitApplicationIds(data.getApplicationIds())));
         if (appSet.size() == 0) {
-            log.error("报告中关联的应用为空");
+            log.debug("报告中关联的应用为空");
             return;
         }
         List<TApplicationMnt> appsList = tApplicationMntDao.queryApplicationMntListByIds(Lists.newArrayList(appSet));
         if (CollectionUtils.isEmpty(appsList)) {
-            log.error("报告中关联的应用为空");
+            log.debug("报告中关联的应用为空");
             return;
         }
         List<String> applications = appsList.stream().map(TApplicationMnt::getApplicationName)
             .filter(StringUtils::isNoneBlank).distinct().collect(Collectors.toList());
         if (CollectionUtils.isNotEmpty(applications)) {
             redisTemplate.opsForSet().add(getReportApplicationKey(reportId), applications.toArray());
-            log.info("Report Id={},报告中关联的应用有 applicationName={}", reportId, JSON.toJSONString(applications));
+            log.debug("Report Id={},报告中关联的应用有 applicationName={}", reportId, JSON.toJSONString(applications));
         }
     }
 

@@ -2,12 +2,15 @@ package io.shulie.takin.web.biz.job;
 
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import com.dangdang.ddframe.job.api.ShardingContext;
 import com.dangdang.ddframe.job.api.simple.SimpleJob;
 import io.shulie.takin.job.annotation.ElasticSchedulerJob;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.biz.service.DistributedLock;
 import io.shulie.takin.web.biz.service.report.ReportTaskService;
+import io.shulie.takin.web.biz.utils.job.JobRedisUtils;
 import io.shulie.takin.web.common.enums.ContextSourceEnum;
 import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt;
@@ -35,15 +38,12 @@ public class FinishReportJob implements SimpleJob {
     @Autowired
     private ReportTaskService reportTaskService;
 
-
-
-    @Autowired
-    @Qualifier("finishReportJobThreadPool")
-    private ThreadPoolExecutor finishReportJobThreadPool;
-
     @Autowired
     @Qualifier("fastDebugThreadPool")
     private ThreadPoolExecutor fastDebugThreadPool;
+
+    @Autowired
+    private DistributedLock distributedLock;
 
     @Override
     public void execute(ShardingContext shardingContext) {
@@ -52,7 +52,7 @@ public class FinishReportJob implements SimpleJob {
         if(WebPluginUtils.isOpenVersion()) {
             // 私有化 + 开源 根据 报告id进行分片
             List<Long> reportIds =  reportTaskService.getRunningReport();
-            log.info("获取正在压测中的报告:{}", JsonHelper.bean2Json(reportIds));
+            log.debug("获取正在压测中的报告:{}", JsonHelper.bean2Json(reportIds));
             for (Long reportId : reportIds) {
                 // 开始数据层分片
                 if (reportId % shardingContext.getShardingTotalCount() == shardingContext.getShardingItem()) {
@@ -71,15 +71,13 @@ public class FinishReportJob implements SimpleJob {
                         final TenantCommonExt commonExt = WebPluginUtils.setTraceTenantContext(
                             ext.getTenantId(), ext.getTenantAppKey(), e.getEnvCode(), ext.getTenantCode(),
                             ContextSourceEnum.JOB.getCode());
-                        finishReportJobThreadPool.execute(() -> {
-                            this.finishReport(commonExt);
-                        });
+                        this.finishReport(commonExt);
                     }
 
                 }
             }
         }
-        log.info("finishReport 执行时间:{}", System.currentTimeMillis() - start);
+        log.debug("finishReport 执行时间:{}", System.currentTimeMillis() - start);
     }
 
     private void finishReport(TenantCommonExt commonExt) {
@@ -89,13 +87,27 @@ public class FinishReportJob implements SimpleJob {
             log.debug("暂无压测中的报告！");
             return;
         }
-        log.info("获取租户【{}】【{}】正在压测中的报告:{}", commonExt.getTenantId(),
+        log.debug("获取租户【{}】【{}】正在压测中的报告:{}", commonExt.getTenantId(),
             commonExt.getEnvCode(), JsonHelper.bean2Json(reportIds));
         for (Long reportId : reportIds) {
+            // 分布式锁
+            String lockKey = JobRedisUtils.getJobRedis(commonExt.getTenantId(),commonExt.getEnvCode(),"finishReport#"+reportId);
+            if (distributedLock.checkLock(lockKey)) {
+                continue;
+            }
+
             // 开始数据分片
             fastDebugThreadPool.execute(() -> {
-                WebPluginUtils.setTraceTenantContext(commonExt);
-                reportTaskService.finishReport(reportId,commonExt);
+                boolean tryLock = distributedLock.tryLock(lockKey, 1L, 1L, TimeUnit.MINUTES);
+                if(!tryLock) {
+                    return;
+                }
+                try {
+                    WebPluginUtils.setTraceTenantContext(commonExt);
+                    reportTaskService.finishReport(reportId,commonExt);
+                } finally {
+                    distributedLock.unLockSafely(lockKey);
+                }
             });
         }
 
