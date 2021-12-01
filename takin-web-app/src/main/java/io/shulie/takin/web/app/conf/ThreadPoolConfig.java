@@ -5,6 +5,7 @@ import java.util.concurrent.*;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,17 +24,29 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class ThreadPoolConfig {
 
+    /**
+     * 用于定时任务
+     *
+     * @return 线程池
+     */
+    @Bean(name = "jobThreadPool")
+    public ThreadPoolExecutor jobThreadPool() {
+        ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("job-%d").build();
+        return new ThreadPoolExecutor(20, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(5000), nameThreadFactory,
+            new ThreadPoolExecutor.AbortPolicy());
+    }
+
     @Bean(name = "fastDebugThreadPool")
     public ThreadPoolExecutor fastDebug() {
         ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("fast-debug-%d").build();
-        return new ThreadPoolExecutor(10, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(500), nameThreadFactory,
+        return new ThreadPoolExecutor(10, 50, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(20000), nameThreadFactory,
             new ThreadPoolExecutor.AbortPolicy());
     }
 
     @Bean(name = "modifyMonitorThreadPool")
     public ThreadPoolExecutor modifyMonitorExecutor() {
         ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("modify-monitor-%d").build();
-        return new ThreadPoolExecutor(10, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
+        return new ThreadPoolExecutor(5, 5, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
             new ThreadPoolExecutor.AbortPolicy());
     }
 
@@ -51,14 +64,14 @@ public class ThreadPoolConfig {
     @Bean(name = "ScriptThreadPool")
     public ThreadPoolExecutor runShellTaskExecutor() {
         ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("script-thread-%d").build();
-        return new ThreadPoolExecutor(10, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
+        return new ThreadPoolExecutor(5, 5, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
             new ThreadPoolExecutor.AbortPolicy());
     }
 
     @Bean(name = "loadDataThreadPool")
     public ThreadPoolExecutor loadDataTaskExecutor() {
         ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("loaddata-thread-%d").build();
-        return new ThreadPoolExecutor(10, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
+        return new ThreadPoolExecutor(5, 5, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
             new ThreadPoolExecutor.AbortPolicy());
     }
 
@@ -66,14 +79,14 @@ public class ThreadPoolConfig {
     @Bean(name = "agentDataThreadPool")
     public ThreadPoolExecutor agentDataTaskExecutor() {
         ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("agentdata-thread-%d").build();
-        return new ThreadPoolExecutor(5, 10, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10000), nameThreadFactory,
+        return new ThreadPoolExecutor(5, 5, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10000), nameThreadFactory,
             new ThreadPoolExecutor.AbortPolicy());
     }
 
     @Bean(name = "backgroundMonitorThreadPool")
     public ThreadPoolExecutor backgroundMonitorThreadPool() {
         ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("background-monitor-thread-%d").build();
-        return new ThreadPoolExecutor(20, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10000), nameThreadFactory,
+        return new ThreadPoolExecutor(5, 5, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10000), nameThreadFactory,
             new ThreadPoolExecutor.AbortPolicy());
     }
 
@@ -81,9 +94,9 @@ public class ThreadPoolConfig {
     public Executor myAsync() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         //核心线程数
-        executor.setCorePoolSize(10);
+        executor.setCorePoolSize(5);
         //最大核心线程数
-        executor.setMaxPoolSize(20);
+        executor.setMaxPoolSize(10);
         //心态检测，超过设置时间回收线程,线程空闲时的存活时间
         executor.setKeepAliveSeconds(0);
         //队列深度
@@ -101,7 +114,7 @@ public class ThreadPoolConfig {
     @Bean(name = "opsScriptThreadPool")
     public ThreadPoolExecutor runOPSShellTaskExecutor() {
         ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("ops-script-thread-%d").build();
-        return new ThreadPoolExecutor(10, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
+        return new ThreadPoolExecutor(1, 5, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), nameThreadFactory,
                 new ThreadPoolExecutor.AbortPolicy());
     }
 
@@ -146,4 +159,25 @@ public class ThreadPoolConfig {
         return new ThreadPoolExecutor(coreSize, coreSize * 2, 0, TimeUnit.SECONDS, new LinkedBlockingQueue<>(100), nameThreadFactory,
                 new ThreadPoolExecutor.AbortPolicy());
     }
+
+    @Value("${poolConfig.e2e.coreSize: 20}")
+    private Integer e2eCoreSize;
+
+    @Value("${poolConfig.e2e.maxSize: 20}")
+    private Integer e2eMaxSize;
+
+    @Value("${poolConfig.e2e.queueSize: 10000}")
+    private Integer e2eQueueSize;
+
+    /**
+     * e2e线程池
+     * @return
+     */
+    @Bean(name = "e2eThreadPool")
+    public ThreadPoolExecutor e2eThreadPool() {
+        ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("e2e-job-%d").build();
+        return new ThreadPoolExecutor(e2eCoreSize, e2eMaxSize, 60L, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(e2eQueueSize), nameThreadFactory, new ThreadPoolExecutor.AbortPolicy());
+    }
+
 }
