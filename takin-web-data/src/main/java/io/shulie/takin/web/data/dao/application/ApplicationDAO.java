@@ -46,6 +46,7 @@ public interface ApplicationDAO {
 
     /**
      * 根据应用查
+     *
      * @param appNames
      * @return
      */
@@ -53,20 +54,21 @@ public interface ApplicationDAO {
 
     /**
      * 根据租户查询
+     *
      * @param appNames
      * @param userAppKey
      * @param envCode
      * @return
      */
-    List<ApplicationResult> getApplicationByName(List<String> appNames,String userAppKey,String envCode);
+    List<ApplicationResult> getApplicationByName(List<String> appNames, String userAppKey, String envCode);
 
     /**
      * 接口只返回 应用id 应用名
+     *
      * @param userIdList
      * @return
      */
     List<ApplicationDetailResult> getApplicationListByUserIds(List<Long> userIdList);
-
 
     /**
      * 获取应用
@@ -86,6 +88,7 @@ public interface ApplicationDAO {
 
     /**
      * 获取应用名
+     *
      * @param param
      * @return
      */
@@ -103,11 +106,11 @@ public interface ApplicationDAO {
 
     /**
      * 不用租户拦截查询 导出接口用
+     *
      * @param appId
      * @return
      */
     ApplicationDetailResult getApplicationByIdWithInterceptorIgnore(Long appId);
-
 
     /**
      * 根据租户查询
@@ -156,10 +159,11 @@ public interface ApplicationDAO {
     /**
      * 批量更新应用节点数
      *
-     * @param paramList  参数集合
-     * @param tenantId 租户id
+     * @param paramList 参数集合
+     * @param envCode   环境变量
+     * @param tenantId  租户id
      */
-    void batchUpdateAppNodeNum(List<NodeNumParam> paramList, Long tenantId);
+    void batchUpdateAppNodeNum(List<NodeNumParam> paramList, String envCode, Long tenantId);
 
     List<ApplicationAttentionListEntity> getAttentionList(ApplicationAttentionParam param);
 
@@ -167,6 +171,7 @@ public interface ApplicationDAO {
 
     /**
      * 根据租户获取相关应用
+     *
      * @param commonExts
      * @return
      */
@@ -187,10 +192,7 @@ public interface ApplicationDAO {
      * @return 应用名称
      * @author shulie
      */
-     String selectApplicationName(@Param("applicationId") String applicationId);
-
-
-
+    String selectApplicationName(@Param("applicationId") String applicationId);
 
     /**
      * 更新 agentVersion
@@ -200,7 +202,6 @@ public interface ApplicationDAO {
      * @param pradarVersion
      */
     void updateApplicaionAgentVersion(Long applicationId, String agentVersion, String pradarVersion);
-
 
     /**
      * 根据applicationName查询 id
@@ -218,20 +219,21 @@ public interface ApplicationDAO {
      * @param envCode
      * @return
      */
-    List<String> queryIdsByNameAndTenant(List<String> names, Long tenantId,String envCode);
+    List<String> queryIdsByNameAndTenant(List<String> names, Long tenantId, String envCode);
 
     /**
      * 获取应用
+     *
      * @return
      */
     List<ApplicationDetailResult> getAllApplications();
 
     /**
      * 大盘获取应用
+     *
      * @return
      */
     List<ApplicationDetailResult> getDashboardAppData();
-
 
     /**
      * 根据状态查
@@ -239,10 +241,11 @@ public interface ApplicationDAO {
      * @param statusList
      * @return
      */
-    List<ApplicationDetailResult> getAllApplicationByStatus( List<Integer> statusList);
+    List<ApplicationDetailResult> getAllApplicationByStatus(List<Integer> statusList);
 
     /**
      * 根据关键字查询
+     *
      * @param userIds
      * @param keyword
      * @return
@@ -251,15 +254,17 @@ public interface ApplicationDAO {
 
     /**
      * 判断是否存在
+     *
      * @param tenantId
      * @param envCode
      * @param applicationName
      * @return
      */
-    int applicationExistByTenantIdAndAppName( Long tenantId, String envCode, String applicationName);
+    int applicationExistByTenantIdAndAppName(Long tenantId, String envCode, String applicationName);
 
     /**
      * 应用列表
+     *
      * @param queryParam
      * @return
      */
@@ -267,17 +272,18 @@ public interface ApplicationDAO {
 
     /**
      * 是否重名
+     *
      * @param applicationName
      * @return
      */
-    int applicationExist( String applicationName);
+    int applicationExist(String applicationName);
 
     /**
      * 更新
+     *
      * @param tApplicationMnt
      */
     void updateApplicationinfo(ApplicationCreateParam tApplicationMnt);
-
 
     /**
      * 说明: 根据应用id查询关联的基础链路是否存在
@@ -291,6 +297,7 @@ public interface ApplicationDAO {
 
     /**
      * 删除应用
+     *
      * @param applicationIdLists
      */
     void deleteApplicationInfoByIds(List<Long> applicationIdLists);
@@ -303,8 +310,7 @@ public interface ApplicationDAO {
      * @author shulie
      * @date 2018/11/5 10:30
      */
-    List<Map<String, Object>> queryApplicationListByIds( List<Long> applicationIds);
-
+    List<Map<String, Object>> queryApplicationListByIds(List<Long> applicationIds);
 
     /**
      * 说明: 查询应用下拉框数据接口
@@ -316,11 +322,11 @@ public interface ApplicationDAO {
 
     /**
      * 批量更新
+     *
      * @param applicationIds
      * @param accessStatus
      */
     void batchUpdateApplicationStatus(List<Long> applicationIds, Integer accessStatus);
-
 
     /**
      * 说明: 查询缓存失效时间
@@ -339,10 +345,11 @@ public interface ApplicationDAO {
      * @return 脚本路径
      * @author shulie
      */
-    String selectScriptPath( String applicationId, String scriptType);
+    String selectScriptPath(String applicationId, String scriptType);
 
     /**
      * e2e使用
+     *
      * @param applicationName
      * @return
      */
@@ -350,6 +357,7 @@ public interface ApplicationDAO {
 
     /**
      * 获取应用个数
+     *
      * @return
      */
     Long getApplicationCount();
