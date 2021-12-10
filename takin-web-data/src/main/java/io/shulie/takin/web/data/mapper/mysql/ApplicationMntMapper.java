@@ -199,6 +199,8 @@ public interface ApplicationMntMapper extends BaseMapper<ApplicationMntEntity> {
      */
     String getIdByName(@Param("applicationName") String applicationName);
 
+
+    List<ApplicationMntEntity> getAllApplicationsByField();
     /**
      * 查询应用列表
      *

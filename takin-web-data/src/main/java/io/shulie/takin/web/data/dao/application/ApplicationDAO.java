@@ -363,6 +363,12 @@ public interface ApplicationDAO {
     Long getApplicationCount();
 
     /**
+     * 获取应用
+     * @return
+     */
+    List<ApplicationDetailResult> getAllApplicationsByField();
+
+    /**
      * 查询应用列表
      *
      * @param param 筛选条件
