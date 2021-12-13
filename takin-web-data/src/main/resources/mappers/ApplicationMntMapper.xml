@@ -367,6 +367,12 @@
         where application_name = #{applicationName}
     </select>
 
+    <select id="getAllApplicationsByField"
+            resultType="io.shulie.takin.web.data.model.mysql.ApplicationMntEntity">
+        select *
+        from t_application_mnt
+    </select>
+
     <select id="selectApplicationListByParam"
             resultType="io.shulie.takin.web.data.result.application.ApplicationListResult">
         SELECT a.APPLICATION_ID application_id, a.APPLICATION_NAME application_name,
