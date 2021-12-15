@@ -19,6 +19,7 @@ import com.alibaba.fastjson.JSONObject;
 
 import cn.hutool.core.collection.CollStreamUtil;
 import cn.hutool.core.util.BooleanUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -32,7 +33,6 @@ import com.pamirs.takin.common.enums.ds.DsTypeEnum;
 import com.pamirs.takin.common.enums.ds.MiddleWareTypeEnum;
 import com.pamirs.takin.entity.dao.simplify.TAppBusinessTableInfoMapper;
 import com.pamirs.takin.entity.domain.entity.DsModelWithBLOBs;
-import com.pamirs.takin.entity.domain.entity.TApplicationMnt;
 import com.pamirs.takin.entity.domain.entity.simplify.AppBusinessTableInfo;
 import com.pamirs.takin.entity.domain.query.agent.AppBusinessTableQuery;
 import com.pamirs.takin.entity.domain.vo.dsmanage.Configurations;
@@ -91,7 +91,6 @@ import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -288,7 +287,7 @@ public class DsServiceImpl implements DsService {
     @Override
     public List<DsAgentVO> getConfigs(String appName) {
         List<DsAgentVO> dsAgentVOList = new ArrayList<>();
-        TApplicationMnt applicationMnt = applicationService.queryTApplicationMntByName(appName);
+        ApplicationDetailResult applicationMnt = applicationService.queryTApplicationMntByName(appName);
         if (applicationMnt != null) {
             List<DsModelWithBLOBs> dsModels = applicationDsDAO.selectByAppIdForAgent(applicationMnt.getApplicationId());
             if (CollectionUtils.isNotEmpty(dsModels)) {
@@ -330,7 +329,7 @@ public class DsServiceImpl implements DsService {
     @Override
     public List<DsServerVO> getShadowDsServerConfigs(String namespace, DsTypeEnum dsServer) {
         List<DsServerVO> responseList = new ArrayList<>();
-        TApplicationMnt applicationMnt = applicationService.queryTApplicationMntByName(namespace);
+        ApplicationDetailResult applicationMnt = applicationService.queryTApplicationMntByName(namespace);
         if (applicationMnt != null) {
             List<DsModelWithBLOBs> dsModels = applicationDsDAO.selectByAppIdForAgent(applicationMnt.getApplicationId());
             if (CollectionUtils.isNotEmpty(dsModels)) {
@@ -357,10 +356,8 @@ public class DsServiceImpl implements DsService {
         AppBusinessTableInfo query = new AppBusinessTableInfo();
         query.setUrl(info.getUrl());
         // 补充用户数据
-        UserExt user = WebPluginUtils.getUser();
-        if(user != null) {
-            query.setUserId(user.getId());
-        }
+        UserExt user = WebPluginUtils.traceUser();
+        query.setUserId(user.getId());
         Long count = tAppBusinessTableInfoMapper.selectCountByUserIdAndUrl(query);
         if (count == 1) {
             AppBusinessTableInfo updateInfo = tAppBusinessTableInfoMapper.selectByUserIdAndUrl(query);
@@ -377,8 +374,8 @@ public class DsServiceImpl implements DsService {
 
     @Override
     public Response queryPageBusiness(AppBusinessTableQuery query) {
-        UserExt user = WebPluginUtils.getUser();
-        if (user != null && 1 == user.getRole()) {
+        UserExt user = WebPluginUtils.traceUser();
+        if (1 == user.getRole()) {
             query.setUserId(user.getId());
         }
         PageHelper.startPage(query.getPageNum(), query.getPageSize());
@@ -469,6 +466,9 @@ public class DsServiceImpl implements DsService {
         response.addAll(caches.stream().map(this::cacheBuild).collect(Collectors.toList()));
         response.addAll(dbs.stream().map(this::dbBuild).collect(Collectors.toList()));
         response.addAll(oldResponseList.stream().map(this::v1Build).collect(Collectors.toList()));
+
+        // 补充权限
+        response.forEach(WebPluginUtils::fillQueryResponse);
 
         agentConfigCacheManager.evictShadowDb(detailResult.getApplicationName());
         agentConfigCacheManager.evictShadowServer(detailResult.getApplicationName());
@@ -639,7 +639,7 @@ public class DsServiceImpl implements DsService {
     @Override
     public Response dsQueryConfigTemplate(String agentSourceType, Integer dsType, Boolean isNewData, String cacheType, String connectionPool) {
         Converter.TemplateConverter.TemplateEnum templateEnum;
-        if (Strings.isNotBlank(connectionPool)) {
+        if (StrUtil.isNotBlank(connectionPool)) {
             templateEnum = redisTemplateParser.convert(connectionPool);
             if (Objects.isNull(templateEnum)) {
                 templateEnum = dbTemplateParser.convert(connectionPool);
@@ -774,7 +774,7 @@ public class DsServiceImpl implements DsService {
         v2Response.setIsNewPage(true);
 //        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(dbDetail.getStatus());
-        v2Response.setUserId(WebPluginUtils.getUserId());
+        v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
         v2Response.setCanRemove(v2Response.getIsManual());
         return v2Response;
@@ -797,7 +797,7 @@ public class DsServiceImpl implements DsService {
 //        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(cacheDetail.getStatus());
         v2Response.setExtMsg(cacheDetail.getType());
-        v2Response.setUserId(WebPluginUtils.getUserId());
+        v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
         v2Response.setCanRemove(v2Response.getIsManual());
         return v2Response;
@@ -839,7 +839,7 @@ public class DsServiceImpl implements DsService {
             }
 
         }
-        v2Response.setUserId(WebPluginUtils.getUserId());
+        v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
         v2Response.setCanRemove(v2Response.getIsManual());
         return v2Response;

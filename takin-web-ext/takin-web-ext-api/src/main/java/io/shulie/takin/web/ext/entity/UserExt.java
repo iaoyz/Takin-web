@@ -20,8 +20,6 @@ public class UserExt {
 
     private String nick;
 
-    private String key;
-
     private String salt;
 
     private String password;
@@ -29,7 +27,7 @@ public class UserExt {
     private Integer status;
 
     /**
-     * 用户类型 0:系统管理员 1:其他
+     * 用户类型 0:系统管理员 1:普通用户 2.租户管理员
      */
     private Integer userType;
 
@@ -65,18 +63,15 @@ public class UserExt {
     private Map<String, List<Integer>> permissionData;
 
     /**
-     * 账号体系下：每个公司有一个管理账号，我们称为租户管理员账号，或者主账号
-     * 其他账号，我们称为子账号
-     * 子账号和主账号，根据管理员对应的key，将数据进行隔离
-     */
-    private Long customerId;
-    private String customerKey;
-
-    /**
      * 登录渠道
      * 0-console 前端页面
      * 1-agent agent
      */
     @ApiModelProperty(value = "登录渠道")
     private Integer loginChannel = 0;
+
+    /**
+     * 是否有超级管理员的权限(创建租户)
+     */
+    private Integer isSuper;
 }
