@@ -11,15 +11,17 @@ import java.util.stream.Collectors;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.pamirs.takin.entity.domain.dto.report.ReportDetailDTO;
-import io.shulie.takin.cloud.common.bean.RuleBean;
-import io.shulie.takin.cloud.common.bean.sla.SlaBean;
+import io.shulie.takin.cloud.sdk.model.common.RuleBean;
+import io.shulie.takin.cloud.sdk.model.common.SlaBean;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
-import io.shulie.takin.cloud.open.req.report.WarnCreateReq;
-import io.shulie.takin.cloud.open.req.scenemanage.SceneManageIdReq;
-import io.shulie.takin.cloud.open.resp.scenemanage.SceneManageWrapperResp.SceneSlaRefResp;
+import io.shulie.takin.cloud.sdk.model.request.report.WarnCreateReq;
+import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageIdReq;
+import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageWrapperResp.SceneSlaRefResp;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.service.report.impl.ReportApplicationService;
 import io.shulie.takin.web.biz.service.risk.util.DateUtil;
+import io.shulie.takin.web.common.common.Separator;
+import io.shulie.takin.web.common.util.CommonUtil;
 import io.shulie.takin.web.common.util.RedisHelper;
 import io.shulie.takin.web.data.dao.baseserver.BaseServerDao;
 import io.shulie.takin.web.data.dao.perfomanceanaly.PerformanceBaseDataDAO;
@@ -27,6 +29,7 @@ import io.shulie.takin.web.data.param.baseserver.BaseServerParam;
 import io.shulie.takin.web.data.param.perfomanceanaly.PerformanceBaseDataParam;
 import io.shulie.takin.web.data.result.baseserver.BaseServerResult;
 import io.shulie.takin.web.diff.api.scenetask.SceneTaskApi;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +62,9 @@ public class AsyncServiceImpl implements AsyncService {
     @Async("agentDataThreadPool")
     @Override
     public void savePerformanceBaseData(PerformanceBaseDataParam param) {
-        Set<String> keys = RedisHelper.keys(String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY, "*"));
+        String redisKey = CommonUtil.generateRedisKeyWithSeparator(Separator.Separator3, WebPluginUtils.traceTenantAppKey(), WebPluginUtils.traceEnvCode(),
+            String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY, "*"));
+        Set<String> keys = RedisHelper.keys(redisKey);
         if(keys.size() == 0) {
             return;
         }
