@@ -771,15 +771,9 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
                     }
                 }
 
-                if (!errorApplicationIdSet.isEmpty()) {
-                    modifyAccessStatusWithoutAuth(new ArrayList<>(errorApplicationIdSet),
-                        AppAccessStatusEnum.EXCEPTION.getCode());
-                }
-
-                if (!normalApplicationIdSet.isEmpty()) {
-                    modifyAccessStatusWithoutAuth(new ArrayList<>(normalApplicationIdSet),
-                        AppAccessStatusEnum.NORMAL.getCode());
-                }
+                // 更新应用状态
+                applicationDAO.updateStatusByApplicationIds(errorApplicationIdSet, AppAccessStatusEnum.EXCEPTION.getCode());
+                applicationDAO.updateStatusByApplicationIds(normalApplicationIdSet, AppAccessStatusEnum.NORMAL.getCode());
 
             } while (applicationNumber == pageSize);
             // 先执行一遍, 然后如果分页应用数量等于pageSize, 那么查询下一页
@@ -800,7 +794,7 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
     private Map<String, List<ApplicationNodeResult>> getAmdbApplicationNodeMap(List<String> appNames) {
         ApplicationNodeQueryParam queryParam = new ApplicationNodeQueryParam();
         queryParam.setCurrent(0);
-        queryParam.setPageSize(-1);
+        queryParam.setPageSize(99999);
         queryParam.setApplicationNames(appNames);
         PagingList<ApplicationNodeResult> applicationNodes = applicationNodeDAO.pageNodes(queryParam);
         List<ApplicationNodeResult> nodeList = applicationNodes.getList();
