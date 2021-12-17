@@ -1,5 +1,6 @@
 package io.shulie.takin.web.biz.service.report.impl;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -161,12 +162,12 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 //压测结束，生成压测报告异常，解锁报告
                 reportService.unLockReport(reportId);
                 log.error("Unlock Report Success, reportId={} ,errorMsg= {}...", reportId, e.getMessage());
+            } finally {
+                removeReportKey(reportId, commonExt);
             }
 
         } catch (Exception e) {
             log.error("QueryRunningReport Error :{}", e.getMessage());
-        } finally {
-            removeReportKey(reportId, commonExt);
         }
     }
 
