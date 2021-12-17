@@ -27,7 +27,7 @@ import io.shulie.takin.web.common.constant.LockKeyConstants;
 import io.shulie.takin.web.common.constant.MqConstants;
 import io.shulie.takin.web.common.enums.application.ApplicationMiddlewareStatusEnum;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
-import io.shulie.takin.web.common.util.CommonUtil;
+import io.shulie.takin.web.common.util.DataTransformUtil;
 import io.shulie.takin.web.data.dao.application.ApplicationDAO;
 import io.shulie.takin.web.data.dao.application.ApplicationMiddlewareDAO;
 import io.shulie.takin.web.data.param.application.CreateApplicationMiddlewareParam;
@@ -36,6 +36,7 @@ import io.shulie.takin.web.data.param.application.UpdateApplicationMiddlewarePar
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.shulie.takin.web.data.result.application.ApplicationMiddlewareListResult;
 import io.shulie.takin.web.data.result.application.ApplicationMiddlewareStatusAboutCountResult;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -152,14 +153,14 @@ public class ApplicationMiddlewareServiceImpl implements ApplicationMiddlewareSe
     @Override
     public List<UpdateApplicationMiddlewareParam> doCompare(List<ApplicationMiddlewareListResult> results) {
         // 转 dto
-        List<CompareApplicationMiddlewareDTO> compareApplicationMiddlewareList = CommonUtil.list2list(results,
+        List<CompareApplicationMiddlewareDTO> compareApplicationMiddlewareList = DataTransformUtil.list2list(results,
             CompareApplicationMiddlewareDTO.class);
 
         // 比对
         middlewareJarService.appCompare(compareApplicationMiddlewareList);
 
         // 返回
-        return CommonUtil.list2list(compareApplicationMiddlewareList, UpdateApplicationMiddlewareParam.class);
+        return DataTransformUtil.list2list(compareApplicationMiddlewareList, UpdateApplicationMiddlewareParam.class);
     }
 
     @Transactional(rollbackFor = Throwable.class)
@@ -216,12 +217,12 @@ public class ApplicationMiddlewareServiceImpl implements ApplicationMiddlewareSe
 
     @Override
     public Map<String, Map<Integer, Integer>> getApplicationNameAboutStatusCountMap(
-        List<String> applicationNameList) {
+        List<Long> applicationIds) {
         List<Integer> statusList = Arrays.asList(ApplicationMiddlewareStatusEnum.NONE.getCode(),
             ApplicationMiddlewareStatusEnum.UNKNOWN.getCode(),
             ApplicationMiddlewareStatusEnum.NOT_SUPPORTED.getCode());
         List<ApplicationMiddlewareStatusAboutCountResult> results = applicationMiddlewareDAO
-            .listStatusCountByAndGroupByApplicationNameListAndStatus(applicationNameList, statusList);
+            .listStatusCountByAndGroupByApplicationNameListAndStatus(applicationIds, statusList);
         if (results.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -277,6 +278,8 @@ public class ApplicationMiddlewareServiceImpl implements ApplicationMiddlewareSe
             String version = pushMiddlewareListRequest.getVersion();
             createParam.setVersion(version == null ? "" : version);
 
+            createParam.setEnvCode(WebPluginUtils.traceEnvCode());
+            createParam.setTenantId(WebPluginUtils.traceTenantId());
             return createParam;
         }).collect(Collectors.toList());
     }
