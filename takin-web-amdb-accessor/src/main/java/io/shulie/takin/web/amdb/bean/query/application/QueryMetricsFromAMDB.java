@@ -5,12 +5,11 @@ import lombok.Data;
 
 @Data
 @Builder
-public class TempTopologyQuery1 {
-    private String inAppName;
-    private String inService;
-    private String inMethod;
-    private String startTime;
-    private String endTime;
+public class QueryMetricsFromAMDB {
+    private long startMilli;
+    private long endMilli;
+    private Boolean metricsType;
+    private String eagleId;
 
     /**
      * 租户ID
@@ -20,5 +19,4 @@ public class TempTopologyQuery1 {
      * 环境编码
      */
     private String envCode;
-    private int timeGap;
 }
