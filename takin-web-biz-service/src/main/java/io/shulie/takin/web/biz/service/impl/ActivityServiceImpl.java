@@ -433,6 +433,7 @@ public class ActivityServiceImpl implements ActivityService {
         param.setActivityName(request.getActivityName());
         param.setDomain(request.getDomain());
         param.setIsChange(request.getIsChange());
+        param.setLinkLevel(request.getLinkLevel());
         param.setCurrent(request.getCurrent());
         param.setPageSize(request.getPageSize());
         WebPluginUtils.fillQueryParam(param);
@@ -771,6 +772,10 @@ public class ActivityServiceImpl implements ActivityService {
             taskFlowDebugStartReq.setUserId(user.getId());
             taskFlowDebugStartReq.setUserName(user.getName());
         }
+        //设置租户
+        taskFlowDebugStartReq.setEnvCode(WebPluginUtils.traceEnvCode());
+        taskFlowDebugStartReq.setTenantId(WebPluginUtils.traceTenantId());
+
         log.info("流量验证参数：{}", taskFlowDebugStartReq);
         Long startResult = cloudTaskApi.startFlowDebugTask(taskFlowDebugStartReq);
         log.info("流量验证发起结果：{}", startResult.toString());
