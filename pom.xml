@@ -3,7 +3,6 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.shulie.takin</groupId>
     <artifactId>takin-web</artifactId>
-
     <version>takin-web-5.1.0.7</version>
     <packaging>pom</packaging>
 
