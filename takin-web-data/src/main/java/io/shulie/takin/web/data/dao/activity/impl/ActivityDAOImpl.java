@@ -176,7 +176,7 @@ public class ActivityDAOImpl implements ActivityDAO, MPUtil<BusinessLinkManageTa
             result.setEntranceName(entranceJoinEntity.getServiceName());
             Map<String, String> features = new HashMap<>(16);
             if (StringUtils.isNotBlank(linkManageTableEntity.getFeatures())) {
-                features = JsonUtil.json2bean(linkManageTableEntity.getFeatures(), Map.class);
+                features = JsonUtil.json2Bean(linkManageTableEntity.getFeatures(), Map.class);
             }
 
             result.setExtend(features.get(FeaturesConstants.EXTEND_KEY));
@@ -310,6 +310,9 @@ public class ActivityDAOImpl implements ActivityDAO, MPUtil<BusinessLinkManageTa
         }
         if (param.getIsChange() != null) {
             lambdaQueryWrapper.eq(BusinessLinkManageTableEntity::getIsChange, param.getIsChange());
+        }
+        if (Objects.nonNull(param.getLinkLevel())) {
+            lambdaQueryWrapper.eq(BusinessLinkManageTableEntity::getLinkLevel, param.getLinkLevel());
         }
         if (CollectionUtils.isNotEmpty(param.getUserIdList())) {
             lambdaQueryWrapper.in(BusinessLinkManageTableEntity::getUserId, param.getUserIdList());
