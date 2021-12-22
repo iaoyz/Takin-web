@@ -1245,7 +1245,8 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
 
     @Override
     public void gotoActivityInfo(ActivityCreateRequest request) {
-        activityService.createActivityWithoutAMDB(request);
+        Long linkId = activityService.createActivityWithoutAMDB(request);
+        request.setLinkId(String.valueOf(linkId));
     }
 
     @Override
