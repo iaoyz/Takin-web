@@ -4,7 +4,7 @@ import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.service.scriptmanage.ScriptDebugService;
 import io.shulie.takin.common.beans.annotation.AuthVerification;
-import io.shulie.takin.web.common.constant.APIUrls;
+import io.shulie.takin.web.common.constant.ApiUrls;
 import io.shulie.takin.web.biz.constant.BizOpConstants;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.PageScriptDebugRequest;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.PageScriptDebugRequestRequest;
@@ -14,6 +14,7 @@ import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptDebugListRespons
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptDebugRequestListResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptDebugResponse;
 import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
+import io.shulie.takin.web.common.context.OperationLogContextHolder;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -34,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2021-05-10 17:12:03
  */
 @RestController
-@RequestMapping(APIUrls.TAKIN_API_URL + "scriptDebug/")
+@RequestMapping(ApiUrls.TAKIN_API_URL + "scriptDebug/")
 @Api(tags = "接口: 脚本调试")
 public class ScriptDebugController {
 
@@ -45,12 +46,15 @@ public class ScriptDebugController {
     @PostMapping("debug")
     @ModuleDef(moduleName = BizOpConstants.Modules.SCRIPT_MANAGE,
         subModuleName = BizOpConstants.SubModules.SCRIPT_MANAGE,
-        logMsgKey = BizOpConstants.Message.SCRIPT_MANAGE_UPDATE)
+        logMsgKey = BizOpConstants.Message.SCRIPT_MANAGE_DEBUG)
     @AuthVerification(
         moduleCode = BizOpConstants.ModuleCode.SCRIPT_MANAGE,
         needAuth = ActionTypeEnum.UPDATE
     )
     public ScriptDebugResponse debug(@Validated @RequestBody ScriptDebugDoDebugRequest request) {
+        OperationLogContextHolder.operationType(BizOpConstants.OpTypes.DEBUG);
+        OperationLogContextHolder.addVars(BizOpConstants.Vars.SCRIPT_MANAGE_DEPLOY_ID,
+            String.valueOf(request.getScriptDeployId()));
         return scriptDebugService.debug(request);
     }
 
