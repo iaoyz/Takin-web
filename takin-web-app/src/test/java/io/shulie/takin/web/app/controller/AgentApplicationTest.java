@@ -1,11 +1,15 @@
 package io.shulie.takin.web.app.controller;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
 
 import io.shulie.takin.web.app.Application;
 import io.shulie.takin.web.biz.pojo.request.agent.PushMiddlewareListRequest;
 import io.shulie.takin.web.biz.pojo.request.agent.PushMiddlewareRequest;
 import io.shulie.takin.web.common.enums.ContextSourceEnum;
+import io.shulie.takin.web.data.dao.application.ApplicationApiDAO;
+import io.shulie.takin.web.data.param.application.ApplicationApiCreateParam;
 import io.shulie.takin.web.entrypoint.controller.agent.AgentApplicationController;
 import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
@@ -26,6 +30,22 @@ public class AgentApplicationTest {
 
     @Autowired
     private AgentApplicationController agentApplicationController;
+
+    @Autowired
+    private ApplicationApiDAO applicationApiDAO;
+
+    @Test
+    public void testWe() {
+        ApplicationApiCreateParam manage = new ApplicationApiCreateParam();
+        manage.setApi("/agent/test/redis2/lpop");
+        manage.setApplicationName("redis-jedis2x");
+        manage.setMethod("POST");
+        manage.setUpdateTime(new Date());
+        manage.setApplicationId(6879669258834415616L);
+        manage.setUserId(46L);
+        manage.setIsAgentRegiste(1);
+        applicationApiDAO.insertBatch(Collections.singletonList(manage));
+    }
 
     @Test
     public void testPushMiddlewareList() {
