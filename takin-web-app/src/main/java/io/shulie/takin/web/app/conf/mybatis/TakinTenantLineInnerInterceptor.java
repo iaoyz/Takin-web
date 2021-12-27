@@ -51,6 +51,7 @@ import net.sf.jsqlparser.statement.update.Update;
 public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor {
 
     private String[] tableArrWithoutTenantId = new String[] {
+        "t_third_party",
         "t_dictionary_type",
         "t_tc_sequence",
         "t_tenant_info",
@@ -75,7 +76,8 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         "t_plugin_tenant_ref"
     };
 
-    private String[] tableArrWithoutEnvCode = new String[] {
+    private String[] tableArrWithoutEnvCode=new String[]{
+        "t_third_party",
         "t_tro_user",
         "t_tro_dept",
         "t_dictionary_type",
@@ -104,6 +106,7 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
     };
 
     private String[] tableArrWithoutUserId = new String[] {
+        "t_third_party",
         "t_tro_user",
         "t_tro_dept",
         "t_dictionary_type",
