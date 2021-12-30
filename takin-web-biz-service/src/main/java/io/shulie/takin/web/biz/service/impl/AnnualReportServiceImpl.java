@@ -8,10 +8,12 @@ import cn.hutool.core.util.StrUtil;
 import io.shulie.takin.web.biz.pojo.vo.AnnualReportContentVO;
 import io.shulie.takin.web.biz.response.AnnualReportDetailResponse;
 import io.shulie.takin.web.biz.service.AnnualReportService;
+import io.shulie.takin.web.common.constant.CacheConstants;
 import io.shulie.takin.web.common.util.JsonUtil;
 import io.shulie.takin.web.data.dao.AnnualReportDAO;
 import io.shulie.takin.web.data.result.AnnualReportDetailResult;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -27,6 +29,7 @@ public class AnnualReportServiceImpl implements AnnualReportService {
     @Autowired
     private AnnualReportDAO annualReportDAO;
 
+    @Cacheable(CacheConstants.CACHE_KEY_ANNUAL_REPORT)
     @Override
     public AnnualReportDetailResponse getAnnualReportByTenantId(Long tenantId) {
         AnnualReportDetailResult annualReport = annualReportDAO.getByTenantId(tenantId);
@@ -47,15 +50,26 @@ public class AnnualReportServiceImpl implements AnnualReportService {
         // 压测比例
         Integer maxPressureTime = annualReportContentVO.getMaxPressureTime();
         Integer totalPressureTime = annualReportContentVO.getTotalPressureTime();
-        annualReportContentVO.setPressureProportion(
-            BigDecimal.valueOf(maxPressureTime).divide(BigDecimal.valueOf(totalPressureTime), MathContext.DECIMAL32));
+        if (totalPressureTime == 0) {
+            annualReportContentVO.setPressureProportion(BigDecimal.ZERO);
+        } else {
+            annualReportContentVO.setPressureProportion(BigDecimal.valueOf(maxPressureTime)
+                .divide(BigDecimal.valueOf(totalPressureTime), MathContext.DECIMAL32));
+        }
 
         // 优化时间
-        annualReportContentVO.setDiffAvgRt(annualReportContentVO.getBeforeAvgRt() - annualReportContentVO.getAfterAvgRt());
+        annualReportContentVO.setDiffAvgRt(
+            annualReportContentVO.getBeforeAvgRt().subtract(annualReportContentVO.getAfterAvgRt()));
 
         // 最晚时间
-        annualReportContentVO.setLastDate(LocalDateTimeUtil.format(annualReportContentVO.getLastDateTime(), "MM月dd日"));
-        annualReportContentVO.setLastTime(LocalDateTimeUtil.format(annualReportContentVO.getLastDateTime(), "HH:mm"));
+        if (annualReportContentVO.getLastDateTime() == null) {
+            annualReportContentVO.setLastDate("");
+            annualReportContentVO.setLastTime("");
+        } else {
+            annualReportContentVO.setLastDate(LocalDateTimeUtil.format(annualReportContentVO.getLastDateTime(), "MM月dd日"));
+            annualReportContentVO.setLastTime(LocalDateTimeUtil.format(annualReportContentVO.getLastDateTime(), "HH:mm"));
+        }
+        
         response.setContent(annualReportContentVO);
         return response;
     }
