@@ -1,9 +1,10 @@
 package io.shulie.takin.web.biz.utils.fastagentaccess;
 
 /**
- * @Description agent版本处理工具类
- * @Author ocean_wll
- * @Date 2021/8/16 6:35 下午
+ * agent版本处理工具类
+ *
+ * @author ocean_wll
+ * @date 2021/8/16 6:35 下午
  */
 public class AgentVersionUtil {
 
@@ -14,7 +15,7 @@ public class AgentVersionUtil {
      * @param version x.x.x.x
      * @return int值
      */
-    public static Long string2Int(String version) {
+    public static Long string2Long(String version) {
         String[] arr = version.split("\\.");
         if (arr.length < 1) {
             return -1L;
@@ -22,7 +23,7 @@ public class AgentVersionUtil {
 
         long rs = 0;
         for (int i = 0; i < arr.length; i++) {
-            int e = Integer.parseInt(arr[i]) << (10 * (arr.length - i - 1));
+            long e = Long.parseLong(arr[i]) << (10 * (arr.length - i - 1));
             rs += e;
         }
         return rs;
