@@ -106,7 +106,7 @@ public class ShadowDbServiceImpl extends AbstractDsService {
 
     private void syncInfo(Long applicationId, String applicationName) {
         //同步配置
-        configSyncService.syncShadowDB(WebPluginUtils.getTenantUserAppKey(), applicationId, null);
+        configSyncService.syncShadowDB(WebPluginUtils.traceTenantCommonExt(), applicationId, null);
         //修改应用状态
         applicationService.modifyAccessStatus(String.valueOf(applicationId),
             AppAccessTypeEnum.UNUPLOAD.getValue(), null);
@@ -505,7 +505,7 @@ public class ShadowDbServiceImpl extends AbstractDsService {
         if (StringUtils.isBlank(source)) {
             return;
         }
-        Configurations config = JsonUtil.json2bean(source, Configurations.class);
+        Configurations config = JsonUtil.json2Bean(source, Configurations.class);
         if (config == null) {
             return;
         }

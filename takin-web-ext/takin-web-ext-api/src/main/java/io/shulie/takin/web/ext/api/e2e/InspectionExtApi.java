@@ -1,12 +1,12 @@
 package io.shulie.takin.web.ext.api.e2e;
 
+import java.util.List;
+import java.util.Map;
+
 import io.shulie.takin.web.ext.entity.e2e.E2eBaseStorageParam;
 import io.shulie.takin.web.ext.entity.e2e.E2eBaseStorageRequest;
 import io.shulie.takin.web.ext.entity.e2e.E2eExceptionConfigInfoExt;
 import org.pf4j.ExtensionPoint;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author by: hezhongqi
@@ -18,9 +18,18 @@ import java.util.Map;
 public interface InspectionExtApi extends ExtensionPoint {
 
     /**
-     * 根据租户ID 获取 e2e 模块的异常配置信息
+     * 根据租户、环境 获取 e2e 模块的异常配置信息
      */
-    List<E2eExceptionConfigInfoExt> getExceptionConfig(Long customerId);
+    List<E2eExceptionConfigInfoExt> getExceptionConfig(Long tenantId,String envCode, String...service);
+
+    /**
+     * 批量获取瓶颈配置
+     * @param tenantId
+     * @param envCode
+     * @param service
+     * @return
+     */
+    Map<String,List<E2eExceptionConfigInfoExt>> getBatchExceptionConfig(Long tenantId,String envCode, List<String> service);
 
     /**
      * 瓶颈计算
