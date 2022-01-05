@@ -15,6 +15,7 @@ import io.shulie.takin.web.amdb.bean.common.AmdbResult;
 import io.shulie.takin.web.amdb.bean.query.fastagentaccess.AgentConfigQueryDTO;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,7 +51,12 @@ public class AgentConfigClientImpl implements AgentConfigClient {
         AgentConfigQueryDTO queryDTO = new AgentConfigQueryDTO();
         queryDTO.setConfigKey(configKey);
         queryDTO.setAppName(projectName);
+        //设置租户表示和环境编码
+        queryDTO.setTenantAppKey(WebPluginUtils.traceTenantAppKey());
+        queryDTO.setEnvCode(WebPluginUtils.traceEnvCode());
+
         try {
+            //添加请求头参数
             String responseEntity = HttpUtil.post(url, JSONObject.parseObject(JSON.toJSONString(queryDTO)));
             if (StringUtils.isEmpty(responseEntity)) {
                 return null;
@@ -75,6 +81,9 @@ public class AgentConfigClientImpl implements AgentConfigClient {
         try {
             // 因为tro-web的分页从0开始大数据的分页从1开始，所以这里需要加1
             queryDTO.setCurrentPage(queryDTO.getRealCurrent());
+            //设置租户表示和环境编码
+            queryDTO.setTenantAppKey(WebPluginUtils.traceTenantAppKey());
+            queryDTO.setEnvCode(WebPluginUtils.traceEnvCode());
             String responseEntity = HttpUtil.post(url, JSONObject.parseObject(JSON.toJSONString(queryDTO)));
             if (StringUtils.isEmpty(responseEntity)) {
                 return PagingList.empty();
