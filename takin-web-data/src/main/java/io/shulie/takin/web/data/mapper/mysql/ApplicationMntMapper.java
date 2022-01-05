@@ -56,6 +56,13 @@ public interface ApplicationMntMapper extends BaseMapper<ApplicationMntEntity> {
     List<ApplicationMntEntity> getAllApplications();
 
     /**
+     * 修复数据使用
+     * @return
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    List<ApplicationMntEntity> getAllApplicationsWithoutTenant();
+
+    /**
      * 返回id
      *
      * @param names
@@ -208,7 +215,7 @@ public interface ApplicationMntMapper extends BaseMapper<ApplicationMntEntity> {
      * @return 应用列表
      */
     @InterceptorIgnore(tenantLine = "true")
-    IPage<ApplicationListResult> selectApplicationListByParam(
+    IPage<ApplicationListResult> selectApplicationPageByParam(
         @Param("page") IPage<ApplicationMntEntity> page, @Param("param") QueryApplicationParam param);
 
 }
