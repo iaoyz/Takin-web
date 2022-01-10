@@ -356,8 +356,7 @@ public class DsServiceImpl implements DsService {
         AppBusinessTableInfo query = new AppBusinessTableInfo();
         query.setUrl(info.getUrl());
         // 补充用户数据
-        UserExt user = WebPluginUtils.traceUser();
-        query.setUserId(user.getId());
+        query.setUserId(WebPluginUtils.traceUserId());
         Long count = tAppBusinessTableInfoMapper.selectCountByUserIdAndUrl(query);
         if (count == 1) {
             AppBusinessTableInfo updateInfo = tAppBusinessTableInfoMapper.selectByUserIdAndUrl(query);
@@ -375,7 +374,7 @@ public class DsServiceImpl implements DsService {
     @Override
     public Response queryPageBusiness(AppBusinessTableQuery query) {
         UserExt user = WebPluginUtils.traceUser();
-        if (1 == user.getRole()) {
+        if (user != null && 1 == user.getRole()) {
             query.setUserId(user.getId());
         }
         PageHelper.startPage(query.getPageNum(), query.getPageSize());
@@ -442,10 +441,11 @@ public class DsServiceImpl implements DsService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response dsQueryV2(Long applicationId) {
+    public List<ApplicationDsV2Response> dsQueryV2(Long applicationId) {
         ApplicationDetailResult detailResult = applicationDAO.getApplicationById(applicationId);
         if (Objects.isNull(detailResult)) {
-            return Response.fail("0", "该应用不存在");
+            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_MANAGE_NO_EXIST_ERROR,"该应用不存在");
+
         }
 
         List<AppShadowDatabaseDTO> shadowDataBaseInfos = applicationClient.getApplicationShadowDataBaseInfo(detailResult.getApplicationName());
@@ -466,13 +466,14 @@ public class DsServiceImpl implements DsService {
         response.addAll(caches.stream().map(this::cacheBuild).collect(Collectors.toList()));
         response.addAll(dbs.stream().map(this::dbBuild).collect(Collectors.toList()));
         response.addAll(oldResponseList.stream().map(this::v1Build).collect(Collectors.toList()));
-
-        // 补充权限
-        response.forEach(WebPluginUtils::fillQueryResponse);
-
+        response.forEach(r -> {
+            if(r.getIsManual() != null && !r.getIsManual()) {
+                r.setCanRemove(false);
+            }
+        });
         agentConfigCacheManager.evictShadowDb(detailResult.getApplicationName());
         agentConfigCacheManager.evictShadowServer(detailResult.getApplicationName());
-        return Response.success(response);
+        return response;
     }
 
 
@@ -772,7 +773,6 @@ public class DsServiceImpl implements DsService {
         v2Response.setCacheType("");
         v2Response.setIsNewData(true);
         v2Response.setIsNewPage(true);
-//        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(dbDetail.getStatus());
         v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
@@ -794,7 +794,6 @@ public class DsServiceImpl implements DsService {
         v2Response.setCacheType(cacheDetail.getType());
         v2Response.setIsNewData(true);
         v2Response.setIsNewPage(true);
-//        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(cacheDetail.getStatus());
         v2Response.setExtMsg(cacheDetail.getType());
         v2Response.setUserId(WebPluginUtils.traceUserId());
