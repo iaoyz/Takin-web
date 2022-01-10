@@ -16,8 +16,10 @@ import com.pamirs.takin.entity.domain.vo.application.NodeNumParam;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.pojo.openapi.response.application.ApplicationListResponse;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCreateRequest;
+import io.shulie.takin.web.biz.pojo.request.application.ApplicationListByUpgradeRequest;
 import io.shulie.takin.web.biz.pojo.request.application.ApplicationQueryRequestV2;
 import io.shulie.takin.web.biz.pojo.request.application.ApplicationVisualInfoQueryRequest;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationListByUpgradeResponse;
 import io.shulie.takin.web.biz.pojo.response.application.ApplicationListResponseV2;
 import io.shulie.takin.web.biz.pojo.response.application.ApplicationVisualInfoResponse;
 import io.shulie.takin.web.common.common.Response;
@@ -280,10 +282,10 @@ public interface ApplicationService {
 
     /**
      * 获取租户应用，用于amdb
-     * @param commonExts
+     * @param commonExtList
      * @return
      */
-    List<ApplicationDetailResult> getAllTenantApp(List<TenantCommonExt> commonExts);
+    List<ApplicationDetailResult> getAllTenantApp(List<TenantCommonExt> commonExtList);
 
     /**
      * 应用列表
@@ -292,5 +294,7 @@ public interface ApplicationService {
      * @return 应用列表
      */
     PagingList<ApplicationListResponseV2> pageApplication(ApplicationQueryRequestV2 request);
+
+    PagingList<ApplicationListByUpgradeResponse> listApplicationByUpgrade(ApplicationListByUpgradeRequest request);
 
 }

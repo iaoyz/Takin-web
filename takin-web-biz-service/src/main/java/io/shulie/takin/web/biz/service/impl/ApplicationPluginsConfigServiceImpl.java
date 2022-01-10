@@ -120,7 +120,7 @@ public class ApplicationPluginsConfigServiceImpl implements ApplicationPluginsCo
         if (StringUtil.isBlank(entity.getConfigValue())) {
             throw new TakinWebException(ExceptionCode.POD_NUM_EMPTY, "配置值不能为空！");
         }
-        //优先取参数内的 否则从restcontext取
+        //优先取参数内的 否则从UserExt取
         if (param.getUserId() != null && param.getTenantId() != null) {
             entity.setCreatorId(param.getUserId());
             entity.setModifierId(param.getUserId());
@@ -149,18 +149,18 @@ public class ApplicationPluginsConfigServiceImpl implements ApplicationPluginsCo
             }
         });
 
-        List<ApplicationPluginsConfigEntity> entitys = CopyUtils.copyFieldsList(params,
+        List<ApplicationPluginsConfigEntity> entityList = CopyUtils.copyFieldsList(params,
             ApplicationPluginsConfigEntity.class);
         Date now = new Date();
-        entitys.forEach(entity -> {
+        entityList.forEach(entity -> {
             entity.setCreateTime(now);
             entity.setModifieTime(now);
             entity.setCreatorId(WebPluginUtils.traceUserId());
             entity.setModifierId(WebPluginUtils.traceUserId());
             entity.setTenantId(WebPluginUtils.traceTenantId());
         });
-        boolean flag = applicationPluginsConfigDAO.updateBatchById(entitys);
-        entitys.forEach(e -> this.evict(CommonUtil.generateRedisKey(e.getApplicationName(),e.getConfigKey())));
+        boolean flag = applicationPluginsConfigDAO.updateBatchById(entityList);
+        entityList.forEach(e -> this.evict(CommonUtil.generateRedisKey(e.getApplicationName(),e.getConfigKey())));
         return flag;
     }
 

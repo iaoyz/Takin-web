@@ -111,7 +111,6 @@ public class AgentConfigCacheManager {
     }
 
     public void evictShadowDb(String appName) {
-
         shadowDbConfigCache.evict(appName);
     }
 
@@ -134,7 +133,7 @@ public class AgentConfigCacheManager {
         ApplicationSwitchStatusDTO applicationSwitchStatusDTO = pressureSwitchConfigCache.get(null);
         String silenceSwitch = applicationService.getUserSilenceSwitchStatusForVo(WebPluginUtils.traceTenantId());
         String silenceSwitchOn = AppSwitchEnum.OPENED.getCode().equals(silenceSwitch) ?
-                AppSwitchEnum.CLOSED.getCode() : AppSwitchEnum.OPENED.getCode();
+            AppSwitchEnum.CLOSED.getCode() : AppSwitchEnum.OPENED.getCode();
         applicationSwitchStatusDTO.setSilenceSwitchOn(silenceSwitchOn);
         return applicationSwitchStatusDTO;
     }

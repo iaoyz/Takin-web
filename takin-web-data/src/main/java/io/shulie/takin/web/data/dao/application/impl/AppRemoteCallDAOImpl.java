@@ -56,7 +56,7 @@ public class AppRemoteCallDAOImpl extends ServiceImpl<AppRemoteCallMapper, AppRe
     public void insert(AppRemoteCallCreateParam param) {
         AppRemoteCallEntity entity = new AppRemoteCallEntity();
         BeanUtils.copyProperties(param, entity);
-        if(param.getIsManual()){
+        if (param.getIsManual()) {
             entity.setManualTag(1);
         }
         // 保底计算下
@@ -169,7 +169,7 @@ public class AppRemoteCallDAOImpl extends ServiceImpl<AppRemoteCallMapper, AppRe
         Page<AppRemoteCallEntity> page = new Page<>(param.getCurrent() + 1, param.getPageSize());
         IPage<AppRemoteCallEntity> entityPageInfo = this.page(page, lambdaQueryWrapper);
         if (CollectionUtils.isEmpty(entityPageInfo.getRecords())) {
-            return PagingList.of(Lists.newArrayList(),entityPageInfo.getTotal());
+            return PagingList.of(Lists.newArrayList(), entityPageInfo.getTotal());
         }
         return PagingList.of(getAppRemoteCallResults(entityPageInfo.getRecords()), entityPageInfo.getTotal());
     }
@@ -266,11 +266,10 @@ public class AppRemoteCallDAOImpl extends ServiceImpl<AppRemoteCallMapper, AppRe
         return getAppRemoteCallResults(list);
     }
 
-
     /**
      * 根据id 批量逻辑删除
      *
-     * @param ids
+     * @param ids 主键集合
      */
     @Override
     public void batchLogicDelByIds(List<Long> ids) {
@@ -287,7 +286,7 @@ public class AppRemoteCallDAOImpl extends ServiceImpl<AppRemoteCallMapper, AppRe
     /**
      * 批量保存
      *
-     * @param list
+     * @param list 待保存集合
      */
     @Override
     public void batchSave(List<AppRemoteCallResult> list) {
@@ -303,19 +302,19 @@ public class AppRemoteCallDAOImpl extends ServiceImpl<AppRemoteCallMapper, AppRe
     /**
      * 查询全部有效的记录
      *
-     * @return
+     * @return 有效记录
      */
     @Override
     public List<AppRemoteCallResult> getAllRecord() {
         LambdaQueryWrapper<AppRemoteCallEntity> lambdaQueryWrapper = this.getLambdaQueryWrapper()
-                .eq(AppRemoteCallEntity::getIsDeleted,0);
+            .eq(AppRemoteCallEntity::getIsDeleted, 0);
 
         List<AppRemoteCallEntity> list = list(lambdaQueryWrapper);
-        if(list.isEmpty()){
+        if (list.isEmpty()) {
             return Collections.emptyList();
         }
         return list.stream()
-                .map(entity -> Convert.convert(AppRemoteCallResult.class,entity)).collect(Collectors.toList());
+            .map(entity -> Convert.convert(AppRemoteCallResult.class, entity)).collect(Collectors.toList());
     }
 
     @Override
@@ -340,18 +339,17 @@ public class AppRemoteCallDAOImpl extends ServiceImpl<AppRemoteCallMapper, AppRe
         return getAppRemoteCallResults(appRemoteCallEntities);
     }
 
-
     @Override
     public AppRemoteCallResult queryOne(String appName, Integer interfaceType, String interfaceName) {
         LambdaQueryWrapper<AppRemoteCallEntity> lambdaQueryWrapper = this.getLambdaQueryWrapper()
-                .eq(AppRemoteCallEntity::getIsDeleted,0)
-                .eq(AppRemoteCallEntity::getAppName,appName)
-                .eq(AppRemoteCallEntity::getInterfaceType,interfaceType)
-                .eq(AppRemoteCallEntity::getInterfaceName,interfaceName);
+            .eq(AppRemoteCallEntity::getIsDeleted, 0)
+            .eq(AppRemoteCallEntity::getAppName, appName)
+            .eq(AppRemoteCallEntity::getInterfaceType, interfaceType)
+            .eq(AppRemoteCallEntity::getInterfaceName, interfaceName);
         AppRemoteCallEntity entity = this.getOne(lambdaQueryWrapper);
-        if(Objects.isNull(entity)){
+        if (Objects.isNull(entity)) {
             return null;
         }
-        return Convert.convert(AppRemoteCallResult.class,entity);
+        return Convert.convert(AppRemoteCallResult.class, entity);
     }
 }

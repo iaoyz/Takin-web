@@ -1,15 +1,22 @@
 package io.shulie.takin.web.data.mapper.mysql;
 
-import java.util.List;
 import java.util.Map;
+import java.util.List;
 
-import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+
 import com.pamirs.takin.entity.domain.vo.application.NodeNumParam;
+
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import io.shulie.takin.web.data.model.mysql.ApplicationMntEntity;
+import io.shulie.takin.web.data.param.application.QueryApplicationByUpgradeParam;
 import io.shulie.takin.web.data.param.application.QueryApplicationParam;
 import io.shulie.takin.web.data.result.application.ApplicationListResult;
+import io.shulie.takin.web.data.result.application.ApplicationListResultByUpgrade;
 import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import org.apache.ibatis.annotations.Param;
 
@@ -83,7 +90,7 @@ public interface ApplicationMntMapper extends BaseMapper<ApplicationMntEntity> {
      * @param agentVersion
      * @param pradarVersion
      */
-    void updateApplicaionAgentVersion(@Param("applicationId") Long applicationId,
+    void updateApplicationAgentVersion(@Param("applicationId") Long applicationId,
         @Param("agentVersion") String agentVersion,
         @Param("pradarVersion") String pradarVersion);
 
@@ -131,7 +138,7 @@ public interface ApplicationMntMapper extends BaseMapper<ApplicationMntEntity> {
      * @param tApplicationMnt 应用实体类
      * @author shulie
      */
-    void updateApplicationinfo(ApplicationMntEntity tApplicationMnt);
+    void updateApplicationInfo(ApplicationMntEntity tApplicationMnt);
 
     /**
      * 说明: 根据应用id查询关联的基础链路是否存在
@@ -209,8 +216,7 @@ public interface ApplicationMntMapper extends BaseMapper<ApplicationMntEntity> {
     /**
      * 查询应用列表
      *
-     *
-     * @param page 分页参数
+     * @param page  分页参数
      * @param param 筛选条件
      * @return 应用列表
      */
@@ -218,4 +224,11 @@ public interface ApplicationMntMapper extends BaseMapper<ApplicationMntEntity> {
     IPage<ApplicationListResult> selectApplicationPageByParam(
         @Param("page") IPage<ApplicationMntEntity> page, @Param("param") QueryApplicationParam param);
 
+
+    List<ApplicationMntEntity> getAllApplicationsByField();
+
+
+    @InterceptorIgnore(tenantLine = "true")
+    IPage<ApplicationListResultByUpgrade> selectApplicationListByUpgrade(
+            @Param("page") IPage<ApplicationMntEntity> page, @Param("param") QueryApplicationByUpgradeParam param);
 }

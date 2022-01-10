@@ -197,13 +197,11 @@ public class DsServiceImpl implements DsService {
 
     }
 
-
     private Map<String, AbstractDsTemplateService> templateServiceMap;
 
     private Map<Integer, AbstractShaDowManageService> shaDowServiceMap;
 
     private Map<Type, AbstractTemplateParser> templateParserMap;
-
 
     @Override
     public Response dsUpdate(ApplicationDsUpdateInput updateRequest) {
@@ -292,10 +290,10 @@ public class DsServiceImpl implements DsService {
             List<DsModelWithBLOBs> dsModels = applicationDsDAO.selectByAppIdForAgent(applicationMnt.getApplicationId());
             if (CollectionUtils.isNotEmpty(dsModels)) {
                 dsModels = dsModels.stream()
-                        .filter(
-                                dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_DB.getCode())))
-                                        || dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_TABLE.getCode()))))
-                        .collect(Collectors.toList());
+                    .filter(
+                        dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_DB.getCode())))
+                            || dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_TABLE.getCode()))))
+                    .collect(Collectors.toList());
                 for (DsModelWithBLOBs dsModel : dsModels) {
                     DsAgentVO vo = new DsAgentVO();
                     vo.setApplicationName(dsModel.getApplicationName());
@@ -334,8 +332,8 @@ public class DsServiceImpl implements DsService {
             List<DsModelWithBLOBs> dsModels = applicationDsDAO.selectByAppIdForAgent(applicationMnt.getApplicationId());
             if (CollectionUtils.isNotEmpty(dsModels)) {
                 dsModels = dsModels.stream()
-                        .filter(dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(dsServer.getCode()))))
-                        .collect(Collectors.toList());
+                    .filter(dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(dsServer.getCode()))))
+                    .collect(Collectors.toList());
             }
             for (DsModelWithBLOBs dsModel : dsModels) {
                 DsServerVO serverVO = new DsServerVO();
@@ -438,7 +436,6 @@ public class DsServiceImpl implements DsService {
         return dsService.dsDelete(dsDeleteRequest);
     }
 
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<ApplicationDsV2Response> dsQueryV2(Long applicationId) {
@@ -450,7 +447,6 @@ public class DsServiceImpl implements DsService {
 
         List<AppShadowDatabaseDTO> shadowDataBaseInfos = applicationClient.getApplicationShadowDataBaseInfo(detailResult.getApplicationName());
 
-
         ApplicationDsQueryParam queryParam = new ApplicationDsQueryParam();
         queryParam.setApplicationId(applicationId);
         queryParam.setIsDeleted(0);
@@ -461,7 +457,7 @@ public class DsServiceImpl implements DsService {
         List<ApplicationDsDbManageDetailResult> dbs = dsDbManageDAO.selectList(queryParam);
 
         List<ApplicationDsV2Response> response = new ArrayList<>();
-        List<ApplicationDsResponse> oldResponseList = (List<ApplicationDsResponse>) this.dsQuery(applicationId).getData();
+        List<ApplicationDsResponse> oldResponseList = (List<ApplicationDsResponse>)this.dsQuery(applicationId).getData();
 
         response.addAll(caches.stream().map(this::cacheBuild).collect(Collectors.toList()));
         response.addAll(dbs.stream().map(this::dbBuild).collect(Collectors.toList()));
@@ -476,14 +472,12 @@ public class DsServiceImpl implements DsService {
         return response;
     }
 
-
     @Override
     public Response dsQueryDetailV2(Long applicationId, Long id, String middlewareType, Boolean isNewData) {
         ApplicationDetailResult detailResult = applicationDAO.getApplicationById(applicationId);
         if (Objects.isNull(detailResult)) {
             return Response.fail("0", "该应用不存在");
         }
-
 
         if (!isNewData) {
             // [db/cache]老数据兼容改造,其他类型保留原返回结构
@@ -524,22 +518,21 @@ public class DsServiceImpl implements DsService {
         if (CollectionUtils.isNotEmpty(amdbByDbs)) {
 
             Map<String, AppShadowDatabaseDTO> amdbDbMap = amdbByDbs
-                    .stream()
-                    .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                .stream()
+                .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
 
             Map<String, ApplicationDsResult> dbOldMap = new HashMap<>();
             if (CollectionUtils.isNotEmpty(dbOlds)) {
                 dbOldMap = dbOlds
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
             Map<String, ApplicationDsDbManageDetailResult> dbMap = new HashMap<>();
             if (CollectionUtils.isNotEmpty(dbs)) {
                 dbMap = dbs
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsDbManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsDbManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
-
 
             for (String k : amdbDbMap.keySet()) {
                 if (!dbOldMap.containsKey(k) && !dbMap.containsKey(k)) {
@@ -549,27 +542,24 @@ public class DsServiceImpl implements DsService {
             }
         }
 
-
         if (CollectionUtils.isNotEmpty(amdbByCaches)) {
 
-
             Map<String, AppShadowDatabaseDTO> amdbCacheMap = amdbByCaches
-                    .stream()
-                    .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                .stream()
+                .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
 
             Map<String, ApplicationDsResult> cacheOldMap = new HashMap<>();
             Map<String, ApplicationDsCacheManageDetailResult> cacheMap = new HashMap<>();
             if (CollectionUtils.isNotEmpty(cacheOlds)) {
                 cacheOldMap = cacheOlds
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
             if (CollectionUtils.isNotEmpty(caches)) {
                 cacheMap = caches
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsCacheManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsCacheManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
-
 
             for (String k : amdbCacheMap.keySet()) {
                 if (!cacheOldMap.containsKey(k) && !cacheMap.containsKey(k)) {
@@ -583,7 +573,6 @@ public class DsServiceImpl implements DsService {
         dsCacheManageDAO.batchSave(saveCaches);
     }
 
-
     /**
      * 查询中间件支持的隔离方案
      *
@@ -596,7 +585,6 @@ public class DsServiceImpl implements DsService {
         AbstractDsTemplateService service = templateServiceMap.get(middlewareType);
         return service.queryDsType(middlewareType, engName);
     }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -615,7 +603,6 @@ public class DsServiceImpl implements DsService {
                 throw new TakinWebException(TakinWebExceptionEnum.SHADOW_CONFIG_CREATE_ERROR, "此模式不支持");
             }
         }
-
 
         if (!updateRequestV2.getIsNewData()) {
             //针对老版本数据,先删除原表数据,逻辑删除,新表重新保存
@@ -705,8 +692,8 @@ public class DsServiceImpl implements DsService {
     /**
      * 获取中间件支持的版本
      *
-     * @param middlewareType
-     * @return
+     * @param middlewareType 中间件类型
+     * @return 支持的版本集合
      */
     @Override
     public List<SelectVO> querySupperName(String middlewareType) {
@@ -717,7 +704,7 @@ public class DsServiceImpl implements DsService {
     /**
      * 获取缓存支持的模式
      *
-     * @return
+     * @return 支持的模式集合
      */
     @Override
     public List<SelectVO> queryCacheType() {
@@ -812,7 +799,7 @@ public class DsServiceImpl implements DsService {
         v2Response.setConnectionPool("");
         v2Response.setIsManual(true);
         v2Response.setStatus(response.getStatus());
-//        v2Response.setCanRemove(v2Response.getIsManual());
+        //        v2Response.setCanRemove(v2Response.getIsManual());
         if (MiddleWareTypeEnum.LINK_POOL.getCode().equals(response.getDbType().getValue())) {
             v2Response.setUrl(response.getUrl());
             if (DsTypeEnum.SHADOW_TABLE.getCode().equals(response.getDsType().getValue())) {
@@ -853,18 +840,18 @@ public class DsServiceImpl implements DsService {
             return Collections.emptyList();
         }
         detailResults = detailResults.stream()
-                .filter(
-                        dsModel -> dsModel.getDsType().equals(DsTypeEnum.SHADOW_DB.getCode())
-                                || dsModel.getDsType().equals(DsTypeEnum.SHADOW_REDIS_SERVER.getCode())
-                                || dsModel.getDsType().equals(DsTypeEnum.SHADOW_TABLE.getCode()))
-                .collect(Collectors.toList());
+            .filter(
+                dsModel -> dsModel.getDsType().equals(DsTypeEnum.SHADOW_DB.getCode())
+                    || dsModel.getDsType().equals(DsTypeEnum.SHADOW_REDIS_SERVER.getCode())
+                    || dsModel.getDsType().equals(DsTypeEnum.SHADOW_TABLE.getCode()))
+            .collect(Collectors.toList());
 
         List<DsAgentVO> collect = detailResults.stream().map(detail -> {
             DsAgentVO dsAgentVO = new DsAgentVO();
             dsAgentVO.setApplicationName(appName);
             dsAgentVO.setDsType(detail.getDsType().byteValue());
             dsAgentVO.setUrl(detail.getUrl());
-            dsAgentVO.setStatus((byte) 0);
+            dsAgentVO.setStatus((byte)0);
             String fileExtedn = detail.getFileExtedn();
             JSONObject parameter = null;
             if (JSONUtil.isJson(fileExtedn)) {
@@ -878,26 +865,26 @@ public class DsServiceImpl implements DsService {
                 configurations.setDatasourceMediator(new DatasourceMediator("dataSourceBusiness", "dataSourcePerformanceTest"));
                 DataSource dataSourceBusiness = new DataSource();
                 dataSourceBusiness.setId("dataSourceBusiness");
-                if(Objects.equals("老转新",detail.getConfigJson())){
-                    if(Objects.nonNull(parameter)){
+                if (Objects.equals("老转新", detail.getConfigJson())) {
+                    if (Objects.nonNull(parameter)) {
                         List<JSONObject> dataSources = JSONArray.parseArray(parameter.getString("dataSources"),
-                                JSONObject.class);
+                            JSONObject.class);
                         JSONObject busObj = dataSources.get(0);
                         JSONObject testObj = dataSources.get(1);
-                        dataSourceBusiness.setUrl( busObj.getString("url"));
-                        dataSourceBusiness.setUsername( busObj.getString("username"));
+                        dataSourceBusiness.setUrl(busObj.getString("url"));
+                        dataSourceBusiness.setUsername(busObj.getString("username"));
                         dataSourceBusiness.setDriverClassName(testObj.getString("driverClassName"));
                     }
-                }else{
+                } else {
                     dataSourceBusiness.setUrl(Objects.isNull(parameter) ? detail.getUrl() : parameter.getString("url"));
                     dataSourceBusiness.setUsername(Objects.isNull(parameter) ? detail.getUserName() : parameter.getString("username"));
-                    dataSourceBusiness.setDriverClassName(Objects.isNull(parameter) ? "":parameter.getString("driverClassName"));
+                    dataSourceBusiness.setDriverClassName(Objects.isNull(parameter) ? "" : parameter.getString("driverClassName"));
                 }
 
                 DataSource dataSourcePerformanceTest = this.buildShadowMsg(shadowConfigMap);
                 dataSourcePerformanceTest.setId("dataSourcePerformanceTest");
                 dataSourcePerformanceTest.setDriverClassName(StringUtils.isBlank(dataSourcePerformanceTest.getDriverClassName())
-                        ?dataSourceBusiness.getDriverClassName():dataSourcePerformanceTest.getDriverClassName());
+                    ? dataSourceBusiness.getDriverClassName() : dataSourcePerformanceTest.getDriverClassName());
 
                 List<DataSource> dataSources = new ArrayList<>();
                 dataSources.add(dataSourceBusiness);
@@ -910,14 +897,12 @@ public class DsServiceImpl implements DsService {
             return dsAgentVO;
         }).collect(Collectors.toList());
 
-
         return collect;
     }
 
-
     private Map<String, String> matchShadowDb(String shadowStr) {
         Map<String, String> matchMap = new HashMap<>();
-        Map shadowMap = JSONObject.parseObject(shadowStr, Map.class);
+        Map<?, ?> shadowMap = JSONObject.parseObject(shadowStr, Map.class);
         matchMap.put("username", String.valueOf(shadowMap.get("shadowUserName")));
         matchMap.put("url", String.valueOf(shadowMap.get("shadowUrl")));
         matchMap.put("password", String.valueOf(shadowMap.get("shadowPwd")));
@@ -929,7 +914,7 @@ public class DsServiceImpl implements DsService {
 
         shadowMap.forEach((k, v) -> {
             String value = null;
-            Map map = JSONObject.parseObject(String.valueOf(v), Map.class);
+            Map<?, ?> map = JSONObject.parseObject(String.valueOf(v), Map.class);
             if (Objects.equals("2", String.valueOf(map.get("tag")))) {
                 value = String.valueOf(map.get("context"));
             }
@@ -941,13 +926,12 @@ public class DsServiceImpl implements DsService {
     private String matchShadowTable(String shadowStr) {
         List<ShadowDetailResponse.TableInfo> tableInfos = JSONArray.parseArray(shadowStr, ShadowDetailResponse.TableInfo.class);
         List<String> tableNames = tableInfos
-                .stream()
-                .filter(ShadowDetailResponse.TableInfo::getIsCheck)
-                .map(ShadowDetailResponse.TableInfo::getBizTableName)
-                .collect(Collectors.toList());
+            .stream()
+            .filter(ShadowDetailResponse.TableInfo::getIsCheck)
+            .map(ShadowDetailResponse.TableInfo::getBizTableName)
+            .collect(Collectors.toList());
         return Joiner.on(",").join(tableNames);
     }
-
 
     private DataSource buildShadowMsg(Map<String, String> matchShadow) {
         DataSource dataSourcePerformanceTest = new DataSource();

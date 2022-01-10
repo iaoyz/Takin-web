@@ -8,6 +8,7 @@ import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityInfoQueryRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityQueryRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityResultQueryRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityUpdateRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.ActivityVerifyRequest;
 import io.shulie.takin.web.biz.pojo.request.activity.VirtualActivityCreateRequest;
@@ -16,6 +17,7 @@ import io.shulie.takin.web.biz.pojo.response.activity.ActivityBottleneckResponse
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityListResponse;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityResponse;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityVerifyResponse;
+import io.shulie.takin.web.biz.pojo.response.activity.BusinessApplicationListResponse;
 import io.shulie.takin.web.biz.pojo.response.application.ApplicationVisualInfoResponse;
 import io.shulie.takin.web.data.model.mysql.ActivityNodeState;
 import io.shulie.takin.web.data.model.mysql.BusinessLinkManageTableEntity;
@@ -34,7 +36,7 @@ public interface ActivityService {
      *
      * @param request
      */
-    void createActivity(ActivityCreateRequest request);
+    Long createActivity(ActivityCreateRequest request);
 
     Long createActivityWithoutAMDB(ActivityCreateRequest request);
 
@@ -43,7 +45,7 @@ public interface ActivityService {
      *
      * @param request
      */
-    void createVirtualActivity(VirtualActivityCreateRequest request);
+    Long createVirtualActivity(VirtualActivityCreateRequest request);
 
     /**
      * 更新业务活动
@@ -102,4 +104,31 @@ public interface ActivityService {
     BusinessLinkManageTableEntity getActivityByName(String activityName);
 
     BusinessLinkManageTableEntity getActivity(ActivityCreateRequest request);
+
+    /**
+     * 根据业务活动id,查询关联应用名
+     *
+     * @param activityId
+     * @return
+     */
+    List<String> processAppNameByBusinessActiveId(Long activityId);
+
+    /**
+     * 根据条件查询业务活动
+     *
+     * @param request
+     * @return
+     */
+    List<ActivityListResponse> queryNormalActivities(ActivityResultQueryRequest request);
+
+    /**
+     * 根据业务活动ids, 获得应用列表
+     *
+     * @param businessActivityIds 业务活动ids
+     * @param applicationName 应用名称, 搜索用
+     * @return 应用列表
+     */
+    List<BusinessApplicationListResponse> listApplicationByBusinessActivityIds(List<Long> businessActivityIds,
+        String applicationName);
+
 }

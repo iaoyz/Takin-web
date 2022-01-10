@@ -1,35 +1,37 @@
 package io.shulie.takin.web.biz.job;
 
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadPoolExecutor;
 
+import javax.annotation.Resource;
+
+import lombok.extern.slf4j.Slf4j;
+import com.google.common.collect.Maps;
+import org.apache.commons.compress.utils.Lists;
+import org.springframework.util.AntPathMatcher;
 import cn.hutool.core.collection.CollStreamUtil;
+import org.springframework.stereotype.Component;
 import com.dangdang.ddframe.job.api.ShardingContext;
 import com.dangdang.ddframe.job.api.simple.SimpleJob;
-import com.google.common.collect.Maps;
-import io.shulie.takin.job.annotation.ElasticSchedulerJob;
-import io.shulie.takin.web.biz.service.DistributedLock;
-import io.shulie.takin.web.biz.service.linkManage.AppRemoteCallService;
-import io.shulie.takin.web.biz.service.linkManage.ApplicationApiService;
-import io.shulie.takin.web.biz.utils.job.JobRedisUtils;
-import io.shulie.takin.web.common.enums.ContextSourceEnum;
-import io.shulie.takin.web.common.vo.application.ApplicationApiManageVO;
-import io.shulie.takin.web.data.result.application.AppRemoteCallResult;
-import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
-import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt;
-import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt.TenantEnv;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.compress.utils.Lists;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.AntPathMatcher;
+
+import io.shulie.takin.web.ext.util.WebPluginUtils;
+import io.shulie.takin.web.biz.utils.job.JobRedisUtils;
+import io.shulie.takin.web.biz.service.DistributedLock;
+import io.shulie.takin.job.annotation.ElasticSchedulerJob;
+import io.shulie.takin.web.common.enums.ContextSourceEnum;
+import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
+import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt.TenantEnv;
+import io.shulie.takin.web.biz.service.linkmanage.AppRemoteCallService;
+import io.shulie.takin.web.data.result.application.AppRemoteCallResult;
+import io.shulie.takin.web.biz.service.linkmanage.ApplicationApiService;
+import io.shulie.takin.web.common.vo.application.ApplicationApiManageVO;
 
 /**
  * Z
@@ -38,20 +40,19 @@ import org.springframework.util.AntPathMatcher;
  * @date 2021/8/26 3:03 下午
  */
 
+@Slf4j
 @Component
 @ElasticSchedulerJob(jobName = "appRemoteApiFilterJob", cron = "0 0/5 * * * ? *", description = "远程调用restful风格api合并")
-@Slf4j
 public class AppRemoteApiFilterJob implements SimpleJob {
 
-    @Autowired
+    @Resource
     private AppRemoteCallService appRemoteCallService;
-
-    @Autowired
+    @Resource
     private ApplicationApiService apiService;
-    @Autowired
+    @Resource
     @Qualifier("jobThreadPool")
     private ThreadPoolExecutor jobThreadPool;
-    @Autowired
+    @Resource
     private DistributedLock distributedLock;
 
     @Override
@@ -61,26 +62,26 @@ public class AppRemoteApiFilterJob implements SimpleJob {
             // 私有化 + 开源
             this.appRemoteApiFilter();
         } else {
-            List<TenantInfoExt> tenantInfoExts = WebPluginUtils.getTenantInfoList();
-            for (TenantInfoExt ext : tenantInfoExts) {
+            List<TenantInfoExt> tenantInfoExtList = WebPluginUtils.getTenantInfoList();
+            for (TenantInfoExt ext : tenantInfoExtList) {
                 // 开始数据层分片
                 if (ext.getTenantId() % shardingContext.getShardingTotalCount() == shardingContext.getShardingItem()) {
                     // 根据环境 分线程
                     for (TenantEnv e : ext.getEnvs()) {
                         // 分布式锁
-                        String lockKey = JobRedisUtils.getJobRedis(ext.getTenantId(),e.getEnvCode(),shardingContext.getJobName());
+                        String lockKey = JobRedisUtils.getJobRedis(ext.getTenantId(), e.getEnvCode(), shardingContext.getJobName());
                         if (distributedLock.checkLock(lockKey)) {
                             continue;
                         }
                         jobThreadPool.execute(() -> {
                             boolean tryLock = distributedLock.tryLock(lockKey, 1L, 1L, TimeUnit.MINUTES);
-                            if(!tryLock) {
+                            if (!tryLock) {
                                 return;
                             }
                             try {
                                 WebPluginUtils.setTraceTenantContext(
-                                        new TenantCommonExt(ext.getTenantId(), ext.getTenantAppKey(), e.getEnvCode(),
-                                                ext.getTenantCode(), ContextSourceEnum.JOB.getCode()));
+                                    new TenantCommonExt(ext.getTenantId(), ext.getTenantAppKey(), e.getEnvCode(),
+                                        ext.getTenantCode(), ContextSourceEnum.JOB.getCode()));
                                 this.appRemoteApiFilter();
                                 WebPluginUtils.removeTraceContext();
                             } finally {
@@ -139,7 +140,7 @@ public class AppRemoteApiFilterJob implements SimpleJob {
             if (CollectionUtils.isNotEmpty(filterList)) {
                 return;
             }
-            if(CollectionUtils.isNotEmpty(v)) {
+            if (CollectionUtils.isNotEmpty(v)) {
                 AppRemoteCallResult appRemoteCallResult = v.get(0);
                 appRemoteCallResult.setInterfaceName(interfaceName);
                 appRemoteCallResult.setId(null);

@@ -1,13 +1,14 @@
 package io.shulie.takin.web.common.vo.application;
 
-import java.io.Serializable;
 import java.util.Date;
+import java.io.Serializable;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 /**
- * @author  vernon
+ * @author vernon
  * @date 2020/7/7 10:40
  */
 @Data

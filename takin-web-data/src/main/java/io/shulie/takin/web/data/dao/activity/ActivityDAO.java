@@ -21,6 +21,7 @@ public interface ActivityDAO {
 
     /**
      * 判断是否存在
+     *
      * @param param
      * @return
      */
@@ -28,6 +29,7 @@ public interface ActivityDAO {
 
     /**
      * 创建正常业务活动，因为涉及老版兼容问题，这里独立 新版本业务活动createActivityNew
+     *
      * @param createParam
      * @return 返回业务活动ID
      */
@@ -35,6 +37,7 @@ public interface ActivityDAO {
 
     /**
      * 新版创建业务活动
+     *
      * @param createParam
      * @return
      */
@@ -48,6 +51,7 @@ public interface ActivityDAO {
 
     /**
      * 创建正常业务活动，因为涉及老版兼容问题，这里独立 新版本业务活动createActivityNew
+     *
      * @param updateParam
      * @return
      */
@@ -55,6 +59,7 @@ public interface ActivityDAO {
 
     /**
      * 更新创建业务活动
+     *
      * @param updateParam
      * @return
      */
@@ -62,6 +67,7 @@ public interface ActivityDAO {
 
     /**
      * 删除业务活动
+     *
      * @param activityId
      */
     void deleteActivity(Long activityId);
@@ -70,6 +76,7 @@ public interface ActivityDAO {
 
     /**
      * 获取业务活动
+     *
      * @param param
      * @return
      */
@@ -79,7 +86,7 @@ public interface ActivityDAO {
 
     List<ActivityNodeState> getActivityNodeServiceState(long activityId);
 
-    List<Map<String,String>> findActivityIdByServiceName(String appName, String entrance);
+    List<Map<String, Object>> findActivityIdByServiceName(String appName, String entrance);
 
     List<Map<String,String>> findActivityByServiceName(String appName, String entrance);
 

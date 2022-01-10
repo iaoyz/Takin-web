@@ -29,9 +29,11 @@ import io.shulie.takin.web.data.param.application.ApplicationAttentionParam;
 import io.shulie.takin.web.data.param.application.ApplicationCreateParam;
 import io.shulie.takin.web.data.param.application.ApplicationQueryParam;
 import io.shulie.takin.web.data.param.application.ApplicationUpdateParam;
+import io.shulie.takin.web.data.param.application.QueryApplicationByUpgradeParam;
 import io.shulie.takin.web.data.param.application.QueryApplicationParam;
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.shulie.takin.web.data.result.application.ApplicationListResult;
+import io.shulie.takin.web.data.result.application.ApplicationListResultByUpgrade;
 import io.shulie.takin.web.data.result.application.ApplicationResult;
 import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import org.apache.ibatis.annotations.Param;
@@ -182,10 +184,10 @@ public interface ApplicationDAO {
     /**
      * 根据租户获取相关应用
      *
-     * @param commonExts
+     * @param commonExtList
      * @return
      */
-    List<ApplicationDetailResult> getAllTenantApp(List<TenantCommonExt> commonExts);
+    List<ApplicationDetailResult> getAllTenantApp(List<TenantCommonExt> commonExtList);
 
     /**
      * 根据应用名称， 获得该租户下的应用ids
@@ -211,7 +213,7 @@ public interface ApplicationDAO {
      * @param agentVersion
      * @param pradarVersion
      */
-    void updateApplicaionAgentVersion(Long applicationId, String agentVersion, String pradarVersion);
+    void updateApplicationAgentVersion(Long applicationId, String agentVersion, String pradarVersion);
 
     /**
      * 根据applicationName查询 id
@@ -299,7 +301,7 @@ public interface ApplicationDAO {
      *
      * @param tApplicationMnt
      */
-    void updateApplicationinfo(ApplicationCreateParam tApplicationMnt);
+    void updateApplicationInfo(ApplicationCreateParam tApplicationMnt);
 
     /**
      * 说明: 根据应用id查询关联的基础链路是否存在
@@ -402,5 +404,18 @@ public interface ApplicationDAO {
      * @return 是否成功
      */
     boolean updateStatusByApplicationIds(Collection<Long> applicationIds, Integer status);
+
+    List<ApplicationDetailResult> getAllApplicationsByField();
+
+    IPage<ApplicationListResultByUpgrade> getApplicationList(QueryApplicationByUpgradeParam param);
+
+    /**
+     * 根据应用名称, 用户id, 获得应用列表
+     *
+     * @param applicationNames 应用名称
+     * @param userId 用户id
+     * @return 应用列表
+     */
+    List<ApplicationListResult> listByApplicationNamesAndUserId(Collection<String> applicationNames, Long userId);
 
 }

@@ -2,6 +2,8 @@ package io.shulie.takin.web.data.dao.impl;
 
 import java.util.List;
 
+import javax.annotation.Resource;
+
 import com.baomidou.mybatisplus.extension.toolkit.SqlHelper;
 import io.shulie.takin.web.common.constant.CacheConstants;
 import io.shulie.takin.web.common.util.DataTransformUtil;
@@ -14,7 +16,6 @@ import io.shulie.takin.web.data.result.application.ApplicationNodeProbeResult;
 import io.shulie.takin.web.data.util.MPUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +29,7 @@ import org.springframework.stereotype.Service;
 public class ApplicationNodeProbeDAOImpl implements ApplicationNodeProbeDAO,
     MPUtil<ApplicationNodeProbeEntity>, CacheConstants {
 
-    @Autowired
+    @Resource
     private ApplicationNodeProbeMapper applicationNodeProbeMapper;
 
     @Override

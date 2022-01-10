@@ -6,12 +6,14 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import io.shulie.takin.web.ext.entity.AuthQueryResponseCommonExt;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * @author 无涯
  * @date 2021/5/29 12:35 上午
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class AppRemoteCallVO extends AuthQueryResponseCommonExt {
     /**
      * 接口名称
