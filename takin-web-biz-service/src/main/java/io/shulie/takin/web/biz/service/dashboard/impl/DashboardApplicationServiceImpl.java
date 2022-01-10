@@ -74,7 +74,6 @@ public class DashboardApplicationServiceImpl implements DashboardApplicationServ
             redisTemplate.opsForValue().set(statusVoRedisKey, voStatus);
             redisTemplate.opsForHash().put(NEED_VERIFY_USER_MAP,
                 String.valueOf(tenantCode + Separator.Separator3.getValue() + envCode), System.currentTimeMillis());
-
             result.setSwitchStutus(voStatus);
         }
         agentConfigCacheManager.evictPressureSwitch();

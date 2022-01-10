@@ -11,6 +11,7 @@ import com.pamirs.takin.entity.domain.vo.dsmanage.DsServerVO;
 import com.pamirs.takin.entity.domain.vo.guardmanage.LinkGuardVo;
 import io.shulie.takin.web.biz.agent.vo.ShadowConsumerVO;
 import io.shulie.takin.web.biz.cache.agentimpl.AllowListSwitchConfigAgentCache;
+import io.shulie.takin.web.biz.cache.agentimpl.ApplicationPluginConfigAgentCache;
 import io.shulie.takin.web.biz.cache.agentimpl.GuardConfigAgentCache;
 import io.shulie.takin.web.biz.cache.agentimpl.PressureSwitchConfigAgentCache;
 import io.shulie.takin.web.biz.cache.agentimpl.RemoteCallConfigAgentCache;
@@ -72,6 +73,9 @@ public class AgentConfigCacheManager {
     @Autowired
     private ApplicationService applicationService;
 
+    @Autowired
+    private ApplicationPluginConfigAgentCache applicationPluginConfigAgentCache;
+
     /**
      * 获得白名单开关的缓存结果
      */
@@ -107,7 +111,6 @@ public class AgentConfigCacheManager {
     }
 
     public void evictShadowDb(String appName) {
-
         shadowDbConfigCache.evict(appName);
     }
 
@@ -130,7 +133,7 @@ public class AgentConfigCacheManager {
         ApplicationSwitchStatusDTO applicationSwitchStatusDTO = pressureSwitchConfigCache.get(null);
         String silenceSwitch = applicationService.getUserSilenceSwitchStatusForVo(WebPluginUtils.traceTenantId());
         String silenceSwitchOn = AppSwitchEnum.OPENED.getCode().equals(silenceSwitch) ?
-                AppSwitchEnum.CLOSED.getCode() : AppSwitchEnum.OPENED.getCode();
+            AppSwitchEnum.CLOSED.getCode() : AppSwitchEnum.OPENED.getCode();
         applicationSwitchStatusDTO.setSilenceSwitchOn(silenceSwitchOn);
         return applicationSwitchStatusDTO;
     }
@@ -213,6 +216,16 @@ public class AgentConfigCacheManager {
      */
     public AgentRemoteCallVO getRemoteCallConfig(String appName) {
         return remoteCallConfigAgentCache.get(appName);
+    }
+
+    /**
+     * 获取影子消费者配置业务逻辑
+     *
+     * @param redisKey 应用名称:configKey
+     * @return
+     */
+    public String getAppPluginConfig(String redisKey) {
+        return applicationPluginConfigAgentCache.get(redisKey);
     }
 }
 

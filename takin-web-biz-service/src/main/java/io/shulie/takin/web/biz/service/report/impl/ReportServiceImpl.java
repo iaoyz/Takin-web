@@ -1,49 +1,61 @@
 package io.shulie.takin.web.biz.service.report.impl;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.pamirs.takin.common.constant.VerifyResultStatusEnum;
 import com.pamirs.takin.entity.domain.dto.report.LeakVerifyResult;
 import com.pamirs.takin.entity.domain.dto.report.ReportDTO;
 import com.pamirs.takin.entity.domain.vo.report.ReportQueryParam;
 import io.shulie.takin.cloud.entrypoint.report.CloudReportApi;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
-import io.shulie.takin.cloud.sdk.model.common.BusinessActivitySummaryBean;
 import io.shulie.takin.cloud.sdk.model.request.common.CloudCommonInfoWrapperReq;
 import io.shulie.takin.cloud.sdk.model.request.report.ReportDetailByIdReq;
 import io.shulie.takin.cloud.sdk.model.request.report.ReportDetailBySceneIdReq;
 import io.shulie.takin.cloud.sdk.model.request.report.ReportQueryReq;
+import io.shulie.takin.cloud.sdk.model.request.report.ReportTrendQueryReq;
+import io.shulie.takin.cloud.sdk.model.request.report.ScriptNodeTreeQueryReq;
 import io.shulie.takin.cloud.sdk.model.request.report.TrendRequest;
 import io.shulie.takin.cloud.sdk.model.request.report.WarnQueryReq;
 import io.shulie.takin.cloud.sdk.model.response.report.ActivityResponse;
 import io.shulie.takin.cloud.sdk.model.response.report.MetricesResponse;
+import io.shulie.takin.cloud.sdk.model.response.report.NodeTreeSummaryResp;
 import io.shulie.takin.cloud.sdk.model.response.report.ReportDetailResp;
 import io.shulie.takin.cloud.sdk.model.response.report.ReportResp;
-import io.shulie.takin.cloud.sdk.model.response.report.TrendResponse;
+import io.shulie.takin.cloud.sdk.model.response.report.ReportTrendResp;
+import io.shulie.takin.cloud.sdk.model.response.report.ScriptNodeTreeResp;
+import io.shulie.takin.cloud.sdk.model.response.scenemanage.BusinessActivitySummaryBean;
 import io.shulie.takin.cloud.sdk.model.response.scenemanage.WarnDetailResponse;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.utils.linux.LinuxHelper;
 import io.shulie.takin.web.biz.pojo.output.report.ReportDetailOutput;
 import io.shulie.takin.web.biz.pojo.output.report.ReportDetailTempOutput;
+import io.shulie.takin.web.biz.pojo.output.report.ReportJtlDownloadOutput;
 import io.shulie.takin.web.biz.pojo.request.leakverify.LeakVerifyTaskReportQueryRequest;
+import io.shulie.takin.web.biz.pojo.request.report.ReportQueryRequest;
 import io.shulie.takin.web.biz.pojo.response.leakverify.LeakVerifyTaskResultResponse;
 import io.shulie.takin.web.biz.service.VerifyTaskReportService;
 import io.shulie.takin.web.biz.service.report.ReportService;
+import io.shulie.takin.web.common.constant.FileManageConstant;
+import io.shulie.takin.web.common.domain.WebResponse;
 import io.shulie.takin.web.common.enums.activity.BusinessTypeEnum;
+import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
 import io.shulie.takin.web.data.dao.activity.ActivityDAO;
 import io.shulie.takin.web.data.param.activity.ActivityQueryParam;
 import io.shulie.takin.web.data.result.activity.ActivityListResult;
 import io.shulie.takin.web.data.result.activity.ActivityResult;
+import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.diff.api.report.ReportApi;
 import io.shulie.takin.web.ext.entity.UserExt;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
@@ -52,6 +64,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -72,6 +85,10 @@ public class ReportServiceImpl implements ReportService {
     @Autowired
     private ActivityDAO activityDAO;
 
+    @Value("${file.upload.url:''}")
+    private String fileUploadUrl;
+
+
     @Override
     public ResponseResult<List<ReportDTO>> listReport(ReportQueryParam param) {
         // 前端查询条件 传用户
@@ -85,6 +102,8 @@ public class ReportServiceImpl implements ReportService {
             }
         }
         ResponseResult<List<ReportResp>> reportResponseList = cloudReportApi.listReport(new ReportQueryReq() {{
+            setSceneId(param.getSceneId());
+            setReportId(param.getReportId());
             setSceneName(param.getSceneName());
             setStartTime(param.getStartTime());
             setEndTime(param.getEndTime());
@@ -119,7 +138,7 @@ public class ReportServiceImpl implements ReportService {
         }};
         ReportDetailResp detailResponse = cloudReportApi.detail(idReq);
         // sa超过100 显示100
-        if(detailResponse != null && detailResponse.getSa() != null
+        if (detailResponse != null && detailResponse.getSa() != null
             && detailResponse.getSa().compareTo(BigDecimal.valueOf(100)) > 0) {
             detailResponse.setSa(BigDecimal.valueOf(100));
         }
@@ -151,11 +170,13 @@ public class ReportServiceImpl implements ReportService {
      * todo 不做需要修改
      */
     private void dealVirtualBusiness(ReportDetailOutput output) {
-        List<Long> ids = output.getBusinessActivity().stream().map(BusinessActivitySummaryBean::getBusinessActivityId).collect(Collectors.toList());
+        List<Long> ids = output.getBusinessActivity().stream().map(BusinessActivitySummaryBean::getBusinessActivityId)
+            .collect(Collectors.toList());
         ActivityQueryParam param = new ActivityQueryParam();
         param.setActivityIds(ids);
         List<ActivityListResult> result = activityDAO.getActivityList(param);
-        Map<Long, List<ActivityListResult>> map = result.stream().collect(Collectors.groupingBy(ActivityListResult::getActivityId));
+        Map<Long, List<ActivityListResult>> map = result.stream().collect(
+            Collectors.groupingBy(ActivityListResult::getActivityId));
         List<BusinessActivitySummaryBean> beans = output.getBusinessActivity();
         for (BusinessActivitySummaryBean bean : output.getBusinessActivity()) {
             List<ActivityListResult> activityResults = map.get(bean.getBusinessActivityId());
@@ -188,7 +209,7 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public TrendResponse queryReportTrend(TrendRequest param) {
+    public ReportTrendResp queryReportTrend(ReportTrendQueryReq param) {
         return cloudReportApi.trend(param);
     }
 
@@ -218,7 +239,7 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public TrendResponse queryTempReportTrend(TrendRequest param) {
+    public ReportTrendResp queryTempReportTrend(ReportTrendQueryReq param) {
         return cloudReportApi.tempTrend(param);
     }
 
@@ -243,10 +264,8 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public List<BusinessActivitySummaryBean> querySummaryList(Long reportId) {
-        return cloudReportApi.summary(new ReportDetailByIdReq() {{
-            setReportId(reportId);
-        }});
+    public NodeTreeSummaryResp querySummaryList(Long reportId) {
+        return reportApi.getSummaryList(reportId);
     }
 
     @Override
@@ -296,10 +315,45 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    public WebResponse queryListPressuringReport() {
+        //WebRequest request = new WebRequest();
+        //request.setRequestUrl(RemoteConstant.REPORT_PRESSURING_LIST);
+        //request.setHttpMethod(HttpMethod.GET);
+        //return httpWebClient.request(request);
+        // TODO SDK调整
+        return null;
+    }
+
+    @Override
     public Boolean finishReport(Long reportId) {
         return cloudReportApi.finish(new ReportDetailByIdReq() {{
             setReportId(reportId);
         }});
     }
 
+    @Override
+    public ResponseResult<List<ScriptNodeTreeResp>> queryNodeTree(ReportQueryRequest request) {
+        List<ScriptNodeTreeResp> listResponseResult = reportApi.scriptNodeTree(
+            new ScriptNodeTreeQueryReq() {{
+                setSceneId(request.getSceneId());
+                setReportId(request.getReportId());
+            }});
+        return ResponseResult.success(listResponseResult);
+    }
+
+    @Override
+    public ReportJtlDownloadOutput getJtlDownLoadUrl(Long reportId) {
+        String result = reportApi.getJtlDownLoadUrl(reportId);
+        String url = null;
+        try {
+            url = fileUploadUrl + FileManageConstant.CLOUD_FILE_DOWN_LOAD_API + URLEncoder.encode(result, "UTF-8");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        String fileName = reportId + "_jtl.zip";
+        String fileDir = ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_FILE_UPLOAD_USER_DATA_DIR);
+        String[] cmdArray = {"curl", "-o", fileDir + "/" + fileName, "--create-dirs", "-OL", url};
+        LinuxHelper.execCurl(cmdArray);
+        return new ReportJtlDownloadOutput(fileDir + "/" + fileName, true);
+    }
 }
