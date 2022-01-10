@@ -15,16 +15,20 @@
 
 package io.shulie.takin.web.data.dao.application;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.toolkit.SqlHelper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.pamirs.takin.entity.domain.vo.application.NodeNumParam;
@@ -34,6 +38,7 @@ import io.shulie.takin.web.amdb.bean.query.application.ApplicationQueryDTO;
 import io.shulie.takin.web.amdb.bean.result.application.ApplicationDTO;
 import io.shulie.takin.web.amdb.bean.result.application.InstanceInfoDTO;
 import io.shulie.takin.web.amdb.bean.result.application.LibraryDTO;
+import io.shulie.takin.web.common.pojo.dto.PageBaseDTO;
 import io.shulie.takin.web.common.util.CommonUtil;
 import io.shulie.takin.web.common.util.DataTransformUtil;
 import io.shulie.takin.web.data.mapper.mysql.ApplicationAttentionListMapper;
@@ -59,7 +64,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author shiyajian
@@ -96,6 +100,11 @@ public class ApplicationDAOImpl
     }
 
     @Override
+    public List<ApplicationResult> listAmdbApplicationByAppNames(List<String> appNames) {
+        return this.getApplicationByName(appNames);
+    }
+
+    @Override
     public List<ApplicationResult> getApplicationByName(List<String> appNames) {
         if (CollectionUtils.isEmpty(appNames)) {
             return Lists.newArrayList();
@@ -107,19 +116,16 @@ public class ApplicationDAOImpl
         List<ApplicationDTO> applicationDtoTotalList = Lists.newArrayList();
 
         //分批从amdb获取应用数据
-        int BATCH_SIZE = 100;
+        int batchSize = 100;
         List<String> pageAppNameList;
 
-        for (int from = 0, to = 0, size = appNames.size();
-             from < size;
-             from = to) {
-
-            to = Math.min(from + BATCH_SIZE, size);
+        for (int from = 0, to, size = appNames.size(); from < size; from = to) {
+            to = Math.min(from + batchSize, size);
             pageAppNameList = appNames.subList(from, to);
 
             ApplicationQueryDTO queryDTO = new ApplicationQueryDTO();
             queryDTO.setAppNames(pageAppNameList);
-            queryDTO.setFields(Lists.newArrayList("library,instanceInfo".split(",")));
+            queryDTO.setFields(Arrays.asList("library", "instanceInfo"));
             queryDTO.setPageSize(99999);
 
             PagingList<ApplicationDTO> applicationDtoPagingList = applicationClient.pageApplications(queryDTO);
@@ -439,7 +445,6 @@ public class ApplicationDAOImpl
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void batchUpdateAppNodeNum(List<NodeNumParam> paramList, String envCode, Long tenantId) {
         paramList.forEach(param -> applicationMntMapper.updateAppNodeNum(param, envCode, tenantId));
     }
@@ -500,6 +505,11 @@ public class ApplicationDAOImpl
             return Lists.newArrayList();
         }
         return DataTransformUtil.list2list(allApplications, ApplicationDetailResult.class);
+    }
+
+    @Override
+    public List<ApplicationMntEntity> getAllApplicationsWithoutTenant() {
+       return applicationMntMapper.getAllApplicationsWithoutTenant();
     }
 
     @Override
@@ -638,8 +648,25 @@ public class ApplicationDAOImpl
     }
 
     @Override
-    public IPage<ApplicationListResult> listByParam(QueryApplicationParam param) {
-        return applicationMntMapper.selectApplicationListByParam(this.setPage(param), param);
+    public IPage<ApplicationListResult> pageByParam(QueryApplicationParam param) {
+        return applicationMntMapper.selectApplicationPageByParam(this.setPage(param), param);
+    }
+
+    @Override
+    public List<ApplicationListResult> pageFromSync(PageBaseDTO pageBaseDTO) {
+        IPage<ApplicationMntEntity> applicationMntEntityPage = applicationMntMapper.selectPage(this.setPage(pageBaseDTO),
+            this.getLambdaQueryWrapper().select(ApplicationMntEntity::getApplicationId,
+                ApplicationMntEntity::getApplicationName, ApplicationMntEntity::getAccessStatus,
+                ApplicationMntEntity::getNodeNum));
+        return DataTransformUtil.list2list(applicationMntEntityPage.getRecords(), ApplicationListResult.class);
+    }
+
+    @Override
+    public boolean updateStatusByApplicationIds(Collection<Long> applicationIds, Integer status) {
+        return CollectionUtil.isNotEmpty(applicationIds)
+            && SqlHelper.retBool(applicationMntMapper.update(null, this.getLambdaUpdateWrapper()
+            .set(ApplicationMntEntity::getAccessStatus, status)
+            .in(ApplicationMntEntity::getApplicationId, applicationIds)));
     }
 
 }
