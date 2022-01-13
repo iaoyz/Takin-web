@@ -1,5 +1,16 @@
 package io.shulie.takin.web.biz.service.impl;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.BooleanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -47,16 +58,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.annotation.Resource;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author shiyajian
@@ -228,12 +229,13 @@ public class ShadowConsumerServiceImpl implements ShadowConsumerService {
                     })
                     .collect(Collectors.toMap(ShadowConsumerOutput::getUnionId, e -> e, (oV, nV) -> nV));
         }
-        // 在amdb自动梳理的基础上，补充数据库里面的记录，有的话用数据的记录
+        // 原：在amdb自动梳理的基础上，补充数据库里面的记录，有的话用数据的记录
+        // 现：在db的基础上，补充amdb自动梳理的数据。
         for (Entry<String, ShadowConsumerOutput> dbEntry : dbMap.entrySet()) {
             amdbMap.merge(dbEntry.getKey(), dbEntry.getValue(), (amdbValue, dbValue) -> {
-                dbValue.setCanEdit(true);
-                dbValue.setCanRemove(dbValue.getIsManual());
-                dbValue.setCanEnableDisable(dbValue.getCanEnableDisable());
+                amdbValue.setCanEdit(true);
+                amdbValue.setCanRemove(dbValue.getIsManual());
+                amdbValue.setCanEnableDisable(dbValue.getCanEnableDisable());
                 return dbValue;
             });
         }
@@ -323,6 +325,7 @@ public class ShadowConsumerServiceImpl implements ShadowConsumerService {
         shadowMqConsumerEntity.setStatus(status);
         shadowMqConsumerEntity.setDeleted(ShadowConsumerConstants.LIVED);
         shadowMqConsumerMapper.insert(shadowMqConsumerEntity);
+        //todo agent改造点
         agentConfigCacheManager.evictShadowConsumer(application.getApplicationName());
     }
 
@@ -357,6 +360,7 @@ public class ShadowConsumerServiceImpl implements ShadowConsumerService {
         updateEntity.setType(request.getType().name());
         updateEntity.setStatus(request.getStatus());
         shadowMqConsumerMapper.updateById(updateEntity);
+        //todo agent改造点
         agentConfigCacheManager.evictShadowConsumer(application.getApplicationName());
     }
 
@@ -381,7 +385,7 @@ public class ShadowConsumerServiceImpl implements ShadowConsumerService {
             OperationLogContextHolder.addVars(Vars.CONSUMER_TOPIC_GROUP, mq.getTopicGroup());
             shadowMqConsumerDAO.removeById(mq.getId());
         });
-
+        //todo agent改造点
         agentConfigCacheManager.evictShadowConsumer(application.getApplicationName());
     }
 
@@ -438,6 +442,7 @@ public class ShadowConsumerServiceImpl implements ShadowConsumerService {
                 }
             }
         }
+        //todo  agent改造点
         agentConfigCacheManager.evictShadowConsumer(application.getApplicationName());
     }
 
