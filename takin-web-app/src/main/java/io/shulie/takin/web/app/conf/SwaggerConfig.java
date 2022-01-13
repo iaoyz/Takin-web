@@ -397,50 +397,7 @@ public class SwaggerConfig {
             ;
     }
 
-    /**
-     * 快速接入一期测试用 nf
-     *
-     * @return
-     */
-    @Bean
-    public Docket api_webTest_nf() {
-        return new Docket(DocumentationType.SWAGGER_2)
-            .groupName("快速接入一期测试用")
-            .select()
-            .apis(RequestHandlerSelectors.withClassAnnotation(Api.class))
-            .paths(PathSelectors
-                .regex("/api/(v2/application/remote/call|v2/consumers|v2/link/ds|/application/remote/call/list).*"))
-            .build()
-            .directModelSubstitute(LocalDate.class, String.class)
-            .useDefaultResponseMessages(false)
-            .apiInfo(apiInfo())
-            ;
-    }
 
-    /**
-     * 探针在线升级 nf
-     *
-     * @return
-     */
-    @Bean
-    public Docket agent_upgrade_online() {
-        return new Docket(DocumentationType.SWAGGER_2)
-            .pathProvider(this.pathProvider())
-            .groupName("探针在线升级")
-            .select()
-            .apis(RequestHandlerSelectors.withClassAnnotation(Api.class))
-//            .paths(getRegex(
-//                "/api/(agentReport|applicationPluginUpgrade|applicationPluginUpgradeRef|applicationTagRef"
-//                    + "|pluginDependent|pluginLibrary|pluginTenantRef|agent/heartbeat).*"))
-                .paths(getRegex("/api/(fast/agent/access/list/new|fast/agent/access/list/tips|" +
-                        "fast/agent/access/errorLog/list|agent/heartbeat|plugin/path|plugin/upgrade|" +
-                        "application/tag|pluginDependent|pluginLibrary|v2/user|tenantInfo/list).*"))
-            .build()
-            .directModelSubstitute(LocalDate.class, String.class)
-            .useDefaultResponseMessages(false)
-            .apiInfo(apiInfo())
-            ;
-    }
 
     /**
      * 业务域管理
@@ -458,6 +415,23 @@ public class SwaggerConfig {
             .useDefaultResponseMessages(false)
             .apiInfo(apiInfo())
             ;
+    }
+    /**
+     * 快速接入
+     * @return
+     */
+    @Bean
+    public Docket api_fast_start() {
+        return new Docket(DocumentationType.SWAGGER_2)
+                .groupName("快速接入")
+                .select()
+                .apis(RequestHandlerSelectors.withClassAnnotation(Api.class))
+                .paths(getRegex("/api/v2/application/remote/call.*"))
+                .build()
+                .directModelSubstitute(LocalDate.class, String.class)
+                .useDefaultResponseMessages(false)
+                .apiInfo(apiInfo())
+                ;
     }
 
     /**
