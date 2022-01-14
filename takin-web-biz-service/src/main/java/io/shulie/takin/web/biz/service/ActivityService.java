@@ -1,15 +1,25 @@
 package io.shulie.takin.web.biz.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
 import io.shulie.takin.common.beans.page.PagingList;
-import io.shulie.takin.web.biz.pojo.request.activity.*;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityCreateRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityInfoQueryRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityQueryRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityUpdateRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.ActivityVerifyRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.VirtualActivityCreateRequest;
+import io.shulie.takin.web.biz.pojo.request.activity.VirtualActivityUpdateRequest;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityBottleneckResponse;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityListResponse;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityResponse;
 import io.shulie.takin.web.biz.pojo.response.activity.ActivityVerifyResponse;
+import io.shulie.takin.web.biz.pojo.response.application.ApplicationVisualInfoResponse;
 import io.shulie.takin.web.data.model.mysql.ActivityNodeState;
-
-import java.time.LocalDateTime;
-import java.util.List;
+import io.shulie.takin.web.data.model.mysql.BusinessLinkManageTableEntity;
+import io.shulie.takin.web.ext.entity.e2e.E2eExceptionConfigInfoExt;
 
 /**
  * 业务活动
@@ -25,6 +35,8 @@ public interface ActivityService {
      * @param request
      */
     void createActivity(ActivityCreateRequest request);
+
+    Long createActivityWithoutAMDB(ActivityCreateRequest request);
 
     /**
      * 新增虚拟业务活动
@@ -65,13 +77,17 @@ public interface ActivityService {
     /**
      * 获取业务活动详情
      *
-     * @param activityId 业务活动id
      * @return 详情
      */
-    ActivityResponse getActivityById(Long activityId);
+    ActivityResponse getActivityById(ActivityInfoQueryRequest activityInfoQueryRequest);
+
     ActivityResponse getActivityWithMetricsById(ActivityInfoQueryRequest request);
+
     ActivityResponse getActivityWithMetricsByIdForReport(Long activityId, LocalDateTime start, LocalDateTime end);
-    ActivityBottleneckResponse getBottleneckByActivityList(List<ActivityInfoQueryRequest> activityList, String appName, String serviceName);
+
+    ActivityBottleneckResponse getBottleneckByActivityList(ApplicationVisualInfoResponse applicationVisualInfoResponse,
+        LocalDateTime startTime, LocalDateTime endTime,
+        Map<String, List<E2eExceptionConfigInfoExt>> bottleneckConfigMap);
 
     ActivityResponse getActivityByIdWithoutTopology(Long id);
 
@@ -82,4 +98,8 @@ public interface ActivityService {
     void setActivityNodeState(long activityId, String serviceName, String ownerApps, boolean state);
 
     List<ActivityNodeState> getActivityNodeServiceState(long activityId);
+
+    BusinessLinkManageTableEntity getActivityByName(String activityName);
+
+    BusinessLinkManageTableEntity getActivity(ActivityCreateRequest request);
 }

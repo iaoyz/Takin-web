@@ -1,9 +1,9 @@
 package io.shulie.takin.web.data.model.mysql;
 
-import java.util.Date;
 import java.io.Serializable;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.shulie.takin.web.data.model.mysql.base.NewBaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -82,14 +82,14 @@ public class RpcConfigTemplateEntity extends NewBaseEntity implements Serializab
     private String commit;
 
     /**
-     * 租户id
+     * 是否支持固定返回值mock;0:不支持;1:支持
      */
-    private Long customerId;
+    private Integer returnFixMockEnable;
 
     /**
-     * 用户id
+     * 固定返回值mock文本
      */
-    private Long userId;
+    private String fixReturnMock;
 
 
 }
