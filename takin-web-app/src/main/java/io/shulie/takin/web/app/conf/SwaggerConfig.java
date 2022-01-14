@@ -61,6 +61,10 @@ public class SwaggerConfig {
     private Boolean swaggerEnable;
 
 
+    /**
+     * 所有接口
+     * @return 文档
+     */
     @Bean
     public Docket all() {
         return new Docket(DocumentationType.SWAGGER_2)
@@ -86,10 +90,7 @@ public class SwaggerConfig {
             .pathProvider(this.pathProvider())
             .groupName("压测平台-V4版本")
             .select().apis(RequestHandlerSelectors.withClassAnnotation(Api.class))
-            .paths(getRegex(
-                "/api/(scriptDebug|scriptManage|v2/file|config|probe|v2/application/node|agent/application/node/probe"
-                    + "|application/middleware|login).*|/agent.*"))
-            .build()
+            .paths(getRegex("/api/(scriptDebug|scriptManage|v2/file|config|probe|v2/application/node|agent/application/node/probe|application/middleware|login).*|/agent.*")).build()
             .directModelSubstitute(LocalDate.class, String.class)
             .useDefaultResponseMessages(false)
             .apiInfo(this.apiInfo()) .enable(swaggerEnable);
@@ -387,9 +388,7 @@ public class SwaggerConfig {
             .groupName("6.4版本")
             .select()
             .apis(RequestHandlerSelectors.withClassAnnotation(Api.class))
-            .paths(getRegex(
-                "/api/(application/remote/call|/application/remote/call/list|activities/virtual|activities|activities"
-                    + "/activity|link/scene/manage).*"))
+            .paths(getRegex("/api/(application/remote/call|/application/remote/call/list|activities/virtual|activities|activities/activity|link/scene/manage).*"))
             .build()
             .directModelSubstitute(LocalDate.class, String.class)
             .useDefaultResponseMessages(false)
@@ -399,7 +398,6 @@ public class SwaggerConfig {
 
     /**
      * 快速接入一期测试用 nf
-     *
      * @return
      */
     @Bean
@@ -492,6 +490,9 @@ public class SwaggerConfig {
             }
         };
     }
+
+
+
 
     private Predicate<String> getRegex(String regex) {
         return PathSelectors.regex(servletContextPath + regex);
