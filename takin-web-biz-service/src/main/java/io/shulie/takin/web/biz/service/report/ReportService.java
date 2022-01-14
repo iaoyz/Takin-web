@@ -4,17 +4,21 @@ import java.util.List;
 import java.util.Map;
 
 import com.pamirs.takin.entity.domain.dto.report.ReportDTO;
-import io.shulie.takin.common.beans.response.ResponseResult;
 import com.pamirs.takin.entity.domain.vo.report.ReportQueryParam;
-import io.shulie.takin.cloud.sdk.model.common.BusinessActivitySummaryBean;
-import io.shulie.takin.cloud.sdk.model.request.report.TrendRequest;
+import io.shulie.takin.cloud.sdk.model.request.report.ReportTrendQueryReq;
 import io.shulie.takin.cloud.sdk.model.request.report.WarnQueryReq;
 import io.shulie.takin.cloud.sdk.model.response.report.ActivityResponse;
 import io.shulie.takin.cloud.sdk.model.response.report.MetricesResponse;
-import io.shulie.takin.cloud.sdk.model.response.report.TrendResponse;
+import io.shulie.takin.cloud.sdk.model.response.report.NodeTreeSummaryResp;
+import io.shulie.takin.cloud.sdk.model.response.report.ReportTrendResp;
+import io.shulie.takin.cloud.sdk.model.response.report.ScriptNodeTreeResp;
 import io.shulie.takin.cloud.sdk.model.response.scenemanage.WarnDetailResponse;
+import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.biz.pojo.output.report.ReportDetailOutput;
 import io.shulie.takin.web.biz.pojo.output.report.ReportDetailTempOutput;
+import io.shulie.takin.web.biz.pojo.output.report.ReportJtlDownloadOutput;
+import io.shulie.takin.web.biz.pojo.request.report.ReportQueryRequest;
+import io.shulie.takin.web.common.domain.WebResponse;
 
 /**
  * @author qianshui
@@ -26,11 +30,11 @@ public interface ReportService {
 
     ReportDetailOutput getReportByReportId(Long reportId);
 
-    TrendResponse queryReportTrend(TrendRequest param);
+    ReportTrendResp queryReportTrend(ReportTrendQueryReq param);
 
     ReportDetailTempOutput tempReportDetail(Long sceneId);
 
-    TrendResponse queryTempReportTrend(TrendRequest param);
+    ReportTrendResp queryTempReportTrend(ReportTrendQueryReq param);
 
     ResponseResult<List<WarnDetailResponse>> listWarn(WarnQueryReq req);
 
@@ -38,7 +42,7 @@ public interface ReportService {
 
     List<ActivityResponse> queryReportActivityBySceneId(Long sceneId);
 
-    List<BusinessActivitySummaryBean> querySummaryList(Long reportId);
+    NodeTreeSummaryResp querySummaryList(Long reportId);
 
     /**
      * 获取指标列表
@@ -46,8 +50,8 @@ public interface ReportService {
      * avgTps
      * 两个 key
      *
-     * @param reportId   报告 id
-     * @param sceneId    场景 id
+     * @param reportId 报告 id
+     * @param sceneId  场景 id
      * @return 指标列表
      */
     List<MetricesResponse> queryMetrics(Long reportId, Long sceneId);
@@ -68,10 +72,28 @@ public interface ReportService {
      */
     List<Long> queryListRunningReport();
 
+    WebResponse queryListPressuringReport();
+
     Boolean lockReport(Long reportId);
 
     Boolean unLockReport(Long reportId);
 
     Boolean finishReport(Long reportId);
+
+    /**
+     * 查询脚本节点树
+     *
+     * @param request 查询参数
+     * @return
+     */
+    ResponseResult<List<ScriptNodeTreeResp>> queryNodeTree(ReportQueryRequest request);
+
+    /**
+     * 下载jtl路径
+     *
+     * @param reportId
+     * @return
+     */
+    ReportJtlDownloadOutput getJtlDownLoadUrl(Long reportId);
 
 }
