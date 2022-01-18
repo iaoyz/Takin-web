@@ -413,7 +413,7 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         } else if (tenantIdCondition != null) {
             // t_tro_user 只有 tenant_id
             tenantExpression = new AndExpression(equalsTo, tenantIdCondition);
-        }else {
+        }else if(envCodeCondition != null) {
             tenantExpression = new AndExpression(equalsTo, envCodeCondition);
         }
 
