@@ -1,6 +1,7 @@
 package io.shulie.takin.web.biz.service.fastagentaccess.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,8 +56,6 @@ public class AmdbManageServiceImpl implements AmdbManageService {
         ErrorLogQueryDTO queryDTO = new ErrorLogQueryDTO();
         BeanUtils.copyProperties(queryRequest, queryDTO);
         queryDTO.setAgentInfo(queryRequest.getKeyword());
-        //queryDTO.setUserAppKey(WebPluginUtils.getTenantUserAppKey());
-
         if (StringUtils.isEmpty(queryRequest.getProjectName())) {
             List<String> appNameList = agentConfigService.getAllApplication("");
             if (CollectionUtils.isEmpty(appNameList)) {
@@ -67,7 +66,14 @@ public class AmdbManageServiceImpl implements AmdbManageService {
         } else {
             queryDTO.setAppName(queryRequest.getProjectName());
         }
-
+        if (queryRequest.getStartDate() != null) {
+            queryDTO.setStartDate(queryRequest.getStartDate().getTime());
+        }
+        if (queryRequest.getEndDate() != null) {
+            queryDTO.setEndDate(queryRequest.getEndDate().getTime());
+        }
+        queryDTO.setCurrentPage(queryRequest.getCurrent());
+        queryDTO.setPageSize(queryRequest.getPageSize());
         PagingList<AgentInfoDTO> pagingList = applicationClient.pageErrorLog(queryDTO);
         List<ErrorLogListResponse> list = pagingList.getList().stream().map(item -> {
             ErrorLogListResponse response = new ErrorLogListResponse();
@@ -86,11 +92,11 @@ public class AmdbManageServiceImpl implements AmdbManageService {
         if (CollectionUtils.isEmpty(moduleLoadDetailDTOList)) {
             return new ArrayList<>();
         }
-        return moduleLoadDetailDTOList.stream().map(item -> {
+        return moduleLoadDetailDTOList.parallelStream().map(item -> {
             PluginLoadListResponse response = new PluginLoadListResponse();
             BeanUtils.copyProperties(item, response);
             return response;
-        }).collect(Collectors.toList());
+        }).sorted(Comparator.comparing(PluginLoadListResponse::getModuleId)).collect(Collectors.toList());
     }
 
     @Override

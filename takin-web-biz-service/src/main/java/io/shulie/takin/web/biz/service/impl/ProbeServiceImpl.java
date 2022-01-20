@@ -17,27 +17,27 @@ import cn.hutool.core.io.FileTypeUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.ZipUtil;
-import com.google.common.collect.Lists;
 import com.shulie.instrument.simulator.agent.api.AgentFileResolver;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.pojo.output.probe.CreateProbeOutput;
 import io.shulie.takin.web.biz.pojo.output.probe.ProbeListOutput;
 import io.shulie.takin.web.biz.service.DistributedLock;
 import io.shulie.takin.web.biz.service.ProbeService;
-import io.shulie.takin.web.biz.utils.AppCommonUtil;
 import io.shulie.takin.web.common.constant.AppConstants;
 import io.shulie.takin.web.common.constant.LockKeyConstants;
 import io.shulie.takin.web.common.constant.ProbeConstants;
 import io.shulie.takin.web.common.exception.ExceptionCode;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.pojo.dto.PageBaseDTO;
+import io.shulie.takin.web.common.util.AppCommonUtil;
 import io.shulie.takin.web.common.util.CommonUtil;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
+import io.shulie.takin.web.common.util.DataTransformUtil;
 import io.shulie.takin.web.data.dao.ProbeDAO;
 import io.shulie.takin.web.data.param.probe.CreateProbeParam;
 import io.shulie.takin.web.data.param.probe.UpdateProbeParam;
 import io.shulie.takin.web.data.result.probe.ProbeDetailResult;
 import io.shulie.takin.web.data.result.probe.ProbeListResult;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -59,7 +59,7 @@ public class ProbeServiceImpl implements ProbeService, ProbeConstants, AppConsta
     /**
      * 上传文件的路径
      */
-    @Value("${data.path}")
+    @Value("${takin.data.path}")
     private String uploadPath;
 
     @Autowired
@@ -71,15 +71,13 @@ public class ProbeServiceImpl implements ProbeService, ProbeConstants, AppConsta
     @Override
     public PagingList<ProbeListOutput> pageProbe(PageBaseDTO pageDTO) {
         PagingList<ProbeListResult> resultPage = probeDAO.pageProbe(pageDTO);
-        List<ProbeListResult> results = resultPage.getList();
         return resultPage.getTotal() == 0 ? PagingList.empty()
-            : PagingList.of(CommonUtil.list2list(results, ProbeListOutput.class),
-                resultPage.getTotal());
+            : PagingList.of(DataTransformUtil.list2list(resultPage.getList(), ProbeListOutput.class), resultPage.getTotal());
     }
 
     @Override
     public CreateProbeOutput create(String probePath) {
-        String lockKey = String.format(LockKeyConstants.LOCK_CREATE_PROBE, WebPluginUtils.getCustomerId(), probePath.hashCode());
+        String lockKey = String.format(LockKeyConstants.LOCK_CREATE_PROBE, WebPluginUtils.traceTenantId(), probePath.hashCode());
         this.isCreateError(!distributedLock.tryLockZeroWait(lockKey), TOO_FREQUENTLY);
 
         try {
@@ -183,7 +181,6 @@ public class ProbeServiceImpl implements ProbeService, ProbeConstants, AppConsta
         CreateProbeParam createProbeParam = new CreateProbeParam();
         createProbeParam.setVersion(version);
         createProbeParam.setPath(path);
-        //createProbeParam.setCustomerId(TakinRestContext.getCustomerId());
         createProbeParam.setGmtUpdate(new Date());
         this.isCreateError(!probeDAO.save(createProbeParam), "探针记录创建失败!");
         return createProbeParam.getId();

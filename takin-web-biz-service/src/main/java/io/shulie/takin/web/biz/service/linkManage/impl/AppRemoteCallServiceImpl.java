@@ -16,13 +16,27 @@
 
 package io.shulie.takin.web.biz.service.linkManage.impl;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
+
+import com.alibaba.fastjson.JSONObject;
+
 import cn.hutool.core.collection.CollStreamUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.json.JSONUtil;
-import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Lists;
 import com.pamirs.takin.entity.dao.confcenter.TBListMntDao;
-import com.pamirs.takin.entity.dao.confcenter.TBaseConfigDao;
 import com.pamirs.takin.entity.domain.entity.TBList;
 import com.pamirs.takin.entity.domain.entity.TBaseConfig;
 import com.pamirs.takin.entity.domain.vo.TDictionaryVo;
@@ -33,21 +47,24 @@ import io.shulie.takin.web.amdb.bean.query.application.ApplicationRemoteCallQuer
 import io.shulie.takin.web.amdb.bean.result.application.ApplicationRemoteCallDTO;
 import io.shulie.takin.web.amdb.bean.result.application.ApplicationRemoteCallTypeTemplateDTO;
 import io.shulie.takin.web.biz.cache.AgentConfigCacheManager;
+import io.shulie.takin.web.biz.constant.BizOpConstants.OpTypes;
 import io.shulie.takin.web.biz.constant.BizOpConstants.Vars;
-import io.shulie.takin.web.biz.init.sync.ConfigSyncService;
 import io.shulie.takin.web.biz.pojo.input.application.AppRemoteCallQueryInput;
 import io.shulie.takin.web.biz.pojo.input.application.AppRemoteCallUpdateInput;
 import io.shulie.takin.web.biz.pojo.output.application.AppRemoteCallOutput;
 import io.shulie.takin.web.biz.pojo.output.application.AppRemoteCallOutputV2;
+import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallBatchUpdateV2Request;
+import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallConfigRequest;
 import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallCreateV2Request;
 import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallUpdateV2Request;
-import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallConfigRequest;
+import io.shulie.takin.web.biz.service.BaseConfigService;
 import io.shulie.takin.web.biz.service.linkManage.AppRemoteCallService;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
 import io.shulie.takin.web.common.enums.application.AppRemoteCallConfigEnum;
 import io.shulie.takin.web.common.enums.application.AppRemoteCallTypeEnum;
 import io.shulie.takin.web.common.enums.application.AppRemoteCallTypeTemplateEnum;
 import io.shulie.takin.web.common.enums.application.AppRemoteCallTypeV2Enum;
+import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
 import io.shulie.takin.web.common.exception.ExceptionCode;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.util.application.RemoteCallUtils;
@@ -73,6 +90,8 @@ import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.shulie.takin.web.data.result.application.HttpClientConfigTemplateDetailResult;
 import io.shulie.takin.web.data.result.application.RpcConfigTemplateDetailResult;
 import io.shulie.takin.web.data.result.blacklist.BlacklistResult;
+import io.shulie.takin.web.data.util.ConfigServerHelper;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -80,20 +99,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.mockito.internal.util.collections.Sets;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.stream.Collectors;
 
 /**
  * @author 无涯
@@ -113,7 +119,7 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
     private DictionaryDataDAO dictionaryDataDAO;
 
     @Autowired
-    private TBaseConfigDao tBaseConfigDao;
+    private BaseConfigService baseConfigService;
 
     @Autowired
     private TBListMntDao tbListMntDao;
@@ -122,20 +128,18 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
     private BlackListDAO blackListDAO;
 
     @Autowired
-    private ConfigSyncService configSyncService;
-
-    @Autowired
     private AgentConfigCacheManager agentConfigCacheManager;
 
-    @Value("${remote.call.auto.join.white: false}")
-    private boolean autoJoinWhiteFlag;
-
-    @Value("${query.async.critica.value:20000}")
-    private int criticaValue;
+    private Integer criticaValue;
 
     @Autowired
     private ThreadPoolExecutor queryAsyncThreadPool;
 
+    @PostConstruct
+    public void init() {
+        criticaValue = ConfigServerHelper.getWrapperIntegerValueByKey(
+            ConfigServerKeyEnum.TAKIN_QUERY_ASYNC_CRITICA_VALUE);
+    }
     @Autowired
     private HttpClientConfigTemplateDAO httpClientConfigTemplateDAO;
 
@@ -179,31 +183,33 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         // 补充插件内容
         WebPluginUtils.fillUserData(input);
         if (input.getId() != null && input.getId() != 0) {
+            OperationLogContextHolder.operationType(OpTypes.UPDATE);
             getCallResult(input.getId());
             AppRemoteCallUpdateParam param = new AppRemoteCallUpdateParam();
             BeanUtils.copyProperties(input, param);
 
-            param.setCustomerId(detailResult.getCustomerId());
+            param.setTenantId(detailResult.getTenantId());
             param.setAppName(detailResult.getApplicationName());
             appRemoteCallDAO.update(param);
         } else {
+            OperationLogContextHolder.operationType(OpTypes.CREATE);
             AppRemoteCallCreateParam param = new AppRemoteCallCreateParam();
             BeanUtils.copyProperties(input, param);
-            param.setCustomerId(detailResult.getCustomerId());
+            param.setTenantId(detailResult.getTenantId());
             param.setAppName(detailResult.getApplicationName());
             appRemoteCallDAO.insert(param);
         }
+
         agentConfigCacheManager.evictRecallCalls(detailResult.getApplicationName());
 
     }
 
     @Override
     public void batchConfig(AppRemoteCallConfigRequest request) {
-        if(WebPluginUtils.validateSuperAdmin()) {
-            appRemoteCallDAO.updateListSelective(request.getType(), request.getAppIds(), null, WebPluginUtils.getCustomerId());
+        if(WebPluginUtils.validateAdmin()) {
+            appRemoteCallDAO.updateListSelective(request.getType(), request.getAppIds(), null);
         } else {
-            appRemoteCallDAO.updateListSelective(request.getType(), request.getAppIds(),
-                WebPluginUtils.getUpdateAllowUserIdList(), WebPluginUtils.getCustomerId());
+            appRemoteCallDAO.updateListSelective(request.getType(), request.getAppIds(), WebPluginUtils.getUpdateAllowUserIdList());
         }
     }
 
@@ -249,7 +255,6 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
     public void deleteById(Long id) {
         AppRemoteCallResult result = getCallResult(id);
         OperationLogContextHolder.addVars(Vars.INTERFACE, result.getInterfaceName());
-        OperationLogContextHolder.addVars(Vars.INTERFACE_TYPE, AppRemoteCallTypeEnum.getEnum(result.getInterfaceType()).getDesc());
         appRemoteCallDAO.deleteById(id);
         agentConfigCacheManager.evictRecallCalls(result.getAppName());
     }
@@ -266,7 +271,8 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         // 从mysql查出数据
         PagingList<AppRemoteCallListVO> dbPagingList = this.getDbPagingList(input, detailResult);
         // 根据应用的租户查询
-        input.setCustomerId(detailResult.getCustomerId());
+        input.setTenantId(detailResult.getTenantId());
+        input.setEnvCode(detailResult.getEnvCode());
         // 判断 当前页是否满了
         if (dbPagingList.getList().size() < input.getPageSize()) {
             // 重置 amdb查询页码 是第一页
@@ -311,12 +317,12 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
             result.setTypeSelectVO(new SelectVO(callConfigEnum.getConfigName(), String.valueOf(callConfigEnum.getType())));
             // 支持类型
             result.setInterfaceTypeSelectVO(getSelectVO(result.getInterfaceType(), voList));
-            result.setCanRemove(result.getIsManual());
+            // 补充权限
+            WebPluginUtils.fillQueryResponse(result);
         });
         return PagingList.of(results.stream().sorted(Comparator.comparing(AppRemoteCallListVO::getSort)).collect(Collectors.toList()),
             dbPagingList.getTotal() + amdbPagingList.getTotal());
     }
-
 
 
     private String getMiddlewareName(List<TDictionaryVo> voList) {
@@ -352,9 +358,9 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         AppRemoteCallQueryParam param = new AppRemoteCallQueryParam();
         BeanUtils.copyProperties(input, param);
         // 如果是超级管理员
-        if (!WebPluginUtils.validateSuperAdmin()) {
+        if (!WebPluginUtils.validateAdmin()) {
             if (detailResult != null) {
-                param.setCustomerId(detailResult.getCustomerId());
+                param.setTenantId(detailResult.getTenantId());
             }
         }
         PagingList<AppRemoteCallResult> pagingList = appRemoteCallDAO.pagingList(param);
@@ -419,7 +425,7 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         List<SelectVO> vos = Arrays.stream(AppRemoteCallConfigEnum.values())
             .map(t -> new SelectVO(t.getConfigName(), String.valueOf(t.getType()))).collect(Collectors.toList());
 
-        TBaseConfig tBaseConfig = tBaseConfigDao.selectByPrimaryKey("REMOTE_CALL_ABLE_CONFIG");
+        TBaseConfig tBaseConfig = baseConfigService.selectByPrimaryKey("REMOTE_CALL_ABLE_CONFIG");
         if (tBaseConfig != null) {
             JSONObject jsonObject = JSONUtil.toBean(tBaseConfig.getConfigValue(), JSONObject.class);
             SelectVO selectVO = getSelectVO(interfaceType, voList);
@@ -471,7 +477,8 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
     }
 
     private List<Blacklist> getBlackList() {
-        List<TBList> tbLists = tbListMntDao.getAllEnabledBlockList();
+        TenantCommonExt commonExt = WebPluginUtils.traceTenantCommonExt();
+        List<TBList> tbLists = tbListMntDao.getAllEnabledBlockList(commonExt.getTenantId(),commonExt.getEnvCode());
         if (CollectionUtils.isEmpty(tbLists)) {
             return Lists.newArrayList();
         }
@@ -483,11 +490,11 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
     }
 
     private List<AgentBlacklistVO> getNewBlackList(String appName) {
-        ApplicationDetailResult detailResult = applicationDAO.getApplicationByCustomerIdAndName(appName);
+        ApplicationDetailResult detailResult = applicationDAO.getApplicationByTenantIdAndName(appName);
         if (detailResult == null) {
             return Lists.newArrayList();
         }
-        List<BlacklistResult> results = blackListDAO.getAllEnabledBlockList(detailResult.getApplicationId());
+        List<BlacklistResult> results = blackListDAO.getAllEnabledBlockList(detailResult.getApplicationId(),WebPluginUtils.traceTenantCommonExt());
         AgentBlacklistVO vo = new AgentBlacklistVO();
         vo.setAppName(detailResult.getApplicationName());
         if (CollectionUtils.isNotEmpty(results)) {
@@ -509,6 +516,7 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
             return;
         }
         List<TDictionaryVo> voList = dictionaryDataDAO.getDictByCode("REMOTE_CALL_TYPE");
+
         int size = 50;
         // size个轮询一次
         if (results.size() > size) {
@@ -531,7 +539,6 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         }
     }
 
-
     @Override
     public Map<String, List<ApplicationRemoteCallDTO>> getServerAppListMap(String upNames) {
         // 所有服务端应用
@@ -540,26 +547,37 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         serverAppNameQuery.setQueryTye("0");
         PagingList<ApplicationRemoteCallDTO> serverAppNamePage = applicationClient.listApplicationRemoteCalls(serverAppNameQuery);
         List<ApplicationRemoteCallDTO> serverAppNames = serverAppNamePage.getList();
-        Map<String, List<ApplicationRemoteCallDTO>> serverAppNamesMap = serverAppNames.stream()
-            .collect(Collectors.groupingBy(call -> RemoteCallUtils.buildRemoteCallName(call.getUpAppName(),
+        // 查询应用
+        return serverAppNames.stream().collect(Collectors.groupingBy(call -> RemoteCallUtils.buildRemoteCallName(call.getUpAppName(),
                 RemoteCallUtils.getInterfaceNameByRpcName(call.getMiddlewareName(), call.getServiceName(), call.getMethodName()),
                 call.getRpcType())));
-        return serverAppNamesMap;
     }
 
-    // 自动加入白名单 操作
-    public void autoJoinWhite(AppRemoteCallCreateParam param) {
+    /**
+     * 自动加入白名单 操作
+     *
+     * @param param 入参
+     */
+    private void autoJoinWhite(AppRemoteCallCreateParam param) {
         param.setType(AppRemoteCallConfigEnum.CLOSE_CONFIGURATION.getType());
-        if (autoJoinWhiteFlag) {
-            if (StringUtils.isNotBlank(param.getServerAppName())) {
-                param.setType(AppRemoteCallConfigEnum.OPEN_WHITELIST.getType());
-            }
+        if (ConfigServerHelper.getBooleanValueByKey(ConfigServerKeyEnum.TAKIN_REMOTE_CALL_AUTO_JOIN_WHITE)
+            && StringUtils.isNotBlank(param.getServerAppName())) {
+            param.setType(AppRemoteCallConfigEnum.OPEN_WHITELIST.getType());
         }
     }
 
     @Override
     public void deleteByApplicationIds(List<Long> applicationIds) {
         appRemoteCallDAO.deleteByApplicationIds(applicationIds);
+    }
+
+    /**
+     * 查询md5值
+     * @param param
+     * @return
+     */
+    private List<String> queryRemoteAppMd5(AppRemoteCallQueryParam param) {
+        return appRemoteCallDAO.getRemoteCallMd5(param);
     }
 
     private List<AppRemoteCallResult> queryAsyncIfNecessary(AppRemoteCallQueryParam param) {
@@ -574,12 +592,12 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         //初始化
         List<AppRemoteCallResult> resultList = Lists.newArrayList();
         //计算实际需开启的线程数
-        Long threadRealNum = totalCount / criticaValue + (totalCount % criticaValue > 0 ? 1 : 0);
+        long threadRealNum = totalCount / criticaValue + (totalCount % criticaValue > 0 ? 1 : 0);
         //初始化
-        List<Future<List<AppRemoteCallResult>>> futureList = Lists.newArrayListWithCapacity(threadRealNum.intValue());
+        List<Future<List<AppRemoteCallResult>>> futureList = Lists.newArrayListWithCapacity((int)threadRealNum);
         //线程执行
-        for (Long index = 0L; index < threadRealNum; index++) {
-            Long startPageIndex = index * criticaValue + 1;
+        for (long index = 0L; index < threadRealNum; index++) {
+            long startPageIndex = index * criticaValue + 1;
             Future<List<AppRemoteCallResult>> future = queryAsyncThreadPool.submit(() -> appRemoteCallDAO.getPartRecord(param, startPageIndex, criticaValue));
             futureList.add(future);
         }
@@ -632,6 +650,8 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
             }else{
                 listVO.setInterfaceChildType(call.getMiddlewareDetail());
             }
+            // 求md5
+            listVO.setMd5(RemoteCallUtils.buildRemoteCallName(listVO.getAppName(),listVO.getInterfaceName(),listVO.getInterfaceType()));
             return listVO;
         }).collect(Collectors.toList());
     }
@@ -647,11 +667,7 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         // 获取本地远程调用 数据
         AppRemoteCallQueryParam queryParam = new AppRemoteCallQueryParam();
         queryParam.setApplicationIds(apps.stream().map(ApplicationDetailResult::getApplicationId).collect(Collectors.toList()));
-        List<AppRemoteCallResult> callResults = this.queryAsyncIfNecessary(queryParam);
-        List<String> appNameRemoteCallIds = callResults.stream().map(result -> {
-            // 应用名
-            return RemoteCallUtils.buildRemoteCallName(result.getAppName(), result.getInterfaceName(), result.getInterfaceType());
-        }).collect(Collectors.toList());
+        List<String> appNameRemoteCallMd5s = this.queryRemoteAppMd5(queryParam);
 
         Map<String, List<ApplicationDetailResult>> appMap = apps.stream().collect(Collectors.groupingBy(ApplicationDetailResult::getApplicationName));
 
@@ -665,18 +681,17 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
             BeanUtils.copyProperties(vo, param);
             List<ApplicationDetailResult> results = appMap.get(vo.getAppName());
             if (CollectionUtils.isNotEmpty(results)) {
-                // todo 存在多个
                 ApplicationDetailResult result = results.get(0);
                 param.setApplicationId(result.getApplicationId());
-                param.setCustomerId(result.getCustomerId());
+                param.setTenantId(result.getTenantId());
                 param.setAppName(result.getApplicationName());
                 param.setUserId(result.getUserId());
+                param.setMd5(vo.getMd5());
                 // 补充服务应用
-                String appNameRemoteCallId = RemoteCallUtils.buildRemoteCallName(result.getApplicationName(), vo.getInterfaceName(), vo.getInterfaceType());
-                if(appNameRemoteCallIds.contains(appNameRemoteCallId)) {
+                if(appNameRemoteCallMd5s.contains(param.getMd5())) {
                     continue;
                 }
-                List<ApplicationRemoteCallDTO> callDTOS = serverAppNamesMap.get(appNameRemoteCallId);
+                List<ApplicationRemoteCallDTO> callDTOS = serverAppNamesMap.get(param.getMd5());
                 if (CollectionUtils.isNotEmpty(callDTOS)) {
                     param.setServerAppName(callDTOS.stream().map(ApplicationRemoteCallDTO::getAppName).collect(Collectors.joining(",")));
                 }
@@ -685,6 +700,10 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
             }
         }
         appRemoteCallDAO.batchInsert(params);
+        // 清除缓存
+        List<String> appNames = params.stream().filter(t -> !AppRemoteCallConfigEnum.CLOSE_CONFIGURATION.getType().equals(t.getType()))
+            .map(AppRemoteCallCreateParam::getAppName).distinct().collect(Collectors.toList());
+        appNames.forEach(appName ->  agentConfigCacheManager.evictRecallCalls(appName));
     }
 
 
@@ -707,6 +726,11 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         }
         // 出口
         query.setQueryTye("1");
+
+        // 租户传参
+        query.setTenantAppKey(input.getTenantAppKey());
+        query.setEnvCode(input.getEnvCode());
+
         // 直接取全部数据
         PagingList<ApplicationRemoteCallDTO> calls = applicationClient.listApplicationRemoteCalls(query);
         if (calls.isEmpty()) {
@@ -714,25 +738,27 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         }
         // 获取本地远程调用 数据
         AppRemoteCallQueryParam param = new AppRemoteCallQueryParam();
-        if (input.getCustomerId() != null) {
-            param.setCustomerId(input.getCustomerId());
+        if (input.getTenantId() != null) {
+            param.setTenantId(input.getTenantId());
+        }
+        if (StringUtils.isNotBlank(input.getEnvCode())) {
+            param.setEnvCode(input.getEnvCode());
         }
         if (detailResult != null) {
             param.setApplicationId(detailResult.getApplicationId());
         }
-        List<AppRemoteCallResult> results = this.queryAsyncIfNecessary(param);
-        List<String> appNameRemoteCallIds = results.stream().map(result -> {
-            // 应用名
-            return RemoteCallUtils.buildRemoteCallName(result.getAppName(), result.getInterfaceName(), result.getInterfaceType());
-        }).collect(Collectors.toList());
+        // 租户传参
+        WebPluginUtils.transferTenantParam(input,param);
+
+        List<String> appNameRemoteCallMd5s = this.queryRemoteAppMd5(param);
 
         List<AppRemoteCallListVO> outputs = calls.getList().stream()
             .filter(call -> {
-                String appNameRemoteCallId = RemoteCallUtils.buildRemoteCallName(call.getAppName(),
+                String appNameRemoteCallMd5 = RemoteCallUtils.buildRemoteCallName(call.getAppName(),
                     RemoteCallUtils.getInterfaceNameByRpcName(call.getMiddlewareName(), call.getServiceName(), call.getMethodName()),
                     getInterfaceType(call.getMiddlewareName(), voList));
                 // 从AMDB加载过来的白名单，过滤掉类型不支持的远程调用--20210303 CYF
-                return (appNameRemoteCallIds.stream().noneMatch(e -> e.equals(appNameRemoteCallId))) && (!"-1".equals(call.getRpcType()));
+                return (appNameRemoteCallMd5s.stream().noneMatch(e -> e.equals(appNameRemoteCallMd5))) && (!"-1".equals(call.getRpcType()));
             })
             .map(call -> {
                 AppRemoteCallListVO listVO = new AppRemoteCallListVO();
@@ -751,6 +777,7 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
                 }else{
                     listVO.setInterfaceChildType(call.getMiddlewareDetail());
                 }
+                listVO.setMd5(RemoteCallUtils.buildRemoteCallName(listVO.getAppName(),listVO.getInterfaceName(),listVO.getInterfaceType()));
                 // 权限问题
                 fillInPermissions(listVO, detailResult);
                 return listVO;
@@ -805,6 +832,11 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         if (dto.getForwardMockEnable() == 1) {
             vos.add(new SelectVO(AppRemoteCallConfigEnum.FORWARD_MOCK.getConfigName(),
                     AppRemoteCallConfigEnum.FORWARD_MOCK.getType().toString()));
+        }
+
+        if (dto.getReturnFixMockEnable() == 1 && "feign".equals(dto.getEngName())) {
+            vos.add(new SelectVO(AppRemoteCallConfigEnum.FIX_FORWARD_MOCK.getConfigName(),
+                    AppRemoteCallConfigEnum.FIX_FORWARD_MOCK.getType().toString()));
         }
         vos.add(new SelectVO(AppRemoteCallConfigEnum.CLOSE_CONFIGURATION.getConfigName(),
                 AppRemoteCallConfigEnum.CLOSE_CONFIGURATION.getType().toString()));
@@ -862,7 +894,9 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
      */
     @Override
     public void batchLogicDelByIds(List<Long> ids) {
-        appRemoteCallDAO.batchLogicDelByIds(ids);
+        if(CollectionUtils.isNotEmpty(ids)){
+            appRemoteCallDAO.batchLogicDelByIds(ids);
+        }
     }
 
     @Override
@@ -888,7 +922,9 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
 
         AppRemoteCallCreateParam param = new AppRemoteCallCreateParam();
         BeanUtils.copyProperties(request, param);
-        param.setCustomerId(detailResult.getCustomerId());
+        // 租户信息
+        WebPluginUtils.transferTenantParam(detailResult,param);
+
         param.setAppName(detailResult.getApplicationName());
         param.setInterfaceType(enumByDesc.getType());
         param.setInterfaceChildType(request.getInterfaceType());
@@ -915,7 +951,9 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         AppRemoteCallUpdateParam param = new AppRemoteCallUpdateParam();
         BeanUtils.copyProperties(request, param);
         AppRemoteCallTypeV2Enum enumByDesc = AppRemoteCallTypeV2Enum.getEnumByDesc(request.getInterfaceType());
-        param.setCustomerId(detailResult.getCustomerId());
+
+        WebPluginUtils.transferTenantParam(detailResult,param);
+
         param.setAppName(detailResult.getApplicationName());
         param.setInterfaceType(enumByDesc.getType());
         param.setInterfaceChildType(request.getInterfaceType());
@@ -935,5 +973,21 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
         output.setRemark(result.getRemark());
         output.setApplicationId(String.valueOf(result.getApplicationId()));
         return output;
+    }
+
+    /**
+     * 更新
+     *
+     * @param request
+     */
+    @Override
+    public void batchUpdateV2(AppRemoteCallBatchUpdateV2Request request) {
+        Integer updateType = request.getUpdateType();
+        List<AppRemoteCallUpdateV2Request> updateInfos = request.getUpdateInfos();
+        updateInfos.forEach(item ->{
+            item.setType(updateType);
+            this.updateV2(item);
+        });
+
     }
 }
