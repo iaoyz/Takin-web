@@ -3,8 +3,9 @@ package io.shulie.takin.web.entrypoint.controller.linkmanage;
 import java.util.Map;
 import java.util.Set;
 
+import com.alibaba.fastjson.JSON;
+
 import com.pamirs.takin.common.enums.ds.DbTypeEnum;
-import com.pamirs.takin.entity.domain.entity.TApplicationMnt;
 import com.pamirs.takin.entity.domain.entity.simplify.AppBusinessTableInfo;
 import com.pamirs.takin.entity.domain.query.agent.AppBusinessTableQuery;
 import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
@@ -13,6 +14,7 @@ import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.biz.constant.BizOpConstants;
 import io.shulie.takin.web.biz.constant.BizOpConstants.OpTypes;
+import io.shulie.takin.web.biz.constant.BizOpConstants.Vars;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsCreateInput;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsDeleteInput;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsEnableInput;
@@ -21,13 +23,13 @@ import io.shulie.takin.web.biz.pojo.output.application.ApplicationDsDetailOutput
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.dsManage.DsService;
 import io.shulie.takin.web.common.common.Response;
-import io.shulie.takin.web.common.constant.APIUrls;
+import io.shulie.takin.web.common.constant.ApiUrls;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
+import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -43,12 +45,9 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Slf4j
 @RestController
-@RequestMapping(APIUrls.TAKIN_API_URL)
+@RequestMapping(ApiUrls.TAKIN_API_URL)
 @Api(tags = "影子库表管理", value = "影子库表管理")
 public class DsController {
-
-    @Value("${application.ds.config.is.new.version: false}")
-    private Boolean isNewVersion;
 
     private static final String DATABASE = "影子库 URL：";
 
@@ -62,11 +61,10 @@ public class DsController {
     @Autowired
     private ApplicationService applicationService;
 
-
     /**
      * 添加影子库表配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("影子库表添加接口")
     @PostMapping("link/ds/manage")
@@ -81,13 +79,16 @@ public class DsController {
         needAuth = ActionTypeEnum.CREATE
     )
     public Response dsAdd(@RequestBody ApplicationDsCreateInput createRequest) {
-        return dsService.dsAdd(createRequest);
+        Response response = dsService.dsAdd(createRequest);
+        OperationLogContextHolder.operationType(OpTypes.CREATE);
+        OperationLogContextHolder.addVars(Vars.SHADOW_DATABASE_TABLE_URL,createRequest.getShadowDbUrl());
+        return response;
     }
 
     /**
      * 添加影子库表配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("影子库表添加接口-老版本")
     @PostMapping("link/ds/manage/old")
@@ -102,6 +103,8 @@ public class DsController {
         needAuth = ActionTypeEnum.CREATE
     )
     public Response dsAddOld(@RequestBody ApplicationDsCreateInput createRequest) {
+        OperationLogContextHolder.operationType(OpTypes.CREATE);
+        OperationLogContextHolder.addVars(Vars.SHADOW_DATABASE_TABLE_JSON, JSON.toJSONString(createRequest));
         createRequest.setOldVersion(true);
         return this.dsAdd(createRequest);
     }
@@ -109,7 +112,7 @@ public class DsController {
     /**
      * 初始化数据库加密配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("加密数据库数据源配置")
     @PostMapping("link/ds/manage/secure/init")
@@ -126,7 +129,7 @@ public class DsController {
     /**
      * 查询影子库表配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("查询影子库表配置")
     @GetMapping("link/ds/manage")
@@ -151,7 +154,7 @@ public class DsController {
     /**
      * 影子库表配置详情
      *
-     * @return
+     * @return -
      */
     @ApiOperation("影子库表配置详情-老版本")
     @GetMapping("link/ds/manage/detail/old")
@@ -166,7 +169,7 @@ public class DsController {
     /**
      * 修改影子库表配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("修改影子库表配置")
     @PutMapping("link/ds/manage")
@@ -181,13 +184,16 @@ public class DsController {
         needAuth = ActionTypeEnum.UPDATE
     )
     public Response dsUpdate(@RequestBody ApplicationDsUpdateInput updateRequest) {
-        return dsService.dsUpdate(updateRequest);
+        final Response response = dsService.dsUpdate(updateRequest);
+        OperationLogContextHolder.operationType(OpTypes.UPDATE);
+        OperationLogContextHolder.addVars(Vars.SHADOW_DATABASE_TABLE_JSON, JSON.toJSONString(updateRequest));
+        return response;
     }
 
     /**
      * 修改影子库表配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("修改影子库表配置-老版本")
     @PutMapping("link/ds/manage/old")
@@ -202,13 +208,15 @@ public class DsController {
     )
     public Response dsUpdateOld(@RequestBody ApplicationDsUpdateInput updateRequest) {
         updateRequest.setOldVersion(true);
+        OperationLogContextHolder.operationType(OpTypes.UPDATE);
+        OperationLogContextHolder.addVars(Vars.SHADOW_DATABASE_TABLE_JSON, JSON.toJSONString(updateRequest));
         return this.dsUpdate(updateRequest);
     }
 
     /**
      * 启用禁用影子库表配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("启用禁用影子库表配置")
     @PutMapping("link/ds/enable")
@@ -229,14 +237,14 @@ public class DsController {
         if (null == response) {
             return Response.fail("影子库表不存在");
         }
-        ApplicationDsDetailOutput data = response.getData();
+        OperationLogContextHolder.addVars(Vars.SHADOW_DATABASE_TABLE_JSON,JSON.toJSONString(enableRequest));
         return dsService.enableConfig(enableRequest);
     }
 
     /**
      * 删除影子库表配置
      *
-     * @return
+     * @return -
      */
     @ApiOperation("删除影子库表配置")
     @RequestMapping(value = "link/ds/manage", method = RequestMethod.DELETE)
@@ -255,7 +263,8 @@ public class DsController {
         if (!response.getSuccess()) {
             return response;
         }
-        ApplicationDsDetailOutput data = response.getData();
+        OperationLogContextHolder.operationType(OpTypes.DELETE);
+        OperationLogContextHolder.addVars(Vars.SHADOW_DATABASE_TABLE_JSON,JSON.toJSONString(deleteRequest));
         return dsService.dsDelete(deleteRequest);
     }
 
@@ -266,7 +275,7 @@ public class DsController {
         if (null == requestMap || requestMap.size() < 1) {
             return ResponseResult.fail("请求数据null", "请联系agent");
         }
-        TApplicationMnt tApplicationMnt = applicationService.queryTApplicationMntByName(appName);
+        ApplicationDetailResult tApplicationMnt = applicationService.queryTApplicationMntByName(appName);
         if (null == tApplicationMnt) {
             return ResponseResult.fail("应用信息不存在", "请联系控制台");
         }

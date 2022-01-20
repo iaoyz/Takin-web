@@ -10,7 +10,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.common.collect.Lists;
 import io.shulie.takin.common.beans.page.PagingList;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
 import io.shulie.takin.web.data.mapper.mysql.TakinDbresourceMapper;
 import io.shulie.takin.web.data.model.mysql.TakinDbresourceEntity;
 import io.shulie.takin.web.data.param.datasource.DataSourceCreateParam;
@@ -19,6 +18,7 @@ import io.shulie.takin.web.data.param.datasource.DataSourceQueryParam;
 import io.shulie.takin.web.data.param.datasource.DataSourceSingleQueryParam;
 import io.shulie.takin.web.data.param.datasource.DataSourceUpdateParam;
 import io.shulie.takin.web.data.result.datasource.DataSourceResult;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -46,28 +46,30 @@ public class DataSourceDAOImpl implements DataSourceDAO {
             TakinDbresourceEntity::getName,
             TakinDbresourceEntity::getJdbcUrl,
             TakinDbresourceEntity::getUsername,
-            TakinDbresourceEntity::getCustomerId,
-            TakinDbresourceEntity::getUserId,
             TakinDbresourceEntity::getCreateTime,
             TakinDbresourceEntity::getUpdateTime);
         if (!Objects.isNull(queryParam.getType())) {
             wrapper.eq(TakinDbresourceEntity::getType, queryParam.getType());
         }
         if (StringUtils.isNotBlank(queryParam.getName())) {
-            wrapper.like(TakinDbresourceEntity::getName, queryParam.getName());
+            wrapper.like(TakinDbresourceEntity::getName, "\\"+queryParam.getName());
         }
         if (StringUtils.isNotBlank(queryParam.getJdbcUrl())) {
-            wrapper.like(TakinDbresourceEntity::getJdbcUrl, queryParam.getJdbcUrl());
+            wrapper.like(TakinDbresourceEntity::getJdbcUrl, "\\"+queryParam.getJdbcUrl());
         }
         if (CollectionUtils.isNotEmpty(queryParam.getDataSourceIdList())) {
             wrapper.in(TakinDbresourceEntity::getId, queryParam.getDataSourceIdList());
+        }
+        // 数据权限
+        if (CollectionUtils.isNotEmpty(WebPluginUtils.getQueryAllowUserIdList())) {
+            wrapper.in(TakinDbresourceEntity::getUserId, WebPluginUtils.getQueryAllowUserIdList());
         }
         Page<TakinDbresourceEntity> page = new Page<>(queryParam.getCurrent(), queryParam.getPageSize());
         wrapper.orderByDesc(TakinDbresourceEntity::getUpdateTime);
 
         IPage<TakinDbresourceEntity> takinResourceEntityPage = datasourceMapper.selectPage(page, wrapper);
         if (CollectionUtils.isEmpty(takinResourceEntityPage.getRecords())) {
-            return PagingList.of(Lists.newArrayList(),takinResourceEntityPage.getTotal());
+            return PagingList.of(Lists.newArrayList(), takinResourceEntityPage.getTotal());
         }
         List<DataSourceResult> dataSourceResultList = takinResourceEntityPage.getRecords().stream().map(entity -> {
             DataSourceResult dataSourceResult = new DataSourceResult();
@@ -114,9 +116,7 @@ public class DataSourceDAOImpl implements DataSourceDAO {
         if (StringUtils.isNotBlank(queryParam.getJdbcUrl())) {
             queryWrapper.eq(TakinDbresourceEntity::getJdbcUrl, queryParam.getJdbcUrl());
         }
-        if (WebPluginUtils.checkUserData() && WebPluginUtils.getCustomerId() != null) {
-            queryWrapper.eq(TakinDbresourceEntity::getCustomerId, WebPluginUtils.getCustomerId());
-        }
+
         queryWrapper.eq(TakinDbresourceEntity::getIsDeleted, 0);
         List<TakinDbresourceEntity> datasourceEntityList = datasourceMapper.selectList(queryWrapper);
         if (CollectionUtils.isNotEmpty(datasourceEntityList)) {
@@ -133,7 +133,6 @@ public class DataSourceDAOImpl implements DataSourceDAO {
             dataSourceResult.setPassword(datasourceEntity.getPassword());
             dataSourceResult.setCreateTime(datasourceEntity.getCreateTime());
             dataSourceResult.setUpdateTime(datasourceEntity.getUpdateTime());
-            dataSourceResult.setCustomerId(datasourceEntity.getCustomerId());
             dataSourceResult.setUserId(datasourceEntity.getUserId());
             return dataSourceResult;
         }
@@ -147,6 +146,7 @@ public class DataSourceDAOImpl implements DataSourceDAO {
             queryWrapper.in(TakinDbresourceEntity::getId, queryParam.getDataSourceIdList());
             queryWrapper.eq(TakinDbresourceEntity::getIsDeleted, 0);
         }
+        queryWrapper.orderByDesc(TakinDbresourceEntity::getUpdateTime);
         List<TakinDbresourceEntity> datasourceEntityList = datasourceMapper.selectList(queryWrapper);
         if (CollectionUtils.isNotEmpty(datasourceEntityList)) {
             return datasourceEntityList.stream().map(entity -> {

@@ -2,23 +2,24 @@ package io.shulie.takin.web.data.model.mysql;
 
 import java.util.Date;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.shulie.takin.web.data.model.mysql.base.UserBaseEntity;
 import lombok.Data;
 
 /**
-* @author 何仲奇
-* @date 2021/5/29 上午12:12
-*/
+ * @author 何仲奇
+ * @date 2021/5/29 上午12:12
+ */
+
 /**
-    * 远程调用表
-    */
+ * 远程调用表
+ */
 @Data
 @TableName(value = "t_app_remote_call")
-public class AppRemoteCallEntity {
+public class AppRemoteCallEntity extends UserBaseEntity {
     /**
      * 主键
      */
@@ -30,7 +31,6 @@ public class AppRemoteCallEntity {
      */
     @TableField(value = "interface_name")
     private String interfaceName;
-
 
     /**
      * 接口类型
@@ -67,18 +67,6 @@ public class AppRemoteCallEntity {
      */
     @TableField(value = "mock_return_value")
     private String mockReturnValue;
-
-    /**
-     * 租户id
-     */
-    @TableField(value = "CUSTOMER_ID", fill = FieldFill.INSERT)
-    private Long customerId;
-
-    /**
-     * 用户id
-     */
-    @TableField(value = "USER_ID", fill = FieldFill.INSERT)
-    private Long userId;
 
     /**
      * 是否有效 0:有效;1:无效
@@ -118,5 +106,11 @@ public class AppRemoteCallEntity {
 
     @TableField(value = "remark")
     private String remark;
+
+    /**
+     * 应用名，接口名称，接口类型，租户id,envcode求md5
+     */
+    @TableField(value = "md5")
+    private String md5;
 
 }

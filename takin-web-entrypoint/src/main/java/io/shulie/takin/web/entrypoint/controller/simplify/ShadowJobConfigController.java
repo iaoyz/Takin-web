@@ -7,11 +7,12 @@ import com.pamirs.takin.entity.domain.query.ShadowJobConfigQuery;
 import com.pamirs.takin.entity.domain.vo.ShadowJobConfigVo;
 import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.web.biz.constant.BizOpConstants;
+import io.shulie.takin.web.biz.constant.BizOpConstants.OpTypes;
 import io.shulie.takin.web.biz.service.simplify.ShadowJobConfigService;
 import io.shulie.takin.web.biz.utils.Estimate;
 import io.shulie.takin.web.biz.utils.XmlUtil;
 import io.shulie.takin.web.common.common.Response;
-import io.shulie.takin.web.common.constant.APIUrls;
+import io.shulie.takin.web.common.constant.ApiUrls;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
 import io.shulie.takin.web.common.exception.ExceptionCode;
 import io.shulie.takin.web.common.exception.TakinWebException;
@@ -35,12 +36,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * @author <a href="tangyuhan@shulie.io">yuhan.tang</a>
- * @package: com.pamirs.takin.web.api.controller.simplify
  * @date 2020-03-17 16:13
  */
 @Api(tags = "影子JOB配置")
 @Slf4j
-@RequestMapping(APIUrls.TAKIN_API_URL + "console")
+@RequestMapping(ApiUrls.TAKIN_API_URL + "console")
 @RestController
 public class ShadowJobConfigController {
 
@@ -48,7 +48,7 @@ public class ShadowJobConfigController {
     private ShadowJobConfigService shadowJobConfigService;
 
     @ApiOperation(value = "影子JOB配置分页查询, Owner: yuhan.tang")
-    @GetMapping(value = APIUrls.API_TAKIN_SIMPLIFY_SHADOW_QUERY_CONFIGS, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = ApiUrls.API_TAKIN_SIMPLIFY_SHADOW_QUERY_CONFIGS, produces = MediaType.APPLICATION_JSON_VALUE)
     @AuthVerification(
         moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
         needAuth = ActionTypeEnum.QUERY
@@ -72,8 +72,8 @@ public class ShadowJobConfigController {
     }
 
     @ApiOperation(value = "影子JOB配置查询详情, Owner: yuhan.tang")
-    @GetMapping(value = APIUrls.API_TAKIN_SIMPLIFY_SHADOW_QUERY_DETAIL_CONFIGS,
-        produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = ApiUrls.API_TAKIN_SIMPLIFY_SHADOW_QUERY_DETAIL_CONFIGS,
+        produces = MediaType.APPLICATION_JSON_VALUE)
     @AuthVerification(
         moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
         needAuth = ActionTypeEnum.QUERY
@@ -89,8 +89,8 @@ public class ShadowJobConfigController {
     }
 
     @ApiOperation(value = "影子JOB配置新增, Owner: yuhan.tang")
-    @PostMapping(value = APIUrls.API_TAKIN_SIMPLIFY_SHADOW_INSERT_CONFIGS,
-        produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PostMapping(value = ApiUrls.API_TAKIN_SIMPLIFY_SHADOW_INSERT_CONFIGS,
+        produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
         subModuleName = BizOpConstants.SubModules.JOB_TASK,
@@ -105,8 +105,8 @@ public class ShadowJobConfigController {
             Estimate.notBlank(config.getApplicationId(), "应用ID不能为空");
             Estimate.notBlank(config.getConfigCode(), "相关配置不能为空");
             // 备注字段上限
-            if (StringUtils.isNotBlank(config.getRemark()) && config.getRemark().length() > 200) {
-                throw new TakinWebException(ExceptionCode.JOB_PARAM_ERROR, "备注长度不得超过200字符");
+            if (StringUtils.isNotBlank(config.getRemark()) && config.getRemark().length() > 256) {
+                throw new TakinWebException(ExceptionCode.JOB_PARAM_ERROR, "备注长度不得超过256字符");
             }
             Map<String, String> xmlMap = XmlUtil.readStringXml(config.getConfigCode());
             String className = xmlMap.get("className");
@@ -121,8 +121,8 @@ public class ShadowJobConfigController {
     }
 
     @ApiOperation(value = "影子JOB配置修改, Owner: yuhan.tang")
-    @RequestMapping(value = APIUrls.API_TAKIN_SIMPLIFY_SHADOW_UPDATE_CONFIGS,
-        method = {RequestMethod.PUT, RequestMethod.POST}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @RequestMapping(value = ApiUrls.API_TAKIN_SIMPLIFY_SHADOW_UPDATE_CONFIGS,
+        method = {RequestMethod.PUT, RequestMethod.POST}, produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
         subModuleName = BizOpConstants.SubModules.JOB_TASK,
@@ -136,10 +136,14 @@ public class ShadowJobConfigController {
         try {
             Estimate.notBlank(query.getId(), "ID不能为空");
             // 备注字段上限
-            if (StringUtils.isNotBlank(query.getRemark()) && query.getRemark().length() > 200) {
-                throw new TakinWebException(ExceptionCode.JOB_PARAM_ERROR, "备注长度不得超过200字符");
+            if (StringUtils.isNotBlank(query.getRemark()) && query.getRemark().length() > 256) {
+                throw new TakinWebException(ExceptionCode.JOB_PARAM_ERROR, "备注长度不得超过256字符");
             }
-
+            OperationLogContextHolder.operationType(OpTypes.UPDATE);
+            Map<String, String> xmlMap = XmlUtil.readStringXml(query.getConfigCode());
+            String className = xmlMap.get("className");
+            OperationLogContextHolder.addVars(BizOpConstants.Vars.TASK, className);
+            OperationLogContextHolder.addVars(BizOpConstants.Vars.TASKConfig, query.getConfigCode());
             shadowJobConfigService.update(query);
             return Response.success();
         } catch (Exception e) {
@@ -149,8 +153,8 @@ public class ShadowJobConfigController {
     }
 
     @ApiOperation(value = "影子JOB配置禁用停止, Owner: yuhan.tang")
-    @PutMapping(value = APIUrls.API_TAKIN_SIMPLIFY_SHADOW_UPDATE_STATUS_CONFIGS,
-        produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PutMapping(value = ApiUrls.API_TAKIN_SIMPLIFY_SHADOW_UPDATE_STATUS_CONFIGS,
+        produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
         subModuleName = BizOpConstants.SubModules.JOB_TASK,
@@ -181,8 +185,8 @@ public class ShadowJobConfigController {
     }
 
     @ApiOperation(value = "影子JOB配置删除, Owner: yuhan.tang")
-    @DeleteMapping(value = APIUrls.API_TAKIN_SIMPLIFY_SHADOW_DELETE_CONFIGS,
-        produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @DeleteMapping(value = ApiUrls.API_TAKIN_SIMPLIFY_SHADOW_DELETE_CONFIGS,
+        produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
         subModuleName = BizOpConstants.SubModules.JOB_TASK,

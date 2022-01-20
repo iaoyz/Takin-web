@@ -1,10 +1,10 @@
 package io.shulie.takin.web.diff.api;
 
-import io.shulie.takin.cloud.open.req.filemanager.FileContentParamReq;
-import io.shulie.takin.cloud.open.req.filemanager.FileCopyParamReq;
-import io.shulie.takin.cloud.open.req.filemanager.FileCreateByStringParamReq;
-import io.shulie.takin.cloud.open.req.filemanager.FileDeleteParamReq;
-import io.shulie.takin.cloud.open.req.filemanager.FileZipParamReq;
+import io.shulie.takin.cloud.sdk.model.request.filemanager.FileContentParamReq;
+import io.shulie.takin.cloud.sdk.model.request.filemanager.FileCopyParamReq;
+import io.shulie.takin.cloud.sdk.model.request.filemanager.FileCreateByStringParamReq;
+import io.shulie.takin.cloud.sdk.model.request.filemanager.FileDeleteParamReq;
+import io.shulie.takin.cloud.sdk.model.request.filemanager.FileZipParamReq;
 
 /**
  * @author shiyajian
@@ -43,7 +43,7 @@ public interface DiffFileApi {
     /**
      * 将字符串转为指定文件
      *
-     * @return
+     * @return 文件的MD5值
      */
-    Boolean createFileByPathAndString(FileCreateByStringParamReq req);
+    String createFileByPathAndString(FileCreateByStringParamReq req);
 }
