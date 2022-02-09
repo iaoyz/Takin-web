@@ -1,15 +1,19 @@
 package io.shulie.takin.web.biz.pojo.response.pradar;
 
+import java.util.Date;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
-import org.apache.commons.lang.time.DateFormatUtils;
+import lombok.NoArgsConstructor;
 
 @Data
 @ApiModel("pradar配置")
+@NoArgsConstructor
 public class PradarZKConfigResponse {
     @ApiModelProperty("配置ID")
-    int id;
+    Long id;
     @ApiModelProperty("ZK路径")
     String zkPath;
     @ApiModelProperty("值类型:[String,Int,Boolean]")
@@ -19,20 +23,12 @@ public class PradarZKConfigResponse {
     @ApiModelProperty("说明")
     String remark;
     @ApiModelProperty("创建时间")
-    String createTime;
+    @JsonFormat(timezone = "GMT+8", pattern = "yyyy-MM-dd HH:mm:ss")
+    Date createTime;
     @ApiModelProperty("更新时间")
-    String modifyTime;
+    @JsonFormat(timezone = "GMT+8", pattern = "yyyy-MM-dd HH:mm:ss")
+    Date modifyTime;
     @ApiModelProperty("是否可编辑")
     private Boolean canEdit = true;
 
-    public PradarZKConfigResponse(int id, String zkPath, String type, String value, String remark, long createTime,
-        long modifyTime) {
-        this.id = id;
-        this.zkPath = zkPath;
-        this.type = type;
-        this.value = value;
-        this.remark = remark;
-        this.createTime = DateFormatUtils.format(createTime, "yyyy-MM-dd HH:mm:ss");
-        this.modifyTime = DateFormatUtils.format(modifyTime, "yyyy-MM-dd HH:mm:ss");
-    }
 }

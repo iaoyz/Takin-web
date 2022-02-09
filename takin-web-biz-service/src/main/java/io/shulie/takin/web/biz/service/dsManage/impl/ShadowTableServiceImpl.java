@@ -2,7 +2,7 @@ package io.shulie.takin.web.biz.service.dsManage.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.google.common.collect.Lists;
-import com.pamirs.attach.plugin.dynamic.Type;
+import com.pamirs.attach.plugin.dynamic.one.Type;
 import com.pamirs.takin.common.constant.AppAccessTypeEnum;
 import com.pamirs.takin.common.enums.ds.DsTypeEnum;
 import io.shulie.takin.web.amdb.api.ApplicationClient;
@@ -115,7 +115,7 @@ public class ShadowTableServiceImpl extends AbstractDsService {
 
     private void syncInfo(Long applicationId, String applicationName) {
         //同步配置
-        configSyncService.syncShadowDB(WebPluginUtils.getTenantUserAppKey(), applicationId, null);
+        configSyncService.syncShadowDB(WebPluginUtils.traceTenantCommonExt(), applicationId, null);
         //修改应用状态
         applicationService.modifyAccessStatus(String.valueOf(applicationId),
                 AppAccessTypeEnum.UNUPLOAD.getValue(), null);

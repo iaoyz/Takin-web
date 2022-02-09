@@ -1,42 +1,100 @@
 package io.shulie.takin.web.biz.service.report;
 
-import com.pamirs.takin.entity.domain.dto.report.ReportTraceQueryDTO;
-import com.pamirs.takin.entity.domain.vo.report.ReportQueryParam;
-import com.pamirs.takin.entity.domain.vo.report.ReportTrendQueryParam;
-import com.pamirs.takin.entity.domain.vo.sla.WarnQueryParam;
-import io.shulie.takin.web.common.domain.WebResponse;
-
 import java.util.List;
 import java.util.Map;
+
+import com.pamirs.takin.entity.domain.dto.report.ReportDTO;
+import com.pamirs.takin.entity.domain.vo.report.ReportQueryParam;
+import io.shulie.takin.cloud.sdk.model.request.report.ReportTrendQueryReq;
+import io.shulie.takin.cloud.sdk.model.request.report.WarnQueryReq;
+import io.shulie.takin.cloud.sdk.model.response.report.ActivityResponse;
+import io.shulie.takin.cloud.sdk.model.response.report.MetricesResponse;
+import io.shulie.takin.cloud.sdk.model.response.report.NodeTreeSummaryResp;
+import io.shulie.takin.cloud.sdk.model.response.report.ReportTrendResp;
+import io.shulie.takin.cloud.sdk.model.response.report.ScriptNodeTreeResp;
+import io.shulie.takin.cloud.sdk.model.response.scenemanage.WarnDetailResponse;
+import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.web.biz.pojo.output.report.ReportDetailOutput;
+import io.shulie.takin.web.biz.pojo.output.report.ReportDetailTempOutput;
+import io.shulie.takin.web.biz.pojo.output.report.ReportJtlDownloadOutput;
+import io.shulie.takin.web.biz.pojo.request.report.ReportQueryRequest;
 
 /**
  * @author qianshui
  * @date 2020/5/12 下午3:33
  */
 public interface ReportService {
+    /**
+     * 查询报告列表
+     *
+     * @param param 入参
+     * @return 报告列表
+     */
+    ResponseResult<List<ReportDTO>> listReport(ReportQueryParam param);
 
-    WebResponse listReport(ReportQueryParam param);
+    /**
+     * 根据报告主键查询报告详情
+     *
+     * @param reportId 报告主键
+     * @return 报告详情
+     */
+    ReportDetailOutput getReportByReportId(Long reportId);
 
-    WebResponse getReportByReportId(Long reportId);
+    /**
+     * 查询报告趋势
+     *
+     * @param param 入参
+     * @return 报告趋势
+     */
+    ReportTrendResp queryReportTrend(ReportTrendQueryReq param);
 
-    WebResponse queryReportTrend(ReportTrendQueryParam param);
-    WebResponse queryReportTrendWithTopology(ReportTrendQueryParam reportTrendQuery);
+    /**
+     * 报告实况详情
+     *
+     * @param sceneId 场景主键
+     * @return 报告实况详情
+     */
+    ReportDetailTempOutput tempReportDetail(Long sceneId);
 
-    WebResponse tempReportDetail(Long sceneId);
+    /**
+     * 报告实况趋势
+     *
+     * @param param 入参
+     * @return 报告实况趋势
+     */
+    ReportTrendResp queryTempReportTrend(ReportTrendQueryReq param);
 
-    WebResponse queryTempReportTrend(ReportTrendQueryParam param);
-    WebResponse queryTempReportTrendWithTopology(ReportTrendQueryParam reportTrendQuery,
-                                                 ReportTraceQueryDTO queryDTO);
+    /**
+     * 列出警告
+     *
+     * @param req 入参
+     * @return 警告列表
+     */
+    ResponseResult<List<WarnDetailResponse>> listWarn(WarnQueryReq req);
 
-    WebResponse listWarn(WarnQueryParam param);
+    /**
+     * 根据报告主键查询业务活动
+     *
+     * @param reportId 报告主键
+     * @return 业务活动列表
+     */
+    List<ActivityResponse> queryReportActivityByReportId(Long reportId);
 
-    WebResponse queryReportActivityByReportId(Long reportId);
+    /**
+     * 根据场景主键查询业务活动
+     *
+     * @param sceneId 场景主键
+     * @return 业务活动列表
+     */
+    List<ActivityResponse> queryReportActivityBySceneId(Long sceneId);
 
-    WebResponse queryReportActivityBySceneId(Long sceneId);
-
-    WebResponse querySummaryList(Long reportId);
-
-    WebResponse queryMetrices(Long reportId, Long sceneId, Long customerId);
+    /**
+     * 查询报告详情
+     *
+     * @param reportId 报告主键
+     * @return 报告详情
+     */
+    NodeTreeSummaryResp querySummaryList(Long reportId);
 
     /**
      * 获取指标列表
@@ -45,22 +103,66 @@ public interface ReportService {
      * 两个 key
      *
      * @param reportId 报告 id
-     * @param sceneId 场景 id
-     * @param customerId 租户 id
+     * @param sceneId  场景 id
      * @return 指标列表
      */
-    List<Map<String, Object>> listMetrics(Long reportId, Long sceneId, Long customerId);
+    List<MetricesResponse> queryMetrics(Long reportId, Long sceneId);
 
-    WebResponse queryReportCount(Long reportId);
+    /**
+     * 查询报告的警告数量
+     *
+     * @param reportId 报告主键
+     * @return 警告信息
+     */
+    Map<String, Object> queryReportCount(Long reportId);
 
-    WebResponse queryRunningReport();
+    /**
+     * 锁定报告
+     *
+     * @param reportId 报告主键
+     * @return 操作结果
+     */
+    Boolean lockReport(Long reportId);
 
-    WebResponse queryListRunningReport();
+    /**
+     * 解锁报告
+     *
+     * @param reportId 报告主键
+     * @return 操作结果
+     */
+    Boolean unLockReport(Long reportId);
 
-    WebResponse lockReport(Long reportId);
+    /**
+     * 结束报告
+     *
+     * @param reportId 报告主键
+     * @return 操作结果
+     */
+    Boolean finishReport(Long reportId);
 
-    WebResponse unLockReport(Long reportId);
+    /**
+     * 查询脚本节点树
+     *
+     * @param request 查询参数
+     * @return 脚本节点数
+     */
+    ResponseResult<List<ScriptNodeTreeResp>> queryNodeTree(ReportQueryRequest request);
 
-    WebResponse finishReport(Long reportId);
+    /**
+     * 下载jtl路径
+     *
+     * @param reportId 报告主键
+     * @return JTL文件下载路径
+     */
+    ReportJtlDownloadOutput getJtlDownLoadUrl(Long reportId);
+
+
+    /**
+     * 用于finishjob判断报告的状态
+     * 根据报告主键查询报告详情
+     * @param id 报告主键
+     * @return 报告详情
+     */
+    ReportDetailOutput getReportById(Long id);
 
 }

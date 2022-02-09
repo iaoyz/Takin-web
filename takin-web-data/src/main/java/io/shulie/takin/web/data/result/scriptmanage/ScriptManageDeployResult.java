@@ -76,10 +76,15 @@ public class ScriptManageDeployResult {
     /**
      * 租户id
      */
-    private Long customerId;
+    private Long tenantId;
 
     /**
      * 用户id
      */
     private Long userId;
+
+    /**
+     * 脚本版本
+     */
+    private Integer mVersion;
 }

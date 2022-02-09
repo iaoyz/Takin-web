@@ -3,13 +3,17 @@ package io.shulie.takin.web.data.param.application;
 import java.util.Date;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 
 /**
  * @author fanxx
  * @date 2020/11/4 5:53 下午
  */
 @Data
-public class ApplicationApiCreateParam {
+@EqualsAndHashCode(callSuper = true)
+public class ApplicationApiCreateParam extends TenantCommonExt {
     /**
      * 主键
      */
@@ -36,11 +40,6 @@ public class ApplicationApiCreateParam {
     private Date updateTime;
 
     /**
-     * 租户id
-     */
-    private Long customerId;
-
-    /**
      * 用户id
      */
     private Long userId;
@@ -50,5 +49,7 @@ public class ApplicationApiCreateParam {
      */
     private Byte isDeleted;
 
-    private String requestMethod;
+    private String method;
+
+    private Integer isAgentRegiste;
 }

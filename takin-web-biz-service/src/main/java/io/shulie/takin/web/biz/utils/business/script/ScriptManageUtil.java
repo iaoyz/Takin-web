@@ -12,11 +12,12 @@ import com.alibaba.fastjson.JSONObject;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.google.common.base.Joiner;
 import com.pamirs.takin.common.constant.SceneManageConstant;
 import com.pamirs.takin.common.util.DateUtils;
 import com.pamirs.takin.entity.domain.vo.scenemanage.SceneBusinessActivityRefVO;
-import io.shulie.takin.cloud.open.req.scenemanage.SceneBusinessActivityRefOpen;
-import io.shulie.takin.cloud.open.req.scenemanage.SceneScriptRefOpen;
+import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneBusinessActivityRefOpen;
+import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneScriptRefOpen;
 import io.shulie.takin.web.biz.constant.BusinessActivityRedisKeyConstant;
 import io.shulie.takin.web.biz.pojo.response.filemanage.FileManageResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResponse;
@@ -24,7 +25,10 @@ import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDeta
 import io.shulie.takin.web.common.constant.FeaturesConstants;
 import io.shulie.takin.web.common.constant.ScriptManageConstants;
 import io.shulie.takin.web.common.util.JsonUtil;
+import io.shulie.takin.web.data.model.mysql.BusinessLinkManageTableEntity;
+import io.shulie.takin.web.data.result.scene.SceneLinkRelateResult;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 /**
  * 脚本相关业务工具类
@@ -66,6 +70,7 @@ public class ScriptManageUtil {
             extend.put(SceneManageConstant.DATA_COUNT, file.getDataCount());
             extend.put(SceneManageConstant.IS_SPLIT, file.getIsSplit());
             extend.put(SceneManageConstant.IS_ORDER_SPLIT, file.getIsOrderSplit());
+            extend.put(SceneManageConstant.IS_BIG_FILE,file.getIsBigFile());
             ref.setFileExtend(JsonUtil.bean2Json(extend));
 
             ref.setIsDeleted(file.getIsDeleted());

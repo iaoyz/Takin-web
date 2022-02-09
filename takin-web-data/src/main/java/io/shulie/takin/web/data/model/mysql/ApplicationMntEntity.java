@@ -2,19 +2,25 @@ package io.shulie.takin.web.data.model.mysql;
 
 import java.util.Date;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
+import com.baomidou.mybatisplus.annotation.TableField;
+
+import io.shulie.takin.web.data.model.mysql.base.UserBaseEntity;
 
 /**
  * 应用管理表
+ *
+ * @author TODO
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName(value = "t_application_mnt")
-public class ApplicationMntEntity {
+public class ApplicationMntEntity extends UserBaseEntity {
 
     /**
      * 主键
@@ -136,15 +142,4 @@ public class ApplicationMntEntity {
     @TableField(value = "PRADAR_VERSION")
     private String pradarVersion;
 
-    /**
-     * 租户id
-     */
-    @TableField(value = "customer_id", fill = FieldFill.INSERT)
-    private Long customerId;
-
-    /**
-     * 用户id
-     */
-    @TableField(value = "user_id", fill = FieldFill.INSERT)
-    private Long userId;
 }

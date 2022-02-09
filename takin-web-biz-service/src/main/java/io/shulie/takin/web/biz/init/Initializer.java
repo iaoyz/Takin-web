@@ -1,5 +1,6 @@
 package io.shulie.takin.web.biz.init;
 
+import io.shulie.takin.web.biz.init.fix.ActivityFixer;
 import io.shulie.takin.web.biz.init.fix.BlacklistDataFixer;
 import io.shulie.takin.web.biz.init.fix.LinkManageFixer;
 import io.shulie.takin.web.biz.init.fix.RemoteCallFixer;
@@ -39,34 +40,39 @@ public class Initializer implements InitializingBean {
     private WhitelistEffectAppNameDataFixer whitelistEffectAppNameDataFixer;
 
     @Autowired
-    private RemoteCallFixer remoteCallFixer;
-
-    @Autowired
     ApplicationPluginsConfigService configService;
 
     @Autowired
     OpsScriptManageService opsScriptManageService;
+    @Autowired
+    private RemoteCallFixer remoteCallFixer;
+
+    @Autowired
+    ActivityFixer activityFixer;
 
     /**
      * 所有项目启动需要做的事情都统一注册在这里
      */
     @Override
-    public void afterPropertiesSet() throws Exception {
+    public void afterPropertiesSet() {
         // 将agent需要的配置同步到文件、redis、zk等
         new Thread(() -> configSynchronizer.initSyncAgentConfig()).start();
         new Thread(() -> linkManageFixer.fix()).start();
         // 黑名单数据补全
         new Thread(() -> blacklistDataFixer.fix()).start();
         // 白名单生效应用数据订正
-        new Thread(() -> whitelistEffectAppNameDataFixer.fix()).start();
+        //new Thread(() -> whitelistEffectAppNameDataFixer.fix()).start();
         new Thread(() -> pradarConfigService.initZooKeeperData()).start();
         // 白名单数据修复
         new Thread(() -> whitelistDataFixer.fix()).start();
         //插件管理->给老版本的应用设置默认影子key过期时间
         new Thread(() -> configService.init()).start();
-        // 白名单数据迁移
-        //new Thread(() -> remoteCallFixer.fix()).start();
+        // 白名单修复
+        new Thread(() -> remoteCallFixer.fix()).start();
         // 校验是否有此用户，没有则创建。用于用户执行运维脚本
         new Thread(() -> opsScriptManageService.init()).start();
+        //将历史数据业务活动字段entrance字段中的applicationName拆分出来
+        new Thread(() -> activityFixer.fix()).start();
+
     }
 }

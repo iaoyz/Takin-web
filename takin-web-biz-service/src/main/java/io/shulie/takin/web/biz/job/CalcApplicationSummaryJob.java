@@ -1,19 +1,25 @@
 package io.shulie.takin.web.biz.job;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.dangdang.ddframe.job.api.ShardingContext;
 import com.dangdang.ddframe.job.api.simple.SimpleJob;
-import com.google.common.collect.Lists;
 import io.shulie.takin.job.annotation.ElasticSchedulerJob;
-import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.web.biz.service.report.ReportService;
+import io.shulie.takin.web.biz.common.AbstractSceneTask;
 import io.shulie.takin.web.biz.service.report.ReportTaskService;
-import io.shulie.takin.web.common.domain.WebResponse;
+import io.shulie.takin.web.common.pojo.dto.SceneTaskDto;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 /**
  * @author 无涯
@@ -27,34 +33,76 @@ import org.springframework.stereotype.Component;
     cron = "*/10 * * * * ?",
     description = "汇总应用 机器数 风险机器数")
 @Slf4j
-public class CalcApplicationSummaryJob implements SimpleJob {
+public class CalcApplicationSummaryJob extends AbstractSceneTask implements SimpleJob {
+
     @Autowired
     private ReportTaskService reportTaskService;
-    @Autowired
-    private ReportService reportService;
 
-    @Value("${open.report.task:true}")
-    private Boolean openReportTask;
+    @Autowired
+    @Qualifier("reportSummaryThreadPool")
+    private ThreadPoolExecutor reportThreadPool;
+
+    private static Map<Long, AtomicInteger> runningTasks = new ConcurrentHashMap<>();
+    private static AtomicInteger EMPTY = new AtomicInteger();
 
     @Override
     public void execute(ShardingContext shardingContext) {
-        if (!openReportTask) {
-            return;
-        }
         long start = System.currentTimeMillis();
-        List<Object> reportIds = Lists.newArrayList();
-        WebResponse runningResponse = reportService.queryListRunningReport();
-        if (runningResponse.getSuccess() == true && runningResponse.getData() != null) {
-            reportIds.addAll((List)runningResponse.getData());
-        }
-        log.info("获取正在压测中的报告:{}", JsonHelper.bean2Json(reportIds));
-        for (Object obj : reportIds) {
-            // 开始数据层分片
-            long reportId = Long.parseLong(String.valueOf(obj));
-            if (reportId % shardingContext.getShardingTotalCount() == shardingContext.getShardingItem()) {
-                reportTaskService.calcApplicationSummary(reportId);
+        final Boolean openVersion = WebPluginUtils.isOpenVersion();
+        while (true) {
+            List<SceneTaskDto> taskDtoList = getTaskFromRedis();
+            if (taskDtoList == null) { break; }
+            if (openVersion) {
+                for (SceneTaskDto taskDto : taskDtoList) {
+                    Long reportId = taskDto.getReportId();
+                    // 开始数据层分片
+                    if (reportId % shardingContext.getShardingTotalCount() == shardingContext.getShardingItem()) {
+                        Object task = runningTasks.putIfAbsent(reportId, EMPTY);
+                        if (task == null) {
+                            reportThreadPool.execute(() -> {
+                                try {
+                                    reportTaskService.calcApplicationSummary(reportId);
+                                } catch (Throwable e) {
+                                    log.error(
+                                        "execute CalcApplicationSummaryJob occured error. reportId= {},errorMsg={}",
+                                        reportId, e.getMessage(), e);
+                                } finally {
+                                    runningTasks.remove(reportId);
+                                }
+                            });
+                        }
+                    }
+                }
+            } else {
+               this.runTask(taskDtoList,shardingContext);
             }
         }
-        log.info("calcApplicationSummaryJob 执行时间:{}", System.currentTimeMillis() - start);
+
+        log.debug("calcApplicationSummaryJob 执行时间:{}", System.currentTimeMillis() - start);
     }
+
+    @Override
+    protected void runTaskInTenantIfNecessary(SceneTaskDto tenantTask, Long reportId) {
+        //将任务放入线程池
+        reportThreadPool.execute(() -> {
+            try {
+                WebPluginUtils.setTraceTenantContext(tenantTask);
+                reportTaskService.calcApplicationSummary(tenantTask.getReportId());
+            } catch (Throwable e) {
+                log.error("execute CalcApplicationSummaryJob occured error. reportId={}", reportId, e);
+            } finally {
+                AtomicInteger currentRunningThreads = runningTasks.get(tenantTask.getTenantId());
+                if (currentRunningThreads != null) {
+                    currentRunningThreads.decrementAndGet();
+                }
+
+            }
+        });
+    }
+
+    @Override
+    protected Map<Long, AtomicInteger> getRunningTasks() {
+        return runningTasks;
+    }
+
 }

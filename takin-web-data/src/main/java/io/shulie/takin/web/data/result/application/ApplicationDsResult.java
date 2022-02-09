@@ -55,7 +55,7 @@ public class ApplicationDsResult {
     /**
      * 租户id
      */
-    private Long customerId;
+    private Long tenantId;
 
     /**
      * 用户id
@@ -77,8 +77,7 @@ public class ApplicationDsResult {
      */
     private Integer isDeleted;
 
-
-    public String getFilterStr(){
-        return this.getUrl()+"@@"+""+"@@"+"";
+    public String getFilterStr() {
+        return this.getUrl() + "@@" + "" + "@@" + "";
     }
 }
