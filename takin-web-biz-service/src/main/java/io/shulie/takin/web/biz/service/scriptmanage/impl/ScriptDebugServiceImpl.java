@@ -13,7 +13,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.alibaba.fastjson.JSON;
@@ -122,6 +121,7 @@ import io.shulie.takin.web.data.result.scriptmanage.ScriptManageDeployResult;
 import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.diff.api.scenetask.SceneTaskApi;
 import io.shulie.takin.web.ext.entity.UserExt;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -143,13 +143,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class ScriptDebugServiceImpl implements ScriptDebugService {
 
-    /**
-     * 脚本调试支持的 rpcType mq 下的
-     * 以 逗号隔开
-     * 默认 kafka, 可以扩展 rocket mq 等..
-     * 暂时这么设计
-     */
-    private String supportRpcType;
     @Value("${file.upload.script.path:/nfs/takin/script/}")
     private String scriptFilePath;
 
@@ -199,11 +192,6 @@ public class ScriptDebugServiceImpl implements ScriptDebugService {
     @Resource
     @Qualifier("redisTemplate")
     private RedisTemplate redisTemplate;
-
-    @PostConstruct
-    public void init() {
-        supportRpcType = ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_SCRIPT_DEBUG_RPC_TYPE);
-    }
 
     @Resource
     private ApplicationService applicationService;
@@ -291,8 +279,9 @@ public class ScriptDebugServiceImpl implements ScriptDebugService {
         try {
 
             //探针总开关关闭状态禁止启动压测
+            TenantCommonExt tenantCommonExt = WebPluginUtils.traceTenantCommonExt();
             ScriptDebugExceptionUtil.isDebugError(
-                applicationService.silenceSwitchStatusIsTrue(WebPluginUtils.traceTenantCommonExt(), AppSwitchEnum.CLOSED),
+                applicationService.silenceSwitchStatusIsTrue(tenantCommonExt, AppSwitchEnum.CLOSED),
                 "脚本调试失败，探针总开关已关闭");
             // 脚本发布实例是否存在
             ScriptManageDeployResult scriptDeploy = scriptManageDAO.selectScriptManageDeployById(scriptDeployId);
@@ -596,7 +585,7 @@ public class ScriptDebugServiceImpl implements ScriptDebugService {
 
             // rpcType 判断
             ScriptDebugExceptionUtil.isDebugError(!this.checkBusinessActivityRpcType(businessActivity),
-                String.format("脚本调试暂时支持 http, %s 的业务活动!", supportRpcType));
+                String.format("脚本调试暂时支持 http, %s 的业务活动!", ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_SCRIPT_DEBUG_RPC_TYPE)));
 
             // 应用名称获得
             return businessActivity.getApplicationName();
@@ -1368,7 +1357,7 @@ public class ScriptDebugServiceImpl implements ScriptDebugService {
             LinkManageTableFeaturesVO featureObject = JsonUtil.json2Bean(features, LinkManageTableFeaturesVO.class);
 
             // 配置的支持类型, 是否包含
-            List<String> supportRpcTypeList = Arrays.asList(supportRpcType.split(AppConstants.COMMA));
+            List<String> supportRpcTypeList = Arrays.asList(ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_SCRIPT_DEBUG_RPC_TYPE).split(AppConstants.COMMA));
             return supportRpcTypeList.contains(featureObject.getServerMiddlewareType());
         }
 
