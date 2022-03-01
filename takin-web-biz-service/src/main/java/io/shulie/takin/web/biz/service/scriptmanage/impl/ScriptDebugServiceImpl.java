@@ -335,7 +335,8 @@ public class ScriptDebugServiceImpl implements ScriptDebugService {
             callBackToWriteBalance(cloudResponse, scriptDebug.getId());
 
             log.info("调试 --> 异步启动循环查询启动成功, 压测完成!");
-            fastDebugThreadPool.execute(this.checkPressureStatus(scriptDebug));
+            tenantCommonExt.setSource(ContextSourceEnum.JOB_SCRIPT_DEBUG.getCode());
+            fastDebugThreadPool.execute(this.checkPressureStatus(scriptDebug,tenantCommonExt));
 
             log.info("调试 --> 接口完成!");
             return response;
@@ -887,8 +888,10 @@ public class ScriptDebugServiceImpl implements ScriptDebugService {
      * @param scriptDebug 调试记录
      * @return 可运行
      */
-    private Runnable checkPressureStatus(ScriptDebugEntity scriptDebug) {
+    private Runnable checkPressureStatus(ScriptDebugEntity scriptDebug,TenantCommonExt tenantCommonExt) {
         return () -> {
+            // 赋值上下文
+            WebPluginUtils.setTraceTenantContext(tenantCommonExt);
             // 准备更新的调试记录
             ScriptDebugEntity newScriptDebug = new ScriptDebugEntity();
             newScriptDebug.setId(scriptDebug.getId());
