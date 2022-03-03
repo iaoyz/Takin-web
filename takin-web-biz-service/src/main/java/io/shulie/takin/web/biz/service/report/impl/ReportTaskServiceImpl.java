@@ -106,7 +106,6 @@ public class ReportTaskServiceImpl implements ReportTaskService {
             // 分布式锁
             String lockKey = JobRedisUtils.getRedisJobReport(WebPluginUtils.traceTenantId(), WebPluginUtils.traceEnvCode(),reportId);
             if (!distributedLock.checkLock(lockKey)) {
-                log.info("收集数据 单独线程收集 {}",report);
                 // 收集数据 单独线程收集
                 collectDataThreadPool.execute(collectData(reportId,commonExt,lockKey));
             }
@@ -222,8 +221,9 @@ public class ReportTaskServiceImpl implements ReportTaskService {
             if(!tryLock) {
                 return;
             }
+            WebPluginUtils.setTraceTenantContext(commonExt);
+
             try {
-                WebPluginUtils.setTraceTenantContext(commonExt);
                 // 检查风险机器
                 problemAnalysisService.checkRisk(reportId);
             } catch (Exception e) {
