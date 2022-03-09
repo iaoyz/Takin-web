@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -312,6 +313,10 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
 
     @Autowired
     private ApplicationDsDbManageDAO dsDbManageDAO;
+
+    @Autowired
+    @Qualifier("agentDataThreadPool")
+    private ThreadPoolExecutor agentDataThreadPool;
 
 
     @PostConstruct
@@ -671,7 +676,10 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
     public Response<String> uploadAccessStatus(NodeUploadDataDTO param) {
         param.setSource(ContextSourceEnum.AGENT.getCode());
         WebPluginUtils.transferTenantParam(WebPluginUtils.traceTenantCommonExt(), param);
-        this.uploadAppStatus(param);
+        agentDataThreadPool.execute(() -> {
+            this.uploadAppStatus(param);
+        });
+
         return Response.success("上传应用状态信息成功");
     }
 
@@ -684,12 +692,7 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
                     "节点唯一key|应用名称 不能为空");
         }
 
-        UserExt user = WebPluginUtils.traceUser();
-        String userAppKey = WebPluginUtils.traceTenantAppKey();
-        if (WebPluginUtils.checkUserPlugin() && user == null) {
-            log.error("未获取到{}用户信息", userAppKey);
-            return;
-        }
+        String tenantAppKey = WebPluginUtils.traceTenantAppKey();
 
         ApplicationDetailResult applicationMnt = this.queryTApplicationMntByName(param.getApplicationName());
 
@@ -701,12 +704,12 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
         if (param.getSwitchErrorMap() != null && !param.getSwitchErrorMap().isEmpty()) {
             //应用id+ agent id唯一键 作为节点信息
             String envCode = WebPluginUtils.traceEnvCode();
-            String key = CommonUtil.generateRedisKeyWithSeparator(Separator.Separator3, userAppKey, envCode,
+            String key = CommonUtil.generateRedisKeyWithSeparator(Separator.Separator3, tenantAppKey, envCode,
                     applicationMnt.getApplicationId() + PRADAR_SEPERATE_FLAG + param.getAgentId());
             List<String> nodeUploadDataDTOList = redisTemplate.opsForList().range(key, 0, -1);
             if (CollectionUtils.isEmpty(nodeUploadDataDTOList) || nodeUploadDataDTOList.size() <= appErrorNum) {
                 //节点key信息
-                String nodeSetKey = CommonUtil.generateRedisKeyWithSeparator(Separator.Separator3, userAppKey, envCode,
+                String nodeSetKey = CommonUtil.generateRedisKeyWithSeparator(Separator.Separator3, tenantAppKey, envCode,
                         applicationMnt.getApplicationId() + PRADARNODE_KEYSET);
                 redisTemplate.opsForSet().add(nodeSetKey, key);
                 redisTemplate.expire(nodeSetKey, 1, TimeUnit.DAYS);
@@ -718,13 +721,6 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
                 redisTemplate.opsForList().leftPush(key, JSONObject.toJSONString(param));
                 redisTemplate.opsForList().trim(key,0,19);
             }
-            //3：应用异常
-            applicationDAO.updateApplicationStatus(applicationMnt.getApplicationId(),
-                    AppAccessStatusEnum.EXCEPTION.getCode());
-        } else {
-            // 应用正常
-            applicationDAO.updateApplicationStatus(applicationMnt.getApplicationId(),
-                    AppAccessStatusEnum.NORMAL.getCode());
         }
     }
 
@@ -958,8 +954,8 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
 
         List<ExcelSheetVO<?>> sheets = new ArrayList<>();
 
-        // 影子库/表
-        sheets.add(this.getShadowSheet(applicationId));
+        // // 影子库/表 由于不支持新版影子库表导入导出
+        // sheets.add(this.getShadowSheet(applicationId));
 
         // 出口挡板配置
         sheets.add(this.getLinkGuardSheet(applicationId));
@@ -1551,8 +1547,8 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
             throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_MANAGE_VALIDATE_ERROR, "应用不存在!");
         }
 
-        // 保存 影子库/表
-        this.saveDsFromImport(applicationId, configMap.get(AppConfigSheetEnum.DADABASE.getDesc()));
+        // 保存 影子库/表 不支持新版影子库表的导入导出
+        // this.saveDsFromImport(applicationId, configMap.get(AppConfigSheetEnum.DADABASE.getDesc()));
 
         // 保存挡板
         if (configMap.containsKey(AppConfigSheetEnum.GUARD.getDesc())) {
@@ -1993,9 +1989,9 @@ public class ApplicationServiceImpl implements ApplicationService, WhiteListCons
         Assert.isTrue(StringUtils.isNotBlank(statusString), "状态 必须填写!");
         createRequest.setStatus(Integer.valueOf(statusString));
 
-        // 配置 判断
+        // 配置 判断 无需判断了 by 无涯 2022.3.2
         String config = ds.get(index++);
-        Assert.isTrue(StringUtils.isNotBlank(config), "xml 必须填写!");
+        //Assert.isTrue(StringUtils.isNotBlank(config), "xml 必须填写!");
         createRequest.setConfig(config);
 
         // 新版agent 影子库, 不需要判断, 其他都判断
