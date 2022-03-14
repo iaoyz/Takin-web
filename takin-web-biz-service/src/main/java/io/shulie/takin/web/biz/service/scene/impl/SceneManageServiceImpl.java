@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -521,6 +522,13 @@ public class SceneManageServiceImpl implements SceneManageService {
             }
         } else {
             data.setIsScheduler(false);
+        }
+
+        // 处理递增时长单位转换问题：秒->分
+        TimeBean increasingTime = data.getIncreasingTime();
+        if (increasingTime != null && !TimeUnitEnum.MINUTE.getValue().equals(increasingTime.getUnit())) {
+            increasingTime.setTime(TimeUnit.MINUTES.convert(increasingTime.getSecondTime(), TimeUnit.SECONDS));
+            increasingTime.setUnit(TimeUnitEnum.MINUTE.getValue());
         }
         sceneDetail.setData(data);
 
