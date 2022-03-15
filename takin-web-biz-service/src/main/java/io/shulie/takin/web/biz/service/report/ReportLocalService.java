@@ -32,5 +32,5 @@ public interface ReportLocalService {
 
     PageInfo<MachineDetailDTO> listMachineDetail(ReportLocalQueryParam queryParam);
 
-    Long getTraceFailedCount(ReportTraceQueryDTO queryDTO);
+    Long getTraceFailedCount(Long reportId);
 }

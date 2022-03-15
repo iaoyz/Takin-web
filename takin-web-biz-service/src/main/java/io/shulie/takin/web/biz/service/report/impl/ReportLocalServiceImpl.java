@@ -219,7 +219,9 @@ public class ReportLocalServiceImpl implements ReportLocalService {
     //}
 
     @Override
-    public Long getTraceFailedCount(ReportTraceQueryDTO queryDTO) {
+    public Long getTraceFailedCount(Long reportId) {
+        ReportTraceQueryDTO queryDTO = new ReportTraceQueryDTO();
+        queryDTO.setReportId(reportId);
         queryDTO.setPageSize(1);
         queryDTO.setType(LinkRequestResultTypeEnum.FAILED.getCode());
         PageInfo<ReportTraceDTO> failed = reportRealTimeService.getReportLinkListByReportId(queryDTO);
