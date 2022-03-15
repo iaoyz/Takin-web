@@ -14,6 +14,7 @@ import com.pamirs.takin.entity.domain.dto.report.MachineDetailDTO;
 import com.pamirs.takin.entity.domain.dto.report.ReportCountDTO;
 import com.pamirs.takin.entity.domain.dto.report.ReportDetailDTO;
 import com.pamirs.takin.entity.domain.dto.report.ReportPradarLinkDTO;
+import com.pamirs.takin.entity.domain.dto.report.ReportTraceQueryDTO;
 import com.pamirs.takin.entity.domain.dto.report.RiskApplicationCountDTO;
 import com.pamirs.takin.entity.domain.dto.report.RiskMacheineDTO;
 import com.pamirs.takin.entity.domain.risk.ReportLinkDetail;
@@ -111,11 +112,11 @@ public class ReportLocalController {
 
     @GetMapping("/report/application/trace/failedCount")
     @ApiOperation("请求流量明细失败次数")
-    public Response<Long> getTraceFailedCount(Long reportId) {
-        if (reportId == null) {
+    public Response<Long> getTraceFailedCount(ReportTraceQueryDTO queryDTO) {
+        if (queryDTO.getReportId() == null) {
             return Response.fail("报告id为空");
         }
-        return Response.success(reportLocalService.getTraceFailedCount(reportId));
+        return Response.success(reportLocalService.getTraceFailedCount(queryDTO));
     }
 
     @GetMapping("/report/machine/list")

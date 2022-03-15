@@ -20,6 +20,7 @@ import com.pamirs.takin.entity.domain.dto.report.BottleneckInterfaceDTO;
 import com.pamirs.takin.entity.domain.dto.report.MachineDetailDTO;
 import com.pamirs.takin.entity.domain.dto.report.ReportCountDTO;
 import com.pamirs.takin.entity.domain.dto.report.ReportTraceDTO;
+import com.pamirs.takin.entity.domain.dto.report.ReportTraceQueryDTO;
 import com.pamirs.takin.entity.domain.dto.report.RiskApplicationCountDTO;
 import com.pamirs.takin.entity.domain.dto.report.RiskMacheineDTO;
 import com.pamirs.takin.entity.domain.entity.report.TpsTargetArray;
@@ -218,11 +219,12 @@ public class ReportLocalServiceImpl implements ReportLocalService {
     //}
 
     @Override
-    public Long getTraceFailedCount(Long reportId) {
-        PageInfo<ReportTraceDTO> failed = reportRealTimeService.getReportLinkListByReportId(reportId,
-                LinkRequestResultTypeEnum.FAILED.getCode(), 0, 1);
-        PageInfo<ReportTraceDTO> failedAssert = reportRealTimeService.getReportLinkListByReportId(reportId,
-                LinkRequestResultTypeEnum.FAILED_ASSERT.getCode(), 0, 1);
+    public Long getTraceFailedCount(ReportTraceQueryDTO queryDTO) {
+        queryDTO.setPageSize(1);
+        queryDTO.setType(LinkRequestResultTypeEnum.FAILED.getCode());
+        PageInfo<ReportTraceDTO> failed = reportRealTimeService.getReportLinkListByReportId(queryDTO);
+        queryDTO.setType(LinkRequestResultTypeEnum.FAILED_ASSERT.getCode());
+        PageInfo<ReportTraceDTO> failedAssert = reportRealTimeService.getReportLinkListByReportId(queryDTO);
 
         long failedTotal = 0;
         long failedAssertTotal = 0;
