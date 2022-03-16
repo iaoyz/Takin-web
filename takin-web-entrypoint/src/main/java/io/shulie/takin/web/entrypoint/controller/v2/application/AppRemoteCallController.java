@@ -14,21 +14,22 @@ import io.shulie.takin.web.biz.constant.BizOpConstants.Message;
 import io.shulie.takin.web.biz.constant.BizOpConstants.OpTypes;
 import io.shulie.takin.web.biz.constant.BizOpConstants.Vars;
 import io.shulie.takin.web.biz.pojo.output.application.AppRemoteCallOutputV2;
+import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallBatchUpdateV2Request;
 import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallCreateV2Request;
 import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallDelV2Request;
 import io.shulie.takin.web.biz.pojo.request.application.AppRemoteCallUpdateV2Request;
 import io.shulie.takin.web.biz.pojo.response.application.AppRemoteCallStringResponse;
 import io.shulie.takin.web.biz.pojo.response.application.AppRemoteCallV2Response;
-import io.shulie.takin.web.biz.service.linkManage.AppRemoteCallService;
+import io.shulie.takin.web.biz.service.linkmanage.AppRemoteCallService;
 import io.shulie.takin.web.common.common.Response;
 import io.shulie.takin.web.common.constant.ApiUrls;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
-import io.shulie.takin.web.common.enums.application.AppRemoteCallConfigEnum;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -82,12 +83,12 @@ public class AppRemoteCallController {
             moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
             needAuth = ActionTypeEnum.CREATE
     )
-    public AppRemoteCallStringResponse insert(@ApiParam(required=true) @Valid @RequestBody AppRemoteCallCreateV2Request request) {
+    public AppRemoteCallStringResponse insert(@ApiParam(required=true) @Validated @RequestBody AppRemoteCallCreateV2Request request) {
         OperationLogContextHolder.operationType(OpTypes.CREATE);
         OperationLogContextHolder.addVars(Vars.APPLICATION_ID, String.valueOf(request.getApplicationId()));
         OperationLogContextHolder.addVars(Vars.INTERFACE, request.getInterfaceName());
         OperationLogContextHolder.addVars(Vars.INTERFACE_TYPE, request.getInterfaceType());
-        OperationLogContextHolder.addVars(Vars.REMOTE_CALL_CONFIG, AppRemoteCallConfigEnum.getEnum(request.getType()).getConfigName());
+        OperationLogContextHolder.addVars(Vars.REMOTE_CALL_CONFIG, String.valueOf(request.getType()));
         appRemoteCallService.create(request);
         return new AppRemoteCallStringResponse("操作成功");
     }
@@ -106,7 +107,7 @@ public class AppRemoteCallController {
     public AppRemoteCallStringResponse update(@ApiParam(required=true) @Valid @RequestBody AppRemoteCallUpdateV2Request request) {
         OperationLogContextHolder.operationType(OpTypes.UPDATE);
         OperationLogContextHolder.addVars(BizOpConstants.Vars.INTERFACE, request.getInterfaceName());
-        OperationLogContextHolder.addVars(BizOpConstants.Vars.REMOTE_CALL_CONFIG, AppRemoteCallConfigEnum.getEnum(request.getType()).getConfigName());
+        OperationLogContextHolder.addVars(BizOpConstants.Vars.REMOTE_CALL_CONFIG, String.valueOf(request.getType()));
         appRemoteCallService.updateV2(request);
         return new AppRemoteCallStringResponse("操作成功");
     }
@@ -140,5 +141,21 @@ public class AppRemoteCallController {
         OperationLogContextHolder.operationType(OpTypes.DELETE);
         appRemoteCallService.deleteById(request.getId());
         return Response.success();
+    }
+
+    @ApiOperation("批量远程调用编辑接口")
+    @PostMapping("/application/remote/call/update/batch")
+    @ModuleDef(
+            moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
+            subModuleName = BizOpConstants.SubModules.REMOTE_CALL,
+            logMsgKey = Message.MESSAGE_REMOTE_CALL_UPDATE
+    )
+    @AuthVerification(
+            moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
+            needAuth = ActionTypeEnum.UPDATE
+    )
+    public AppRemoteCallStringResponse batchUpdate(@ApiParam(required=true) @Valid @RequestBody AppRemoteCallBatchUpdateV2Request request) {
+        appRemoteCallService.batchUpdateV2(request);
+        return new AppRemoteCallStringResponse("操作成功");
     }
 }
