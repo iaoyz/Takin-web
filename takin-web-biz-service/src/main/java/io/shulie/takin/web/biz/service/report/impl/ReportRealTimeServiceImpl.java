@@ -11,6 +11,7 @@ import javax.annotation.Resource;
 
 import com.alibaba.fastjson.JSON;
 
+import com.pamirs.takin.entity.domain.dto.report.ReportTraceQueryDTO;
 import io.shulie.takin.cloud.entrypoint.scene.manage.SceneManageApi;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,7 +19,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.github.pagehelper.PageInfo;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.Lists;
-import org.springframework.http.HttpMethod;
+import org.springframework.beans.BeanUtils;
 import com.google.common.collect.HashBiMap;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -75,35 +76,44 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
     private BusinessLinkManageDAO businessLinkManageDAO;
 
     @Override
-    public PageInfo<ReportTraceDTO> getReportLinkList(Long reportId, Long sceneId, Long startTime,
-        Integer type, int current,
-        int pageSize) {
-        if (startTime == null) {
+    public PageInfo<ReportTraceDTO> getReportLinkList(ReportTraceQueryDTO queryDTO) {
+        if (queryDTO.getStartTime() == null) {
             return new PageInfo<>(Lists.newArrayList());
         }
+        Long reportId = queryDTO.getReportId();
+        Long sceneId = queryDTO.getSceneId();
         if (reportId == null) {
             reportId = sceneTaskService.getReportIdFromCache(sceneId);
             if (reportId == null) {
                 log.warn("get report id by sceneId is empty,sceneId：{}", sceneId);
             }
         }
-        // 取延迟1分钟时间 前5分钟数据 因为 agent上报数据需要1分钟计算出来
-        return getReportTraceDtoList(reportId, sceneId, System.currentTimeMillis() - 6 * 60 * 1000L,
-            System.currentTimeMillis() - (1 * 60 * 1000), type, current, pageSize);
+        // 取延迟1分钟时间 前5分钟数据 因为 agent上报数据需要1分钟计算出来：改为前端控制
+        return getReportTraceDtoList(queryDTO);
     }
 
     @Override
-    public PageInfo<ReportTraceDTO> getReportLinkListByReportId(Long reportId, Integer type, int current, int pageSize) {
+    public PageInfo<ReportTraceDTO> getReportLinkListByReportId(ReportTraceQueryDTO queryDTO) {
+        Long reportId = queryDTO.getReportId();
         ReportDetailOutput response = reportService.getReportByReportId(reportId);
         ReportDetailDTO reportDetail = BeanUtil.copyProperties(response, ReportDetailDTO.class);
 
         if (reportDetail == null || reportDetail.getStartTime() == null) {
             return new PageInfo<>(Lists.newArrayList());
         }
-        long startTime = DateUtil.parseSecondFormatter(reportDetail.getStartTime()).getTime() - 5 * 60 * 1000L;
+        Long startTime = queryDTO.getStartTime();
+        long reportStartTime = DateUtil.parseSecondFormatter(reportDetail.getStartTime()).getTime() - 5 * 60 * 1000L;
+        if (startTime == null || startTime.compareTo(0L) <= 0) {
+            queryDTO.setStartTime(reportStartTime);
+        }
         // 如果reportDetail.getEndTime()为空，取值5min,考虑到取当前时间的话，后续可能会查太多数据
-        long endTime = reportDetail.getEndTime() != null ? (reportDetail.getEndTime().getTime() + 5 * 60 * 1000L) : (startTime + 10 * 60 * 1000L);
-        return getReportTraceDtoList(reportId, reportDetail.getSceneId(), startTime, endTime, type, current, pageSize);
+        Long endTime = queryDTO.getEndTime();
+        if (endTime == null || endTime.compareTo(queryDTO.getStartTime()) <= 0) {
+            queryDTO.setEndTime(
+                reportDetail.getEndTime() != null ? (reportDetail.getEndTime().getTime() + 5 * 60 * 1000L) : (reportStartTime + 10 * 60 * 1000L));
+        }
+        queryDTO.setSceneId(reportDetail.getSceneId());
+        return getReportTraceDtoList(queryDTO);
     }
 
     @Override
@@ -286,10 +296,10 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         return item.getRequest();
     }
 
-    private PageInfo<ReportTraceDTO> getReportTraceDtoList(Long reportId, Long sceneId, Long startTime, Long endTime, Integer type, int current, int pageSize) {
+    private PageInfo<ReportTraceDTO> getReportTraceDtoList(ReportTraceQueryDTO queryDTO) {
         // 查询场景下的业务活动信息
         SceneManageWrapperResp response = cloudSceneApi.getSceneDetail(new SceneManageIdReq() {{
-            setId(sceneId);
+            setId(queryDTO.getSceneId());
         }});
         List<SceneBusinessActivityRefResp> businessActivityConfig = response.getBusinessActivityConfig();
         List<Long> businessActivityIdList = businessActivityConfig.stream().
@@ -299,19 +309,9 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         List<EntranceRuleDTO> entranceList = this.getEntryListByBusinessActivityIds(businessActivityIdList);
 
         TraceInfoQueryDTO traceInfoQueryDTO = new TraceInfoQueryDTO();
-
-        traceInfoQueryDTO.setStartTime(startTime);
-        traceInfoQueryDTO.setEndTime(endTime);
-        traceInfoQueryDTO.setReportId(reportId);
-
-        if (type != null) {
-            traceInfoQueryDTO.setType(String.valueOf(type));
-        }
-
-        //traceInfoQueryDTO.setEntranceList(entranceList);
+        BeanUtils.copyProperties(queryDTO, traceInfoQueryDTO);
         traceInfoQueryDTO.setEntranceRuleDTOS(entranceList);
-        traceInfoQueryDTO.setPageNum(current);
-        traceInfoQueryDTO.setPageSize(pageSize);
+        traceInfoQueryDTO.setPageNum(queryDTO.getRealCurrent());
         PagingList<EntryTraceInfoDTO> entryTraceInfoDtoPagingList = traceClient.listEntryTraceInfo(traceInfoQueryDTO);
         if (entryTraceInfoDtoPagingList.isEmpty()) {
             return new PageInfo<>(Collections.emptyList());

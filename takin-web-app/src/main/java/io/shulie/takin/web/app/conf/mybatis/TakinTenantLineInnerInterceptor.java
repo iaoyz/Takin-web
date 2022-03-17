@@ -75,7 +75,8 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         "t_interface_type_main",
         "t_interface_type_child",
         "t_interface_type_config",
-        "t_remote_call_config"
+        "t_remote_call_config",
+        "t_middleware_type"
     };
 
     private String[] tableArrWithoutEnvCode = new String[] {
@@ -107,7 +108,8 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         "t_interface_type_main",
         "t_interface_type_child",
         "t_remote_call_config",
-        "t_interface_type_config"
+        "t_interface_type_config",
+        "t_middleware_type"
     };
 
     private String[] tableArrWithoutUserId = new String[] {
@@ -139,7 +141,8 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         "t_interface_type_main",
         "t_interface_type_child",
         "t_interface_type_config",
-        "t_remote_call_config"
+        "t_remote_call_config",
+        "t_middleware_type"
     };
 
     /**
