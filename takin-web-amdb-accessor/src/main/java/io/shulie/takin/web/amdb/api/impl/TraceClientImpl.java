@@ -1,5 +1,6 @@
 package io.shulie.takin.web.amdb.api.impl;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -107,6 +108,10 @@ public class TraceClientImpl implements TraceClient {
             dto.setFieldNames("appName,serviceName,methodName,remoteIp,port,resultCode,cost,startTime,traceId");
             //固定查询影子链路明细数据
             dto.setClusterTest(1);
+            String traceId = query.getTraceId();
+            if (StringUtils.isNotBlank(traceId)) {
+                dto.setTraceIdList(Collections.singletonList(traceId));
+            }
             AmdbResult<List<EntryTraceInfoDTO>> response = AmdbHelper.builder().url(url)
                     .param(dto)
                     .exception(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR)
