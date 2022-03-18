@@ -37,6 +37,8 @@ public class TraceInfoQueryDTO implements Serializable {
      */
     private Long reportId;
 
+    private String traceId;
+
     /**
      * 耗时ms，比较规则 大于
      */
