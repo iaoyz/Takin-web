@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
@@ -64,7 +64,7 @@ public class AgentHeartbeatServiceImpl implements AgentHeartbeatService {
     private WebApplicationPluginUpgradeService applicationPluginUpgradeService;
 
     @Resource
-    private ThreadPoolExecutor agentHeartbeatThreadPool;
+    private ExecutorService agentHeartbeatThreadPool;
 
     /**
      * 非企业版处理器集合
@@ -129,14 +129,13 @@ public class AgentHeartbeatServiceImpl implements AgentHeartbeatService {
      * @return AgentHeartBeatBO对象
      */
     private AgentHeartbeatBO buildAgentHeartBeatBO(AgentHeartbeatRequest commandRequest) {
-        ApplicationDetailResult applicationMnt = applicationService.queryTApplicationMntByName(
-            commandRequest.getProjectName());
-        if (applicationMnt == null) {
+        Long applicationId = applicationService.queryApplicationIdByAppName(commandRequest.getProjectName());
+        if (applicationId == null) {
             throw new TakinWebException(ExceptionCode.AGENT_REGISTER_ERROR, "应用名不存在");
         }
 
         AgentHeartbeatBO agentHeartbeatBO = new AgentHeartbeatBO();
-        agentHeartbeatBO.setApplicationId(applicationMnt.getApplicationId());
+        agentHeartbeatBO.setApplicationId(applicationId);
         BeanUtils.copyProperties(commandRequest, agentHeartbeatBO);
 
         // 获取节点当前状态
