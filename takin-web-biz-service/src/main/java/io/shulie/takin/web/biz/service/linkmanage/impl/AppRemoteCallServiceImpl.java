@@ -798,7 +798,7 @@ public class AppRemoteCallServiceImpl implements AppRemoteCallService {
                 listVO.setAppName(call.getAppName());
                 listVO.setIsManual(false);
                 listVO.setDefaultWhiteInfo(StringUtils.defaultIfBlank(call.getDefaultWhiteInfo(), ""));
-                if (childEntityMap.containsKey(call.getMiddlewareDetail())) {
+                if (!childEntityMap.containsKey(call.getMiddlewareDetail())) {
                     listVO.setInterfaceChildType(call.getMiddlewareName());
                 } else {
                     listVO.setInterfaceChildType(call.getMiddlewareDetail());
