@@ -1,9 +1,9 @@
 package io.shulie.takin.web.biz.convert.db.parser;
 
-import com.pamirs.attach.plugin.dynamic.Converter;
-import com.pamirs.attach.plugin.dynamic.Type;
-import com.pamirs.attach.plugin.dynamic.template.Info;
-import com.pamirs.attach.plugin.dynamic.template.RedisTemplate;
+import com.pamirs.attach.plugin.dynamic.one.Converter;
+import com.pamirs.attach.plugin.dynamic.one.Type;
+import com.pamirs.attach.plugin.dynamic.one.template.Info;
+import com.pamirs.attach.plugin.dynamic.one.template.RedisTemplate;
 import com.pamirs.takin.common.enums.ds.DsTypeEnum;
 import com.pamirs.takin.entity.domain.entity.TBaseConfig;
 import io.shulie.takin.common.beans.component.SelectVO;
@@ -66,6 +66,7 @@ public class RedisTemplateParser extends AbstractTemplateParser {
         shadowDetailResponse.setConnectionPool(convert.getCacheName());
         shadowDetailResponse.setShadowInfo(convert.getShaDowFileExtedn());
         shadowDetailResponse.setCacheType(convert.getType());
+        shadowDetailResponse.setIsManual(convert.getSource());
         return shadowDetailResponse;
     }
 
