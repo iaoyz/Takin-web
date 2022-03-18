@@ -34,6 +34,9 @@ public class ReportTraceQueryDTO extends PageBaseDTO {
     @ApiModelProperty("查询条件，null 为全部，1为成功，0为失败, 2 断言失败")
     private Integer type;
 
+    @ApiModelProperty(value = "traceId")
+    private String traceId;
+
     @ApiModelProperty(value = "耗时ms，比较规则 大于")
     private Long minCost;
 
