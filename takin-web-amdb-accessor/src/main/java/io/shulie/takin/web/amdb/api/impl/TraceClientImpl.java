@@ -109,9 +109,7 @@ public class TraceClientImpl implements TraceClient {
             //固定查询影子链路明细数据
             dto.setClusterTest(1);
             String traceId = query.getTraceId();
-            if (StringUtils.isNotBlank(traceId)) {
-                dto.setTraceIdList(Collections.singletonList(traceId));
-            }
+            dto.setTraceIdList(traceId);
             AmdbResult<List<EntryTraceInfoDTO>> response = AmdbHelper.builder().url(url)
                     .param(dto)
                     .exception(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR)
