@@ -19,6 +19,9 @@ public class VersionServiceImpl implements VersionService {
     @Value("${takin.web.version:}")
     private String version;
 
+    @Value("${takin.web.upgrade.ignore-snapshot:true}")
+    private boolean ignoreSnapshot;
+
     @Resource
     private VersionDAO versionDAO;
 
@@ -47,7 +50,7 @@ public class VersionServiceImpl implements VersionService {
         if (userId == null || userId < 0) {
             userId = 0L;
         }
-        boolean show = !opsForValue.getBit(getConfirmKey(), userId);
+        boolean show = !(ignore() || opsForValue.getBit(getConfirmKey(), userId));
         if (StringUtils.isNotBlank(version)) {
             VersionVo vo = JsonHelper.json2Bean(version, VersionVo.class);
             vo.setShow(show);
@@ -61,7 +64,7 @@ public class VersionServiceImpl implements VersionService {
             vo.setPreVersion(preVersion);
         }
         vo.setCurVersion(least);
-        opsForValue.set(getCacheKey(), JsonHelper.bean2Json(vo));
+        opsForValue.set(cacheKey, JsonHelper.bean2Json(vo));
         vo.setShow(show);
         return vo;
     }
@@ -69,6 +72,11 @@ public class VersionServiceImpl implements VersionService {
     @Override
     public void confirm() {
         redisTemplate.opsForValue().setBit(getConfirmKey(), WebPluginUtils.traceUserId(), true);
+    }
+
+    @Override
+    public boolean ignore() {
+        return StringUtils.isBlank(version) || (ignoreSnapshot && StringUtils.endsWithIgnoreCase(version, "SNAPSHOT"));
     }
 
     // 更新版本信息缓存

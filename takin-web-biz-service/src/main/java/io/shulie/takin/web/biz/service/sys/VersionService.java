@@ -10,4 +10,6 @@ public interface VersionService {
     VersionVo selectVersion();
 
     void confirm();
+
+    boolean ignore();
 }
