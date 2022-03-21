@@ -297,12 +297,6 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
     }
 
     private PageInfo<ReportTraceDTO> getReportTraceDtoList(ReportTraceQueryDTO queryDTO) {
-        // 查询场景下的业务活动信息
-        SceneManageWrapperResp response = cloudSceneApi.getSceneDetail(new SceneManageIdReq() {{
-            setId(queryDTO.getSceneId());
-        }});
-        List<SceneBusinessActivityRefResp> businessActivityConfig = response.getBusinessActivityConfig();
-
         TraceInfoQueryDTO traceInfoQueryDTO = new TraceInfoQueryDTO();
         BeanUtils.copyProperties(queryDTO, traceInfoQueryDTO);
         traceInfoQueryDTO.setPageNum(queryDTO.getRealCurrent());
