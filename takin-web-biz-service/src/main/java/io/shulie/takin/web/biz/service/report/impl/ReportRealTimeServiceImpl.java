@@ -302,15 +302,9 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
             setId(queryDTO.getSceneId());
         }});
         List<SceneBusinessActivityRefResp> businessActivityConfig = response.getBusinessActivityConfig();
-        List<Long> businessActivityIdList = businessActivityConfig.stream().
-            map(SceneBusinessActivityRefResp::getBusinessActivityId).collect(Collectors.toList());
-
-        // entryList 获得
-        List<EntranceRuleDTO> entranceList = this.getEntryListByBusinessActivityIds(businessActivityIdList);
 
         TraceInfoQueryDTO traceInfoQueryDTO = new TraceInfoQueryDTO();
         BeanUtils.copyProperties(queryDTO, traceInfoQueryDTO);
-        traceInfoQueryDTO.setEntranceRuleDTOS(entranceList);
         traceInfoQueryDTO.setPageNum(queryDTO.getRealCurrent());
         PagingList<EntryTraceInfoDTO> entryTraceInfoDtoPagingList = traceClient.listEntryTraceInfo(traceInfoQueryDTO);
         if (entryTraceInfoDtoPagingList.isEmpty()) {
