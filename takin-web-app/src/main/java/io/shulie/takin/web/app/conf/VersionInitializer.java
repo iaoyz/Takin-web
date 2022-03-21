@@ -4,7 +4,6 @@ import javax.annotation.Resource;
 
 import io.shulie.takin.web.biz.service.sys.VersionService;
 import io.shulie.takin.web.data.model.mysql.VersionEntity;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationListener;
@@ -22,9 +21,6 @@ public class VersionInitializer implements ApplicationListener<ApplicationStarte
     @Value("${takin.web.upgrade.addr:}")
     private String url;
 
-    @Value("${takin.web.upgrade.ignore-snapshot:true}")
-    private boolean ignoreSnapshot;
-
     @Resource
     private VersionService versionService;
 
@@ -35,15 +31,11 @@ public class VersionInitializer implements ApplicationListener<ApplicationStarte
      */
     @Override
     public void onApplicationEvent(ApplicationStartedEvent event) {
-        if (!ignore()) {
+        if (!versionService.ignore()) {
             VersionEntity entity = new VersionEntity();
             entity.setVersion(version);
             entity.setUrl(url);
             versionService.publish(entity);
         }
-    }
-
-    private boolean ignore() {
-        return StringUtils.isBlank(version) || (ignoreSnapshot && StringUtils.endsWithIgnoreCase(version, "SNAPSHOT"));
     }
 }
