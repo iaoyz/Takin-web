@@ -100,7 +100,6 @@ public class TraceClientImpl implements TraceClient {
             if (query.getReportId() != null) {
                 dto.setTaskId(query.getReportId().toString());
             }
-            dto.setResultType(query.getType());
             dto.setCurrentPage(query.getPageNum());
             dto.setTenantAppKey(WebPluginUtils.traceTenantAppKey());
             dto.setEnvCode(WebPluginUtils.traceEnvCode());

@@ -84,6 +84,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         Long sceneId = queryDTO.getSceneId();
         if (reportId == null) {
             reportId = sceneTaskService.getReportIdFromCache(sceneId);
+            queryDTO.setReportId(reportId);
             if (reportId == null) {
                 log.warn("get report id by sceneId is empty,sceneId：{}", sceneId);
             }
@@ -297,8 +298,20 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
     }
 
     private PageInfo<ReportTraceDTO> getReportTraceDtoList(ReportTraceQueryDTO queryDTO) {
+        // 查询场景下的业务活动信息
+        SceneManageWrapperResp response = cloudSceneApi.getSceneDetail(new SceneManageIdReq() {{
+            setId(queryDTO.getSceneId());
+        }});
+        List<SceneBusinessActivityRefResp> businessActivityConfig = response.getBusinessActivityConfig();
+        List<Long> businessActivityIdList = businessActivityConfig.stream().
+            map(SceneBusinessActivityRefResp::getBusinessActivityId).collect(Collectors.toList());
+
+        // entryList 获得
+        List<EntranceRuleDTO> entranceList = this.getEntryListByBusinessActivityIds(businessActivityIdList);
+
         TraceInfoQueryDTO traceInfoQueryDTO = new TraceInfoQueryDTO();
         BeanUtils.copyProperties(queryDTO, traceInfoQueryDTO);
+        traceInfoQueryDTO.setEntranceRuleDTOS(entranceList);
         traceInfoQueryDTO.setPageNum(queryDTO.getRealCurrent());
         PagingList<EntryTraceInfoDTO> entryTraceInfoDtoPagingList = traceClient.listEntryTraceInfo(traceInfoQueryDTO);
         if (entryTraceInfoDtoPagingList.isEmpty()) {
