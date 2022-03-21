@@ -22,7 +22,7 @@ public class VersionController {
         return ResponseResult.success(versionService.selectVersion());
     }
 
-    @PutMapping("confirm")
+    @PutMapping("version/confirm")
     public ResponseResult<Boolean> confirm() {
         versionService.confirm();
         return ResponseResult.success(true);

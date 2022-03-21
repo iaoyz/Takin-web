@@ -101,9 +101,9 @@ public class QueryLinkDetailDTO extends PagingDevice {
     private String middlewareName;
 
     /**
-     * 调用接口：interfaceName (是否包含方法名)
+     * 方法名称
      */
-    private String interfaceName;
+    private String methodName;
 
     /**
      * 调用参数：request

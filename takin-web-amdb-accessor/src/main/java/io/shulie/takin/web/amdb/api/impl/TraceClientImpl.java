@@ -100,15 +100,13 @@ public class TraceClientImpl implements TraceClient {
             if (query.getReportId() != null) {
                 dto.setTaskId(query.getReportId().toString());
             }
-            dto.setResultType(query.getType());
             dto.setCurrentPage(query.getPageNum());
             dto.setTenantAppKey(WebPluginUtils.traceTenantAppKey());
             dto.setEnvCode(WebPluginUtils.traceEnvCode());
             dto.setFieldNames("appName,serviceName,methodName,remoteIp,port,resultCode,cost,startTime,traceId");
             //固定查询影子链路明细数据
             dto.setClusterTest(1);
-            String traceId = query.getTraceId();
-            dto.setTraceIdList(traceId);
+            dto.setTraceIdList(query.getTraceId());
             AmdbResult<List<EntryTraceInfoDTO>> response = AmdbHelper.builder().url(url)
                     .param(dto)
                     .exception(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR)

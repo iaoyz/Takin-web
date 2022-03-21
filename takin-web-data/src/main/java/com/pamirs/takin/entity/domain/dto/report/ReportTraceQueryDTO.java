@@ -32,7 +32,7 @@ public class ReportTraceQueryDTO extends PageBaseDTO {
     private Long endTime;
 
     @ApiModelProperty("查询条件，null 为全部，1为成功，0为失败, 2 断言失败")
-    private Integer type;
+    private Integer resultType;
 
     @ApiModelProperty(value = "traceId")
     private String traceId;
@@ -46,8 +46,11 @@ public class ReportTraceQueryDTO extends PageBaseDTO {
     @ApiModelProperty("调用类型")
     private String middlewareName;
 
-    @ApiModelProperty("调用接口")
-    private String interfaceName;
+    @ApiModelProperty("接口名")
+    private String serviceName;
+
+    @ApiModelProperty("方法名")
+    private String methodName;
 
     @ApiModelProperty("调用参数")
     private String request;
