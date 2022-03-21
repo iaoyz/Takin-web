@@ -69,7 +69,7 @@ public class TraceClientImpl implements TraceClient {
 
         // 结果类型
         if (dto.getResultTypeInt() != null) {
-            dto.setResultType(dto.getResultTypeInt().toString());
+            dto.setResultType(dto.getResultTypeInt());
         }
         // 默认
         dto.setFieldNames("appName,serviceName,methodName,remoteIp,port,resultCode,cost,startTime,traceId");
