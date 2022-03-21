@@ -18,7 +18,7 @@ public class TraceInfoQueryDTO implements Serializable {
 
     private Long endTime;
 
-    private String resultType;
+    private Integer resultType;
 
     private List<String> entranceList;
 
