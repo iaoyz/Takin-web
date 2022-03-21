@@ -1,5 +1,6 @@
 package io.shulie.takin.web.amdb.api.impl;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +30,7 @@ import io.shulie.takin.web.common.util.ActivityUtil.EntranceJoinEntity;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.takin.properties.AmdbClientProperties;
 import org.springframework.http.HttpMethod;
@@ -94,20 +96,20 @@ public class TraceClientImpl implements TraceClient {
         String url = properties.getUrl().getAmdb() + ENTRY_TRACE_PATH;
         try {
             QueryLinkDetailDTO dto = new QueryLinkDetailDTO();
+            BeanUtils.copyProperties(query, dto);
             if (query.getReportId() != null) {
                 dto.setTaskId(query.getReportId().toString());
             }
-            dto.setEndTime(query.getEndTime());
-            dto.setStartTime(query.getStartTime());
             dto.setResultType(query.getType());
             dto.setEntranceList(this.getEntryListString(query.getEntranceRuleDTOS()));
             dto.setCurrentPage(query.getPageNum());
-            dto.setPageSize(query.getPageSize());
             dto.setTenantAppKey(WebPluginUtils.traceTenantAppKey());
             dto.setEnvCode(WebPluginUtils.traceEnvCode());
             dto.setFieldNames("appName,serviceName,methodName,remoteIp,port,resultCode,cost,startTime,traceId");
             //固定查询影子链路明细数据
             dto.setClusterTest(1);
+            String traceId = query.getTraceId();
+            dto.setTraceIdList(traceId);
             AmdbResult<List<EntryTraceInfoDTO>> response = AmdbHelper.builder().url(url)
                     .param(dto)
                     .exception(TakinWebExceptionEnum.APPLICATION_ENTRANCE_THIRD_PARTY_ERROR)
