@@ -9,9 +9,8 @@ import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-
-import javax.annotation.PostConstruct;
 
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.amdb.api.ApplicationClient;
@@ -23,16 +22,17 @@ import io.shulie.takin.web.biz.pojo.response.common.IsNewAgentResponse;
 import io.shulie.takin.web.biz.service.ApiService;
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.DistributedLock;
-import io.shulie.takin.web.biz.utils.AppCommonUtil;
 import io.shulie.takin.web.common.constant.AppConstants;
 import io.shulie.takin.web.common.constant.LockKeyConstants;
 import io.shulie.takin.web.common.constant.ProbeConstants;
 import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
+import io.shulie.takin.web.common.util.AppCommonUtil;
 import io.shulie.takin.web.common.util.CommonUtil;
 import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -44,9 +44,13 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ApiServiceImpl implements ApiService, ProbeConstants, AppConstants {
 
+    @Value("#{${takin-web.server.config: {}}}")
+    private Map<String, Object> serverConfigMap;
+
     /**
      * 上传文件的路径
      */
+    @Value("${takin.data.path}")
     private String uploadPath;
 
     @Autowired
@@ -57,11 +61,6 @@ public class ApiServiceImpl implements ApiService, ProbeConstants, AppConstants 
 
     @Autowired
     private ApplicationService applicationService;
-
-    @PostConstruct
-    public void init() {
-        uploadPath = ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_DATA_PATH);
-    }
 
     @Override
     public FileUploadResponse uploadFile(FileUploadRequest request) {
@@ -122,6 +121,11 @@ public class ApiServiceImpl implements ApiService, ProbeConstants, AppConstants 
 
         // 返回响应数据
         return this.getIsNewAgentResponse(agentVersions);
+    }
+
+    @Override
+    public Map<String, Object> getServerConfig() {
+        return serverConfigMap == null ? Collections.emptyMap() : serverConfigMap;
     }
 
     /**
