@@ -11,6 +11,7 @@ import io.shulie.takin.web.biz.pojo.request.application.InterfaceTypeConfigCreat
 import io.shulie.takin.web.biz.pojo.request.application.InterfaceTypeMainCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.application.RemoteCallConfigCreateRequest;
 import io.shulie.takin.web.biz.service.linkmanage.ApplicationRemoteInterfaceConfigService;
+import io.shulie.takin.web.common.constant.ApiUrls;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
-@RequestMapping("api/application/interface/configs")
+@RequestMapping(ApiUrls.TAKIN_API_URL + "application/interface/configs")
 @RestController
 @Api(tags = "远程调用", value = "远程调用配置接口")
 public class ApplicationInterfaceConfigController {

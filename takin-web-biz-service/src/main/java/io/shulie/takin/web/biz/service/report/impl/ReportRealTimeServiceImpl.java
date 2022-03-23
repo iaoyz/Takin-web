@@ -84,6 +84,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         Long sceneId = queryDTO.getSceneId();
         if (reportId == null) {
             reportId = sceneTaskService.getReportIdFromCache(sceneId);
+            queryDTO.setReportId(reportId);
             if (reportId == null) {
                 log.warn("get report id by sceneId is empty,sceneId：{}", sceneId);
             }

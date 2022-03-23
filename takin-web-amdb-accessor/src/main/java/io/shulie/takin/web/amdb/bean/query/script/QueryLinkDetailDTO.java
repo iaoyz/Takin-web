@@ -26,7 +26,7 @@ public class QueryLinkDetailDTO extends PagingDevice {
     /**
      * 结果类型, 字符串
      */
-    private String resultType;
+    private Integer resultType;
 
     /**
      * 业务活动入口名称
@@ -101,9 +101,9 @@ public class QueryLinkDetailDTO extends PagingDevice {
     private String middlewareName;
 
     /**
-     * 调用接口：interfaceName (是否包含方法名)
+     * 方法名称
      */
-    private String interfaceName;
+    private String methodName;
 
     /**
      * 调用参数：request

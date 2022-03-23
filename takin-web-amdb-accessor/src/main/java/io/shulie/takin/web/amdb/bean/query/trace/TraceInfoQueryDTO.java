@@ -18,7 +18,7 @@ public class TraceInfoQueryDTO implements Serializable {
 
     private Long endTime;
 
-    private String type;
+    private Integer resultType;
 
     private List<String> entranceList;
 
@@ -55,9 +55,14 @@ public class TraceInfoQueryDTO implements Serializable {
     private String middlewareName;
 
     /**
-     * 调用接口：interfaceName (是否包含方法名)
+     * 接口名称
      */
-    private String interfaceName;
+    private String serviceName;
+
+    /**
+     * 方法名称
+     */
+    private String methodName;
 
     /**
      * 调用参数：request
