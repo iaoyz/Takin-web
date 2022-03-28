@@ -7,14 +7,15 @@
     <id column="ID" jdbcType="BIGINT" property="id" />
     <result column="interface_name" jdbcType="VARCHAR" property="interfaceName" />
     <result column="interface_type" jdbcType="VARCHAR" property="interfaceType" />
-    <result column="server_appname" jdbcType="VARCHAR" property="serverAppname" />
+    <result column="server_app_name" jdbcType="VARCHAR" property="serverAppName" />
     <result column="APPLICATION_ID" jdbcType="BIGINT" property="applicationId" />
     <result column="APP_NAME" jdbcType="VARCHAR" property="appName" />
     <result column="type" jdbcType="TINYINT" property="type" />
-    <result column="mock_response_time" jdbcType="VARCHAR" property="mockResponseTime" />
     <result column="mock_return_value" jdbcType="VARCHAR" property="mockReturnValue" />
-    <result column="CUSTOMER_ID" jdbcType="BIGINT" property="customerId" />
-    <result column="USER_ID" jdbcType="BIGINT" property="userId" />
+      <result column="tenant_id" jdbcType="BIGINT" property="tenantId"/>
+      <result column="env_code" jdbcType="VARCHAR" property="envCode"/>
+
+      <result column="USER_ID" jdbcType="BIGINT" property="userId" />
     <result column="IS_DELETED" jdbcType="TINYINT" property="isDeleted" />
     <result column="gmt_create" jdbcType="TIMESTAMP" property="gmtCreate" />
     <result column="gmt_modified" jdbcType="TIMESTAMP" property="gmtModified" />
@@ -23,7 +24,35 @@
   <sql id="Base_Column_List">
     <!--@mbg.generated-->
     ID, interface_name, interface_type, server_appname, APPLICATION_ID, APP_NAME, `type`, 
-    mock_response_time, mock_return_value, CUSTOMER_ID, USER_ID, IS_DELETED, gmt_create, 
+    mock_response_time, mock_return_value, TENANT_ID,ENV_CODE, USER_ID, IS_DELETED, gmt_create,
     gmt_modified,manual_tag
   </sql>
+    <update id="updateWithOutTenant">
+        update t_app_remote_call
+        <set>
+            <trim prefix="md5=case" suffix="end,">
+                <foreach collection="list" item="item" index="index">
+                    <if test="item.md5 !=null">
+                        when id=#{item.id} then #{item.md5}
+                    </if>
+                </foreach>
+                else '0'
+            </trim>
+            <trim prefix="APP_NAME=case" suffix="end,">
+                <foreach collection="list" item="item" index="index">
+                    <if test="item.appName !=null">
+                        when id=#{item.id} then #{item.appName}
+                    </if>
+                </foreach>
+            </trim>
+        </set>
+        where id in
+        <foreach collection="list" item="item" index="index" separator="," open="(" close=")">
+            #{item.id}
+        </foreach>
+
+    </update>
+    <select id="getListWithOutTenant" resultType="io.shulie.takin.web.data.model.mysql.AppRemoteCallEntity">
+        select * from t_app_remote_call
+    </select>
 </mapper>

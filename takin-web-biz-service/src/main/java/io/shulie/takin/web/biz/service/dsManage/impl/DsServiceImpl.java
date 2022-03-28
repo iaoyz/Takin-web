@@ -19,20 +19,20 @@ import com.alibaba.fastjson.JSONObject;
 
 import cn.hutool.core.collection.CollStreamUtil;
 import cn.hutool.core.util.BooleanUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.pamirs.attach.plugin.dynamic.Converter;
-import com.pamirs.attach.plugin.dynamic.Type;
-import com.pamirs.attach.plugin.dynamic.template.RedisTemplate;
+import com.pamirs.attach.plugin.dynamic.one.Converter;
+import com.pamirs.attach.plugin.dynamic.one.Type;
+import com.pamirs.attach.plugin.dynamic.one.template.RedisTemplate;
 import com.pamirs.takin.common.enums.ds.DbTypeEnum;
 import com.pamirs.takin.common.enums.ds.DsTypeEnum;
 import com.pamirs.takin.common.enums.ds.MiddleWareTypeEnum;
 import com.pamirs.takin.entity.dao.simplify.TAppBusinessTableInfoMapper;
 import com.pamirs.takin.entity.domain.entity.DsModelWithBLOBs;
-import com.pamirs.takin.entity.domain.entity.TApplicationMnt;
 import com.pamirs.takin.entity.domain.entity.simplify.AppBusinessTableInfo;
 import com.pamirs.takin.entity.domain.query.agent.AppBusinessTableQuery;
 import com.pamirs.takin.entity.domain.vo.dsmanage.Configurations;
@@ -91,7 +91,6 @@ import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -198,13 +197,11 @@ public class DsServiceImpl implements DsService {
 
     }
 
-
     private Map<String, AbstractDsTemplateService> templateServiceMap;
 
     private Map<Integer, AbstractShaDowManageService> shaDowServiceMap;
 
     private Map<Type, AbstractTemplateParser> templateParserMap;
-
 
     @Override
     public Response dsUpdate(ApplicationDsUpdateInput updateRequest) {
@@ -288,15 +285,15 @@ public class DsServiceImpl implements DsService {
     @Override
     public List<DsAgentVO> getConfigs(String appName) {
         List<DsAgentVO> dsAgentVOList = new ArrayList<>();
-        TApplicationMnt applicationMnt = applicationService.queryTApplicationMntByName(appName);
+        ApplicationDetailResult applicationMnt = applicationService.queryTApplicationMntByName(appName);
         if (applicationMnt != null) {
             List<DsModelWithBLOBs> dsModels = applicationDsDAO.selectByAppIdForAgent(applicationMnt.getApplicationId());
             if (CollectionUtils.isNotEmpty(dsModels)) {
                 dsModels = dsModels.stream()
-                        .filter(
-                                dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_DB.getCode())))
-                                        || dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_TABLE.getCode()))))
-                        .collect(Collectors.toList());
+                    .filter(
+                        dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_DB.getCode())))
+                            || dsModel.getDsType().equals(new Byte(String.valueOf(DsTypeEnum.SHADOW_TABLE.getCode()))))
+                    .collect(Collectors.toList());
                 for (DsModelWithBLOBs dsModel : dsModels) {
                     DsAgentVO vo = new DsAgentVO();
                     vo.setApplicationName(dsModel.getApplicationName());
@@ -330,13 +327,13 @@ public class DsServiceImpl implements DsService {
     @Override
     public List<DsServerVO> getShadowDsServerConfigs(String namespace, DsTypeEnum dsServer) {
         List<DsServerVO> responseList = new ArrayList<>();
-        TApplicationMnt applicationMnt = applicationService.queryTApplicationMntByName(namespace);
+        ApplicationDetailResult applicationMnt = applicationService.queryTApplicationMntByName(namespace);
         if (applicationMnt != null) {
             List<DsModelWithBLOBs> dsModels = applicationDsDAO.selectByAppIdForAgent(applicationMnt.getApplicationId());
             if (CollectionUtils.isNotEmpty(dsModels)) {
                 dsModels = dsModels.stream()
-                        .filter(dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(dsServer.getCode()))))
-                        .collect(Collectors.toList());
+                    .filter(dsModel -> dsModel.getDsType().equals(new Byte(String.valueOf(dsServer.getCode()))))
+                    .collect(Collectors.toList());
             }
             for (DsModelWithBLOBs dsModel : dsModels) {
                 DsServerVO serverVO = new DsServerVO();
@@ -357,10 +354,7 @@ public class DsServiceImpl implements DsService {
         AppBusinessTableInfo query = new AppBusinessTableInfo();
         query.setUrl(info.getUrl());
         // 补充用户数据
-        UserExt user = WebPluginUtils.getUser();
-        if(user != null) {
-            query.setUserId(user.getId());
-        }
+        query.setUserId(WebPluginUtils.traceUserId());
         Long count = tAppBusinessTableInfoMapper.selectCountByUserIdAndUrl(query);
         if (count == 1) {
             AppBusinessTableInfo updateInfo = tAppBusinessTableInfoMapper.selectByUserIdAndUrl(query);
@@ -377,7 +371,7 @@ public class DsServiceImpl implements DsService {
 
     @Override
     public Response queryPageBusiness(AppBusinessTableQuery query) {
-        UserExt user = WebPluginUtils.getUser();
+        UserExt user = WebPluginUtils.traceUser();
         if (user != null && 1 == user.getRole()) {
             query.setUserId(user.getId());
         }
@@ -442,17 +436,16 @@ public class DsServiceImpl implements DsService {
         return dsService.dsDelete(dsDeleteRequest);
     }
 
-
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response dsQueryV2(Long applicationId) {
+    public List<ApplicationDsV2Response> dsQueryV2(Long applicationId) {
         ApplicationDetailResult detailResult = applicationDAO.getApplicationById(applicationId);
         if (Objects.isNull(detailResult)) {
-            return Response.fail("0", "该应用不存在");
+            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_MANAGE_NO_EXIST_ERROR,"该应用不存在");
+
         }
 
         List<AppShadowDatabaseDTO> shadowDataBaseInfos = applicationClient.getApplicationShadowDataBaseInfo(detailResult.getApplicationName());
-
 
         ApplicationDsQueryParam queryParam = new ApplicationDsQueryParam();
         queryParam.setApplicationId(applicationId);
@@ -464,17 +457,20 @@ public class DsServiceImpl implements DsService {
         List<ApplicationDsDbManageDetailResult> dbs = dsDbManageDAO.selectList(queryParam);
 
         List<ApplicationDsV2Response> response = new ArrayList<>();
-        List<ApplicationDsResponse> oldResponseList = (List<ApplicationDsResponse>) this.dsQuery(applicationId).getData();
+        List<ApplicationDsResponse> oldResponseList = (List<ApplicationDsResponse>)this.dsQuery(applicationId).getData();
 
         response.addAll(caches.stream().map(this::cacheBuild).collect(Collectors.toList()));
         response.addAll(dbs.stream().map(this::dbBuild).collect(Collectors.toList()));
         response.addAll(oldResponseList.stream().map(this::v1Build).collect(Collectors.toList()));
-
+        response.forEach(r -> {
+            if(r.getIsManual() != null && !r.getIsManual()) {
+                r.setCanRemove(false);
+            }
+        });
         agentConfigCacheManager.evictShadowDb(detailResult.getApplicationName());
         agentConfigCacheManager.evictShadowServer(detailResult.getApplicationName());
-        return Response.success(response);
+        return response;
     }
-
 
     @Override
     public Response dsQueryDetailV2(Long applicationId, Long id, String middlewareType, Boolean isNewData) {
@@ -483,7 +479,6 @@ public class DsServiceImpl implements DsService {
             return Response.fail("0", "该应用不存在");
         }
 
-
         if (!isNewData) {
             // [db/cache]老数据兼容改造,其他类型保留原返回结构
             Response<ApplicationDsDetailOutput> oldResponse = this.dsQueryDetail(id, true);
@@ -491,7 +486,11 @@ public class DsServiceImpl implements DsService {
             if (list.contains(oldResponse.getData().getDbType())) {
                 Integer dsType = oldResponse.getData().getDsType();
                 AbstractDsService abstractDsService = getAbstractDsService(dsType);
-                return Response.success(abstractDsService.convertDetailByTemplate(id));
+                ShadowDetailResponse response = abstractDsService.convertDetailByTemplate(id);
+                if (response != null) {
+                    response.setIsManual(1);
+                }
+                return Response.success(response);
             }
             return Response.success(this.dsQueryDetail(id, false));
         }
@@ -523,22 +522,21 @@ public class DsServiceImpl implements DsService {
         if (CollectionUtils.isNotEmpty(amdbByDbs)) {
 
             Map<String, AppShadowDatabaseDTO> amdbDbMap = amdbByDbs
-                    .stream()
-                    .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                .stream()
+                .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
 
             Map<String, ApplicationDsResult> dbOldMap = new HashMap<>();
             if (CollectionUtils.isNotEmpty(dbOlds)) {
                 dbOldMap = dbOlds
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
             Map<String, ApplicationDsDbManageDetailResult> dbMap = new HashMap<>();
             if (CollectionUtils.isNotEmpty(dbs)) {
                 dbMap = dbs
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsDbManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsDbManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
-
 
             for (String k : amdbDbMap.keySet()) {
                 if (!dbOldMap.containsKey(k) && !dbMap.containsKey(k)) {
@@ -548,27 +546,24 @@ public class DsServiceImpl implements DsService {
             }
         }
 
-
         if (CollectionUtils.isNotEmpty(amdbByCaches)) {
 
-
             Map<String, AppShadowDatabaseDTO> amdbCacheMap = amdbByCaches
-                    .stream()
-                    .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                .stream()
+                .collect(Collectors.toMap(AppShadowDatabaseDTO::getFilterStr, Function.identity(), (key1, key2) -> key2));
 
             Map<String, ApplicationDsResult> cacheOldMap = new HashMap<>();
             Map<String, ApplicationDsCacheManageDetailResult> cacheMap = new HashMap<>();
             if (CollectionUtils.isNotEmpty(cacheOlds)) {
                 cacheOldMap = cacheOlds
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
             if (CollectionUtils.isNotEmpty(caches)) {
                 cacheMap = caches
-                        .stream()
-                        .collect(Collectors.toMap(ApplicationDsCacheManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
+                    .stream()
+                    .collect(Collectors.toMap(ApplicationDsCacheManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
-
 
             for (String k : amdbCacheMap.keySet()) {
                 if (!cacheOldMap.containsKey(k) && !cacheMap.containsKey(k)) {
@@ -582,7 +577,6 @@ public class DsServiceImpl implements DsService {
         dsCacheManageDAO.batchSave(saveCaches);
     }
 
-
     /**
      * 查询中间件支持的隔离方案
      *
@@ -595,7 +589,6 @@ public class DsServiceImpl implements DsService {
         AbstractDsTemplateService service = templateServiceMap.get(middlewareType);
         return service.queryDsType(middlewareType, engName);
     }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -614,7 +607,6 @@ public class DsServiceImpl implements DsService {
                 throw new TakinWebException(TakinWebExceptionEnum.SHADOW_CONFIG_CREATE_ERROR, "此模式不支持");
             }
         }
-
 
         if (!updateRequestV2.getIsNewData()) {
             //针对老版本数据,先删除原表数据,逻辑删除,新表重新保存
@@ -639,7 +631,7 @@ public class DsServiceImpl implements DsService {
     @Override
     public Response dsQueryConfigTemplate(String agentSourceType, Integer dsType, Boolean isNewData, String cacheType, String connectionPool) {
         Converter.TemplateConverter.TemplateEnum templateEnum;
-        if (Strings.isNotBlank(connectionPool)) {
+        if (StrUtil.isNotBlank(connectionPool)) {
             templateEnum = redisTemplateParser.convert(connectionPool);
             if (Objects.isNull(templateEnum)) {
                 templateEnum = dbTemplateParser.convert(connectionPool);
@@ -704,8 +696,8 @@ public class DsServiceImpl implements DsService {
     /**
      * 获取中间件支持的版本
      *
-     * @param middlewareType
-     * @return
+     * @param middlewareType 中间件类型
+     * @return 支持的版本集合
      */
     @Override
     public List<SelectVO> querySupperName(String middlewareType) {
@@ -716,7 +708,7 @@ public class DsServiceImpl implements DsService {
     /**
      * 获取缓存支持的模式
      *
-     * @return
+     * @return 支持的模式集合
      */
     @Override
     public List<SelectVO> queryCacheType() {
@@ -772,9 +764,8 @@ public class DsServiceImpl implements DsService {
         v2Response.setCacheType("");
         v2Response.setIsNewData(true);
         v2Response.setIsNewPage(true);
-//        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(dbDetail.getStatus());
-        v2Response.setUserId(WebPluginUtils.getUserId());
+        v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
         v2Response.setCanRemove(v2Response.getIsManual());
         return v2Response;
@@ -794,10 +785,9 @@ public class DsServiceImpl implements DsService {
         v2Response.setCacheType(cacheDetail.getType());
         v2Response.setIsNewData(true);
         v2Response.setIsNewPage(true);
-//        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(cacheDetail.getStatus());
         v2Response.setExtMsg(cacheDetail.getType());
-        v2Response.setUserId(WebPluginUtils.getUserId());
+        v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
         v2Response.setCanRemove(v2Response.getIsManual());
         return v2Response;
@@ -813,7 +803,7 @@ public class DsServiceImpl implements DsService {
         v2Response.setConnectionPool("");
         v2Response.setIsManual(true);
         v2Response.setStatus(response.getStatus());
-//        v2Response.setCanRemove(v2Response.getIsManual());
+        //        v2Response.setCanRemove(v2Response.getIsManual());
         if (MiddleWareTypeEnum.LINK_POOL.getCode().equals(response.getDbType().getValue())) {
             v2Response.setUrl(response.getUrl());
             if (DsTypeEnum.SHADOW_TABLE.getCode().equals(response.getDsType().getValue())) {
@@ -839,7 +829,7 @@ public class DsServiceImpl implements DsService {
             }
 
         }
-        v2Response.setUserId(WebPluginUtils.getUserId());
+        v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
         v2Response.setCanRemove(v2Response.getIsManual());
         return v2Response;
@@ -854,18 +844,18 @@ public class DsServiceImpl implements DsService {
             return Collections.emptyList();
         }
         detailResults = detailResults.stream()
-                .filter(
-                        dsModel -> dsModel.getDsType().equals(DsTypeEnum.SHADOW_DB.getCode())
-                                || dsModel.getDsType().equals(DsTypeEnum.SHADOW_REDIS_SERVER.getCode())
-                                || dsModel.getDsType().equals(DsTypeEnum.SHADOW_TABLE.getCode()))
-                .collect(Collectors.toList());
+            .filter(
+                dsModel -> dsModel.getDsType().equals(DsTypeEnum.SHADOW_DB.getCode())
+                    || dsModel.getDsType().equals(DsTypeEnum.SHADOW_REDIS_SERVER.getCode())
+                    || dsModel.getDsType().equals(DsTypeEnum.SHADOW_TABLE.getCode()))
+            .collect(Collectors.toList());
 
         List<DsAgentVO> collect = detailResults.stream().map(detail -> {
             DsAgentVO dsAgentVO = new DsAgentVO();
             dsAgentVO.setApplicationName(appName);
             dsAgentVO.setDsType(detail.getDsType().byteValue());
             dsAgentVO.setUrl(detail.getUrl());
-            dsAgentVO.setStatus((byte) 0);
+            dsAgentVO.setStatus((byte)0);
             String fileExtedn = detail.getFileExtedn();
             JSONObject parameter = null;
             if (JSONUtil.isJson(fileExtedn)) {
@@ -879,26 +869,26 @@ public class DsServiceImpl implements DsService {
                 configurations.setDatasourceMediator(new DatasourceMediator("dataSourceBusiness", "dataSourcePerformanceTest"));
                 DataSource dataSourceBusiness = new DataSource();
                 dataSourceBusiness.setId("dataSourceBusiness");
-                if(Objects.equals("老转新",detail.getConfigJson())){
-                    if(Objects.nonNull(parameter)){
+                if (Objects.equals("老转新", detail.getConfigJson())) {
+                    if (Objects.nonNull(parameter)) {
                         List<JSONObject> dataSources = JSONArray.parseArray(parameter.getString("dataSources"),
-                                JSONObject.class);
+                            JSONObject.class);
                         JSONObject busObj = dataSources.get(0);
                         JSONObject testObj = dataSources.get(1);
-                        dataSourceBusiness.setUrl( busObj.getString("url"));
-                        dataSourceBusiness.setUsername( busObj.getString("username"));
+                        dataSourceBusiness.setUrl(busObj.getString("url"));
+                        dataSourceBusiness.setUsername(busObj.getString("username"));
                         dataSourceBusiness.setDriverClassName(testObj.getString("driverClassName"));
                     }
-                }else{
+                } else {
                     dataSourceBusiness.setUrl(Objects.isNull(parameter) ? detail.getUrl() : parameter.getString("url"));
                     dataSourceBusiness.setUsername(Objects.isNull(parameter) ? detail.getUserName() : parameter.getString("username"));
-                    dataSourceBusiness.setDriverClassName(Objects.isNull(parameter) ? "":parameter.getString("driverClassName"));
+                    dataSourceBusiness.setDriverClassName(Objects.isNull(parameter) ? "" : parameter.getString("driverClassName"));
                 }
 
                 DataSource dataSourcePerformanceTest = this.buildShadowMsg(shadowConfigMap);
                 dataSourcePerformanceTest.setId("dataSourcePerformanceTest");
                 dataSourcePerformanceTest.setDriverClassName(StringUtils.isBlank(dataSourcePerformanceTest.getDriverClassName())
-                        ?dataSourceBusiness.getDriverClassName():dataSourcePerformanceTest.getDriverClassName());
+                    ? dataSourceBusiness.getDriverClassName() : dataSourcePerformanceTest.getDriverClassName());
 
                 List<DataSource> dataSources = new ArrayList<>();
                 dataSources.add(dataSourceBusiness);
@@ -911,14 +901,12 @@ public class DsServiceImpl implements DsService {
             return dsAgentVO;
         }).collect(Collectors.toList());
 
-
         return collect;
     }
 
-
     private Map<String, String> matchShadowDb(String shadowStr) {
         Map<String, String> matchMap = new HashMap<>();
-        Map shadowMap = JSONObject.parseObject(shadowStr, Map.class);
+        Map<?, ?> shadowMap = JSONObject.parseObject(shadowStr, Map.class);
         matchMap.put("username", String.valueOf(shadowMap.get("shadowUserName")));
         matchMap.put("url", String.valueOf(shadowMap.get("shadowUrl")));
         matchMap.put("password", String.valueOf(shadowMap.get("shadowPwd")));
@@ -930,7 +918,7 @@ public class DsServiceImpl implements DsService {
 
         shadowMap.forEach((k, v) -> {
             String value = null;
-            Map map = JSONObject.parseObject(String.valueOf(v), Map.class);
+            Map<?, ?> map = JSONObject.parseObject(String.valueOf(v), Map.class);
             if (Objects.equals("2", String.valueOf(map.get("tag")))) {
                 value = String.valueOf(map.get("context"));
             }
@@ -942,13 +930,12 @@ public class DsServiceImpl implements DsService {
     private String matchShadowTable(String shadowStr) {
         List<ShadowDetailResponse.TableInfo> tableInfos = JSONArray.parseArray(shadowStr, ShadowDetailResponse.TableInfo.class);
         List<String> tableNames = tableInfos
-                .stream()
-                .filter(ShadowDetailResponse.TableInfo::getIsCheck)
-                .map(ShadowDetailResponse.TableInfo::getBizTableName)
-                .collect(Collectors.toList());
+            .stream()
+            .filter(ShadowDetailResponse.TableInfo::getIsCheck)
+            .map(ShadowDetailResponse.TableInfo::getBizTableName)
+            .collect(Collectors.toList());
         return Joiner.on(",").join(tableNames);
     }
-
 
     private DataSource buildShadowMsg(Map<String, String> matchShadow) {
         DataSource dataSourcePerformanceTest = new DataSource();

@@ -1,5 +1,6 @@
 package io.shulie.takin.web.biz.cache;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,11 +18,13 @@ import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.LinkChangeEnumMappi
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.LinkChangeTypeEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.LinkLevelEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.LinkTypeEnumMapping;
+import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.application.ApplicationAgentPathTypeEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.AgentConfigEditableEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.AgentConfigEffectMechanismEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.AgentConfigEffectTypeEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.AgentConfigTypeEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.AgentConfigValueTypeEnumMapping;
+import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.AgentShowStatusEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.AgentStatusEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.PluginStatusEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastagentaccess.ProbeStatusEnumMapping;
@@ -29,6 +32,10 @@ import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastdebug.DebugHttp
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.fastdebug.DebugRequestTypeEnumMapping;
 import com.pamirs.takin.entity.domain.dto.linkmanage.mapping.remotecall.RemoteCallConfigEnumMapping;
 import com.pamirs.takin.entity.domain.vo.TDictionaryVo;
+import io.shulie.takin.web.data.dao.application.MqConfigTemplateDAO;
+import io.shulie.takin.web.data.dao.application.RemoteCallConfigDAO;
+import io.shulie.takin.web.data.result.application.MqConfigTemplateDetailResult;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -46,8 +53,11 @@ public class DictionaryCache {
     @Resource
     private TDictionaryDataMapper tDictionaryDataMapper;
 
-    //@Autowired
-    //private TroResourceDAO troResourceDAO;
+    @Resource
+    private RemoteCallConfigDAO remoteCallConfigDAO;
+
+    @Resource
+    private MqConfigTemplateDAO mqConfigTemplateDAO;
 
     public static EnumResult getObjectByParam(String key, Integer valueCode) {
         return getObjectByParam(key, String.valueOf(valueCode));
@@ -91,7 +101,6 @@ public class DictionaryCache {
         DICTIONARY_MAP.put("DEBUG_REQUEST_TYPE", DebugHttpTypeEnumMapping.neededEnumResults());
         DICTIONARY_MAP.put("DEBUG_HTTP_TYPE", DebugRequestTypeEnumMapping.neededEnumResults());
         // 远程调用
-        DICTIONARY_MAP.put("REMOTE_CALL_CONFIG_TYPE", RemoteCallConfigEnumMapping.neededEnumResults());
         //dicMap.put("REMOTE_CALL_TYPE", RemoteCallTypeEnumMapping.neededEnumResults());
 
         // agent快速接入
@@ -104,6 +113,13 @@ public class DictionaryCache {
         DICTIONARY_MAP.put("agent_plugin_status", PluginStatusEnumMapping.neededEnumResults());
         DICTIONARY_MAP.put("agent_probe_status", ProbeStatusEnumMapping.neededEnumResults());
 
+        // 探针根目录
+        DICTIONARY_MAP.put("plugin_upload_path", ApplicationAgentPathTypeEnumMapping.neededEnumResults());
+
+        //应用探针接入状态
+        DICTIONARY_MAP.put("application_agent_status", AgentShowStatusEnumMapping.neededEnumResults());
+
+
         //数据字段
         fillDictFromDatabase();
     }
@@ -111,6 +127,8 @@ public class DictionaryCache {
     private void fillDictFromDatabase() {
         Map<String, Object> paramMap = Maps.newHashMap();
         paramMap.put("valueActive", "Y");
+        paramMap.put("tenantId", WebPluginUtils.traceTenantId());
+        paramMap.put("envCode", WebPluginUtils.traceEnvCode());
         List<TDictionaryVo> voList = tDictionaryDataMapper.queryDictionaryList(paramMap);
         if (CollectionUtils.isEmpty(voList)) {
             return;
@@ -137,6 +155,7 @@ public class DictionaryCache {
     }
 
     public Map<String, List<EnumResult>> getDicMap(String key) {
+        alwaysRefresh();
         if (StringUtils.isEmpty(key)) {
             return DICTIONARY_MAP;
         } else {
@@ -146,4 +165,22 @@ public class DictionaryCache {
         }
     }
 
+    /**
+     * 一直使用最新数据
+     */
+    private void alwaysRefresh() {
+        DICTIONARY_MAP.put("REMOTE_CALL_CONFIG_TYPE", RemoteCallConfigEnumMapping.neededEnumResults(remoteCallConfigDAO.selectList()));
+        DICTIONARY_MAP.put("SHADOW_CONSUMER", neededEnumResults(mqConfigTemplateDAO.queryList()));
+    }
+
+    private List<EnumResult> neededEnumResults(List<MqConfigTemplateDetailResult> resultList) {
+        List<EnumResult> enumResults = new ArrayList<>();
+        resultList.forEach(entity -> {
+            EnumResult result = new EnumResult();
+            Long id = entity.getId();
+            result.label(entity.getName()).value(String.valueOf(id)).num(id.intValue());
+            enumResults.add(result);
+        });
+        return enumResults;
+    }
 }

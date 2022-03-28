@@ -47,6 +47,12 @@ public class FileManageResponse implements Serializable {
     private Integer isOrderSplit;
 
     /**
+     * 文件MD5值
+     */
+    @ApiModelProperty(value = "md5")
+    private String md5;
+
+    /**
      * 上传时间
      */
     @ApiModelProperty(value = "上传时间")
@@ -65,4 +71,7 @@ public class FileManageResponse implements Serializable {
      */
     @ApiModelProperty(value = "数据已被删除，新版本不新增进去")
     private Integer isDeleted;
+
+    @ApiModelProperty(value = "是否是大文件")
+    private Integer isBigFile;
 }

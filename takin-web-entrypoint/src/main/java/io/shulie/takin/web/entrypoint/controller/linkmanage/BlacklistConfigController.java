@@ -2,12 +2,15 @@ package io.shulie.takin.web.entrypoint.controller.linkmanage;
 
 import javax.validation.Valid;
 
+import com.alibaba.fastjson.JSON;
+
 import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.common.beans.page.PagingList;
+import io.shulie.takin.web.biz.constant.BizOpConstants.Vars;
 import io.shulie.takin.web.biz.service.blacklist.BlacklistService;
 import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
 import io.shulie.takin.common.beans.annotation.AuthVerification;
-import io.shulie.takin.web.common.constant.APIUrls;
+import io.shulie.takin.web.common.constant.ApiUrls;
 import io.shulie.takin.web.biz.constant.BizOpConstants;
 import io.shulie.takin.web.biz.constant.BizOpConstants.Message;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
@@ -52,7 +55,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Api(tags = "新版黑名单接口", value = "黑名单")
 @RestController
-@RequestMapping(APIUrls.TAKIN_API_URL + "application/blacklist")
+@RequestMapping(ApiUrls.TAKIN_API_URL + "application/blacklist")
 public class BlacklistConfigController {
 
     @Autowired
@@ -61,10 +64,10 @@ public class BlacklistConfigController {
     /**
      * 新增
      *
-     * @return
+     * @return -
      */
     @ApiOperation("添加黑名单接口")
-    @PostMapping(value = "", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PostMapping(value = "", produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.CONFIG_CENTER,
         subModuleName = BizOpConstants.SubModules.BLACKLIST,
@@ -91,10 +94,10 @@ public class BlacklistConfigController {
     /**
      * 分页
      *
-     * @return
+     * @return -
      */
     @ApiOperation("分页查询黑名单列表")
-    @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
     @AuthVerification(
         moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
         needAuth = ActionTypeEnum.QUERY
@@ -108,10 +111,10 @@ public class BlacklistConfigController {
     /**
      * 根据id查询
      *
-     * @return
+     * @return -
      */
     @ApiOperation("根据id查询黑名单详情接口")
-    @GetMapping(value = "", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "", produces = MediaType.APPLICATION_JSON_VALUE)
     public BlacklistDetailResponse querySingleById(@RequestParam("id") Long id) {
         BlacklistDetailResponse response = new BlacklistDetailResponse();
         BlacklistOutput output = blacklistService.selectById(id);
@@ -125,10 +128,10 @@ public class BlacklistConfigController {
     /**
      * 更新根据id
      *
-     * @return
+     * @return -
      */
     @ApiOperation("根据id更新黑名单接口")
-    @PutMapping(value = "", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PutMapping(value = "", produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.CONFIG_CENTER,
         subModuleName = BizOpConstants.SubModules.BLACKLIST,
@@ -157,10 +160,10 @@ public class BlacklistConfigController {
     /**
      * 单个启动或者禁用
      *
-     * @return
+     * @return -
      */
     @ApiOperation("根据id启用禁用黑名单接口")
-    @PutMapping(value = "/enable", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PutMapping(value = "/enable", produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.CONFIG_CENTER,
         subModuleName = BizOpConstants.SubModules.BLACKLIST,
@@ -177,16 +180,18 @@ public class BlacklistConfigController {
         BlacklistUpdateInput input = new BlacklistUpdateInput();
         BeanUtils.copyProperties(request, input);
         blacklistService.enable(input);
+        OperationLogContextHolder.addVars(Vars.ACTION, "参数：" + JSON.toJSONString(request));
+        OperationLogContextHolder.addVars(Vars.BLACKLIST_VALUE, "id = " + request.getBlistId());
         return new BlacklistStringResponse(operationType + "成功");
     }
 
     /**
      * 启动或者禁用
      *
-     * @return
+     * @return -
      */
     @ApiOperation("批量启用禁用黑名单接口")
-    @PutMapping(value = "list/enable", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PutMapping(value = "list/enable", produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.CONFIG_CENTER,
         subModuleName = BizOpConstants.SubModules.BLACKLIST,
@@ -200,16 +205,18 @@ public class BlacklistConfigController {
         String operationType = BlacklistEnableEnum.ENABLE.getStatus().equals(request.getUseYn())
             ? BizOpConstants.OpTypes.ENABLE : BizOpConstants.OpTypes.DISABLE;
         blacklistService.batchEnable(request.getIds(), request.getUseYn());
+        OperationLogContextHolder.operationType("批量"+operationType);
+        OperationLogContextHolder.addVars(Vars.BLACKLIST_VALUE, JSON.toJSONString(request));
         return new BlacklistStringResponse("批量" + operationType + "成功");
     }
 
     /**
      * 批量删除黑名单接口
      *
-     * @return
+     * @return -
      */
     @ApiOperation("批量删除黑名单接口")
-    @DeleteMapping(value = "/list", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @DeleteMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.CONFIG_CENTER,
         subModuleName = BizOpConstants.SubModules.BLACKLIST,
@@ -223,8 +230,9 @@ public class BlacklistConfigController {
         if (request.getIds() == null || request.getIds().size() == 0) {
             throw new TakinWebException(ExceptionCode.BLACKLIST_DELETE_ERROR, "id列表不能为空");
         }
-        OperationLogContextHolder.operationType(BizOpConstants.OpTypes.DELETE);
         blacklistService.batchDelete(request.getIds());
+        OperationLogContextHolder.operationType("批量"+BizOpConstants.OpTypes.DELETE);
+        OperationLogContextHolder.addVars(Vars.BLACKLIST_VALUE, JSON.toJSONString(request));
         return new BlacklistStringResponse("批量删除成功");
 
     }
@@ -232,10 +240,10 @@ public class BlacklistConfigController {
     /**
      * 单个删除黑名单接口
      *
-     * @return
+     * @return -
      */
     @ApiOperation("单个删除黑名单接口")
-    @DeleteMapping(value = "", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @DeleteMapping(value = "", produces = MediaType.APPLICATION_JSON_VALUE)
     @ModuleDef(
         moduleName = BizOpConstants.Modules.CONFIG_CENTER,
         subModuleName = BizOpConstants.SubModules.BLACKLIST,
@@ -248,6 +256,7 @@ public class BlacklistConfigController {
     public BlacklistStringResponse delete(@RequestBody @Valid BlacklistDeleteRequest request) {
         OperationLogContextHolder.operationType(BizOpConstants.OpTypes.DELETE);
         blacklistService.delete(request.getId());
+        OperationLogContextHolder.addVars(Vars.BLACKLIST_VALUE, JSON.toJSONString(request));
         return new BlacklistStringResponse("删除成功");
     }
 

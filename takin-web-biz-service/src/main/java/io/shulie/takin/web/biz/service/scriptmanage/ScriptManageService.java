@@ -2,8 +2,8 @@ package io.shulie.takin.web.biz.service.scriptmanage;
 
 import java.util.List;
 
-import io.shulie.takin.common.beans.page.PagingList;
 import com.pamirs.takin.entity.domain.dto.scenemanage.ScriptCheckDTO;
+import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.ScriptManageDeployCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.ScriptManageDeployPageQueryRequest;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.ScriptManageDeployUpdateRequest;
@@ -20,6 +20,7 @@ import io.shulie.takin.web.biz.pojo.response.scriptmanage.SupportJmeterPluginNam
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.SupportJmeterPluginVersionResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.WebPartResponse;
 import io.shulie.takin.web.biz.pojo.response.tagmanage.TagManageResponse;
+import io.shulie.takin.web.data.result.linkmange.BusinessLinkResult;
 
 /**
  * @author zhaoyong
@@ -42,7 +43,7 @@ public interface ScriptManageService {
      *
      * @return
      */
-    ScriptCheckDTO checkAndUpdateScript(String refType, String refValue, String scriptFileUploadPath);
+    ScriptCheckDTO checkAndUpdateScript(String refType, String refValue,Integer mVersion, String scriptFileUploadPath);
 
     /**
      * 分页查询脚本列表
@@ -82,7 +83,7 @@ public interface ScriptManageService {
     /**
      * 修改脚本文件
      */
-    void updateScriptManage(ScriptManageDeployUpdateRequest scriptManageDeployUpdateRequest);
+    Long updateScriptManage(ScriptManageDeployUpdateRequest scriptManageDeployUpdateRequest);
 
     /**
      * 查询所有业务流程，再将所有关联的脚本id附带出来
@@ -121,6 +122,13 @@ public interface ScriptManageService {
     List<SupportJmeterPluginNameResponse> getSupportJmeterPluginNameList(SupportJmeterPluginNameRequest nameRequest);
 
     /**
+     * 获取所有的jmeter插件列表名称
+     *
+     * @return jmeter插件列表名称
+     */
+    List<SupportJmeterPluginNameResponse> getAllJmeterPluginNameList();
+
+    /**
      * 获取支持的jmeter插件版本列表
      *
      * @return
@@ -156,4 +164,29 @@ public interface ScriptManageService {
      * @return
      */
     WebPartResponse bigFileSyncRecord(WebPartRequest partRequest);
+
+    /**
+     * 根据脚本实例id获得业务活动列表
+     *
+     * @param scriptDeployId 脚本实例id
+     * @return 业务活动列表
+     */
+    List<BusinessLinkResult> listBusinessActivityByScriptDeployId(Long scriptDeployId);
+
+    /**
+     * 根据脚本发布id, 获得业务活动ids
+     *
+     * @param scriptDeployId 脚本发布id
+     * @return 业务活动ids
+     */
+    List<Long> listBusinessActivityIdsByScriptDeployId(Long scriptDeployId);
+
+    /**
+     * 通过脚本， 获得压缩后的文件名称
+     *
+     * @param scriptDeployId 脚本发布id
+     * @return 压缩文件名称
+     */
+    String getZipFileNameByScriptDeployId(Long scriptDeployId);
+
 }

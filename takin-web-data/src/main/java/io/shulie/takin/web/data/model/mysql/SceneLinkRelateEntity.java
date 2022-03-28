@@ -6,14 +6,17 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.shulie.takin.web.data.model.mysql.base.TenantBaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 链路场景关联表
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @TableName(value = "t_scene_link_relate")
-public class SceneLinkRelateEntity {
+public class SceneLinkRelateEntity extends TenantBaseEntity {
     /**
      * 主键
      */
@@ -73,4 +76,29 @@ public class SceneLinkRelateEntity {
      */
     @TableField(value = "FRONT_UUID_KEY")
     private String frontUuidKey;
+
+    /**
+     * 脚本请求路径标识
+     */
+    @TableField(value = "script_identification")
+    private String scriptIdentification;
+
+    /**
+     * 脚本路径的MD5
+     */
+    @TableField(value = "script_xpath_md5")
+    private String scriptXpathMd5;
+
+    ///**
+    // * 租户id
+    // */
+    //@TableField(value = "tenant_id")
+    //private Long tenantId;
+    //
+    ///**
+    // * 环境
+    // */
+    //@TableField(value = "env_code")
+    //private String envCode;
+
 }
