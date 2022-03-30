@@ -1,6 +1,7 @@
 package io.shulie.takin.web.biz.convert.db.parser;
 
 import cn.hutool.core.util.BooleanUtil;
+import cn.hutool.json.JSONUtil;
 import com.alibaba.fastjson.JSON;
 import com.pamirs.attach.plugin.dynamic.one.Converter;
 import com.pamirs.attach.plugin.dynamic.one.Type;
@@ -30,7 +31,6 @@ import org.springframework.stereotype.Service;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -119,6 +119,7 @@ public class DbTemplateParser extends AbstractTemplateParser {
         shadowDetailResponse.setUrl(convert.getUrl());
         shadowDetailResponse.setUsername(StringUtils.isBlank(convert.getUserName())?"-":convert.getUserName());
         shadowDetailResponse.setPassword(convert.getPwd());
+        shadowDetailResponse.setIsManual(convert.getSource());
 
         String shaDowFileExtedn = convert.getShaDowFileExtedn();
         if (StringUtils.isBlank(convert.getShaDowFileExtedn())
@@ -169,6 +170,9 @@ public class DbTemplateParser extends AbstractTemplateParser {
         return new ArrayList<>(map.values());
     }
 
+    public String convertData(String str, String connPoolName){
+       return this.convertData(str,connPoolName,true);
+    }
 
     /**
      * 填充第一次的动态数据
@@ -176,7 +180,7 @@ public class DbTemplateParser extends AbstractTemplateParser {
      * @param str
      * @return
      */
-    public String convertData(String str, String connPoolName) {
+    public String convertData(String str, String connPoolName,Boolean isHide) {
 
         Map<String, Object> convertMap = new HashMap<>();
         if (StringUtils.isBlank(str) || !JsonUtil.isJson(str)) {
@@ -200,9 +204,20 @@ public class DbTemplateParser extends AbstractTemplateParser {
             });
         }
 
-        convertMap.put(PWD_FILE_NAME, "");
-        convertMap.put(INPUT_FILE_NAME_USER_NAME, "");
-        convertMap.put(INPUT_FILE_NAME_URL, "");
+        if(isHide){
+            convertMap.put(PWD_FILE_NAME, "");
+            convertMap.put(INPUT_FILE_NAME_USER_NAME, "");
+            convertMap.put(INPUT_FILE_NAME_URL, "");
+        }else{
+            convertMap.put(PWD_FILE_NAME, JSONUtil.parseObj(convertMap.get("password")).get("value"));
+            convertMap.put(INPUT_FILE_NAME_USER_NAME, JSONUtil.parseObj(convertMap.get("username")).get("value"));
+            convertMap.put(INPUT_FILE_NAME_URL, JSONUtil.parseObj(convertMap.get("url")).get("value"));
+            Map<String, Object> innerMap = new HashMap<>();
+            innerMap.put(key3, "1");
+            innerMap.put(key5, "");
+            convertMap.put("schema",innerMap);
+        }
+
         return JSON.toJSONString(convertMap);
     }
 
