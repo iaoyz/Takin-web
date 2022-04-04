@@ -6,12 +6,15 @@ import java.util.Date;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Resource;
+
 import com.alibaba.fastjson.JSON;
 
 import com.pamirs.takin.entity.domain.dto.report.ReportDetailDTO;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.sdk.model.request.report.UpdateReportConclusionReq;
 import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.web.amdb.api.ReportClient;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.pojo.output.report.ReportDetailOutput;
 import io.shulie.takin.web.biz.service.DistributedLock;
@@ -88,6 +91,9 @@ public class ReportTaskServiceImpl implements ReportTaskService {
     @Autowired
     private DistributedLock distributedLock;
 
+    @Resource
+    private ReportClient reportClient;
+
     @Override
     public Boolean finishReport(Long reportId, TenantCommonExt commonExt) {
         try {
@@ -158,7 +164,8 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                     ResponseResult<String> responseResult = sceneTaskApi.updateReportStatus(conclusionReq);
                     log.info("修改压测报告的结果:[{}]", JSON.toJSONString(responseResult));
                 }
-
+                // 通知大数据，启动压测数据分析
+                notifyAnalyzeReportData(reportId);
                 reportDataCache.clearDataCache(reportId);
                 log.info("报告id={}汇总成功，花费时间={}", reportId, (System.currentTimeMillis() - startTime));
             } catch (Exception e) {
@@ -276,5 +283,14 @@ public class ReportTaskServiceImpl implements ReportTaskService {
         summaryService.calcApplicationSummary(reportId);
         log.debug("reportId={} calcApplicationSummary success，cost time={}s", reportId,
             (System.currentTimeMillis() - startTime) / 1000);
+    }
+
+    /**
+     * 通知storm启动压测报告数据分析
+     *
+     * @param reportId 报告Id
+     */
+    private void notifyAnalyzeReportData(Long reportId) {
+        reportClient.startAnalyze(reportId);
     }
 }

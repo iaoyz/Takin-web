@@ -305,7 +305,8 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
 
     private PageInfo<ReportTraceDTO> getReportTraceDtoList(ReportTraceQueryDTO queryDTO) {
         // 查询场景下的业务活动信息
-        List<Long> businessActivityIdList = querySceneActivities(queryDTO);
+        List<Long> businessActivityIdList = querySceneActivities(queryDTO.getXpathMd5(),
+            queryDTO.getSceneId(), queryDTO.getReportId());
 
         // entryList 获得
         List<EntranceRuleDTO> entranceList = this.getEntryListByBusinessActivityIds(businessActivityIdList);
@@ -367,6 +368,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
             //if (ActivityUtil.isNormalBusiness(result.getType()) && entrance.contains("http")) {
             //    entrance = entrance.substring(entrance.indexOf("http"));
             //}
+            dto.setAppName(result.getApplicationName());
             dto.setEntrance(result.getEntrace());
             dto.setBusinessType(result.getType());
             entranceList.add(dto);
@@ -393,11 +395,11 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
     }
 
     // 查询场景对应的业务活动Id
-    private List<Long> querySceneActivities(ReportTraceQueryDTO queryDTO) {
-        String xpath = queryDTO.getXpathMd5();
-        if (StringUtils.isBlank(xpath)) {
+    @Override
+    public List<Long> querySceneActivities(String xpathMd5, Long sceneId, Long reportId) {
+        if (StringUtils.isBlank(xpathMd5)) {
             SceneManageWrapperResp response = cloudSceneApi.getSceneDetail(new SceneManageIdReq() {{
-                setId(queryDTO.getSceneId());
+                setId(sceneId);
             }});
             List<SceneBusinessActivityRefResp> businessActivityConfig = response.getBusinessActivityConfig();
             return businessActivityConfig.stream().
@@ -406,14 +408,14 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         // 通过xpath递归node
         List<ScriptNodeTreeResp> nodeTree = reportApi.scriptNodeTree(
             new ScriptNodeTreeQueryReq() {{
-                setSceneId(queryDTO.getSceneId());
-                setReportId(queryDTO.getReportId());
+                setSceneId(sceneId);
+                setReportId(reportId);
             }});
         List<Long> activityIds = new ArrayList<>();
         boolean matchNext = true;
         for (ScriptNodeTreeResp node : nodeTree) {
             if (matchNext) {
-                matchNext = recursionMatchXpath(false, xpath, node, activityIds);
+                matchNext = recursionMatchXpath(false, xpathMd5, node, activityIds);
             }
         }
         return activityIds;
