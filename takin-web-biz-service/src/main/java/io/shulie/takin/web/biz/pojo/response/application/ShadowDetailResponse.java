@@ -1,6 +1,6 @@
 package io.shulie.takin.web.biz.pojo.response.application;
 
-import com.pamirs.attach.plugin.dynamic.template.Info;
+import com.pamirs.attach.plugin.dynamic.one.template.Info;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,6 +56,12 @@ public class ShadowDetailResponse implements Serializable {
 
     @ApiModelProperty("影子数据源额外配置")
     private List<TableInfo> tables;
+
+    /**
+     * 0:amdb 1:手动录入
+     */
+    @ApiModelProperty("是否手动")
+    private Integer isManual;
 
     @Data
     @AllArgsConstructor

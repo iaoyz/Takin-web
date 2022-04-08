@@ -2,23 +2,21 @@ package io.shulie.takin.web.data.param.report;
 
 import java.math.BigDecimal;
 
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import lombok.Data;
 
 /**
- * @author by: hezhongqi
- * @Package io.shulie.takin.web.data.param.report
- * @ClassName: ReportBottleneckInterfaceCreateParam
- * @Description: TODO
- * @Date: 2021/11/23 10:52
+ * TODO
+ *
+ * @author hezhongqi
+ * @date 2021/11/23 10:52
  */
 @Data
-public class ReportBottleneckInterfaceCreateParam {
+public class ReportBottleneckInterfaceCreateParam extends TenantCommonExt {
 
     private Long reportId;
 
-
     private String applicationName;
-
 
     private Integer sortNo;
 
@@ -28,21 +26,15 @@ public class ReportBottleneckInterfaceCreateParam {
 
     private String interfaceType;
 
-
     private String interfaceName;
-
 
     private BigDecimal tps;
 
-
     private BigDecimal rt;
-
 
     private Integer nodeCount;
 
-
     private Integer errorReqs;
-
 
     private BigDecimal bottleneckWeight;
 }
