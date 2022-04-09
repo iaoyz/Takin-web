@@ -8,10 +8,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.annotation.Resource;
+
 import com.alibaba.excel.util.CollectionUtils;
 import com.alibaba.fastjson.JSONObject;
 
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import com.google.common.collect.Lists;
 import com.pamirs.takin.common.util.DateUtils;
 import com.pamirs.takin.entity.domain.dto.NodeUploadDataDTO;
@@ -34,7 +36,6 @@ import io.shulie.takin.web.data.result.application.ApplicationResult;
 import io.shulie.takin.web.data.result.application.InstanceInfoResult;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -47,13 +48,13 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class ApplicationErrorServiceImpl implements ApplicationErrorService {
 
-    @Autowired
+    @Resource
     private ApplicationService applicationService;
 
-    @Autowired
+    @Resource
     private ApplicationDAO applicationDAO;
 
-    @Autowired
+    @Resource
     @Qualifier("redisTemplate")
     private RedisTemplate redisTemplate;
 
@@ -101,7 +102,8 @@ public class ApplicationErrorServiceImpl implements ApplicationErrorService {
         return tApplicationMnt;
     }
 
-    private void putNodeExceptionIfNeeded(List<ApplicationErrorOutput> responseList, ApplicationDetailResult tApplicationMnt) {
+    private void putNodeExceptionIfNeeded(List<ApplicationErrorOutput> responseList,
+        ApplicationDetailResult tApplicationMnt) {
         Integer totalNodeCount = tApplicationMnt.getNodeNum();
         Integer onlineNodeCount = 0;
         List<ApplicationResult> applicationResultList = applicationDAO.getApplicationByName(
@@ -127,7 +129,7 @@ public class ApplicationErrorServiceImpl implements ApplicationErrorService {
 
     private void convertNodeUploadDataList(List<ApplicationErrorOutput> responseList,
         List<String> nodeUploadDataDTOList) {
-        nodeUploadDataDTOList.forEach(n -> {
+        nodeUploadDataDTOList.parallelStream().forEach(n -> {
             NodeUploadDataDTO nodeUploadDataDTO = JSONObject.parseObject(n, NodeUploadDataDTO.class);
             Map<String, Object> exceptionMap = nodeUploadDataDTO.getSwitchErrorMap();
             if (exceptionMap != null && exceptionMap.size() > 0) {
@@ -136,16 +138,16 @@ public class ApplicationErrorServiceImpl implements ApplicationErrorService {
                     if (message.contains("errorCode")) {
                         ExceptionInfo exceptionInfo = null;
                         try {
-                             exceptionInfo = JSONObject.parseObject(message, ExceptionInfo.class);
+                            exceptionInfo = JSONObject.parseObject(message, ExceptionInfo.class);
                         } catch (Exception e) {
-                            log.error("异常转换失败：错误信息: {},异常内容{}", message,e.getMessage());
+                            log.error("异常转换失败：错误信息: {},异常内容{}", message, e.getMessage());
                         }
                         ApplicationErrorOutput applicationErrorResponse
                             = new ApplicationErrorOutput()
-                            .setExceptionId(exceptionInfo != null?exceptionInfo.getErrorCode():"web-异常原文显示")
+                            .setExceptionId(exceptionInfo != null ? exceptionInfo.getErrorCode() : "web-异常原文显示")
                             .setAgentIdList(Collections.singletonList(nodeUploadDataDTO.getAgentId()))
-                            .setDescription(exceptionInfo != null?exceptionInfo.getMessage():message)
-                            .setDetail(exceptionInfo != null?exceptionInfo.getDetail():message)
+                            .setDescription(exceptionInfo != null ? exceptionInfo.getMessage() : message)
+                            .setDetail(exceptionInfo != null ? exceptionInfo.getDetail() : message)
                             .setTime(nodeUploadDataDTO.getExceptionTime());
                         responseList.add(applicationErrorResponse);
                     }
@@ -218,7 +220,7 @@ public class ApplicationErrorServiceImpl implements ApplicationErrorService {
      * 关于节点错误的信息
      *
      * @param applicationName 应用名称
-     * @param totalNodeCount 节点数量
+     * @param totalNodeCount  节点数量
      * @return 节点错误
      */
     private ApplicationErrorOutput getNodeErrorResponse(String applicationName, Integer totalNodeCount) {
@@ -252,13 +254,14 @@ public class ApplicationErrorServiceImpl implements ApplicationErrorService {
      */
     private List<ApplicationErrorOutput> processErrorList(List<ApplicationErrorOutput> responseList) {
         // 按照时间倒序输出
-        List<ApplicationErrorOutput> sortedList = responseList.stream().filter(
-            response -> StrUtil.isNotBlank(response.getTime()))
+        List<ApplicationErrorOutput> sortedList = responseList.parallelStream()
+            .filter(t -> t != null && CharSequenceUtil.isNotBlank(t.getTime()))
             .sorted((a1, a2) -> a2.getTime().compareTo(a1.getTime()))
             .collect(Collectors.toList());
 
-        List<ApplicationErrorOutput> noTimeList = responseList.stream()
-            .filter(response -> StrUtil.isNotBlank(response.getTime()))
+        List<ApplicationErrorOutput> noTimeList = responseList.parallelStream()
+            // 无时间的
+            .filter(response -> response != null && CharSequenceUtil.isBlank(response.getTime()))
             .collect(Collectors.toList());
 
         if (sortedList.isEmpty()) {
