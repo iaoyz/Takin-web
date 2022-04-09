@@ -32,7 +32,6 @@ public class ReportClientImpl implements ReportClient {
     private static final String ACTIVITY_INTERFACE_PATH = "/amdb/report/activity/interface/list";
     private static final String INTERFACE_METRICS_PATH = "/amdb/report/activity/interface/metrics";
     private static final String CREATE_TABLE_PATH = "/amdb/report/create/table?reportId=@reportId@";
-    private static final String START_TASK_PATH = "/amdb/report/task/start?reportId=@reportId@";
 
     @Resource
     private AmdbClientProperties properties;
@@ -77,7 +76,7 @@ public class ReportClientImpl implements ReportClient {
     public void createReportTraceTable(Long reportId) {
         String url = properties.getUrl().getAmdb() + CREATE_TABLE_PATH.replace("@reportId@", String.valueOf(reportId));
         try {
-            AmdbHelper.builder().url(url).httpMethod(HttpMethod.POST).eventName("压测报告自动建表")
+            AmdbHelper.builder().url(url).eventName("压测报告自动建表")
                 .exception(REPORT_CREATE_TABLE_ERROR).one(Boolean.class);
         } catch (Exception e) {
             log.error("压测报告建表时报", e);
@@ -94,7 +93,7 @@ public class ReportClientImpl implements ReportClient {
                 return;
             }
             url += "?reportId=" + reportId;
-            AmdbHelper.builder().url(url).httpMethod(HttpMethod.POST).eventName("启动压测报告分析任务")
+            AmdbHelper.builder().url(url).eventName("启动压测报告分析任务")
                 .exception(REPORT_START_REPORT_ANALYZE_ERROR).one(Boolean.class);
         } catch (Exception e) {
             log.error("启动压测报告数据分析异常", e);
