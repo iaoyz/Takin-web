@@ -8,5 +8,8 @@ import org.apache.ibatis.annotations.Update;
 public interface ReportTaskMapper extends BaseMapper<ReportTaskEntity> {
 
     @Update("update t_report_task set `state` = '1', gmt_update = now() where report_id = #{reportId}")
+    void startSync(@Param("reportId") String reportId);
+
+    @Update("update t_report_task set `state` = '2', gmt_update = now() where report_id = #{reportId}")
     void syncSuccess(@Param("reportId") String reportId);
 }

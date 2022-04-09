@@ -12,6 +12,7 @@ import io.shulie.takin.web.amdb.bean.query.report.ReportQueryDTO;
 import io.shulie.takin.web.amdb.bean.result.report.ReportActivityDTO;
 import io.shulie.takin.web.biz.service.report.ReportActivityService;
 import io.shulie.takin.web.data.dao.report.ReportActivityDAO;
+import io.shulie.takin.web.data.dao.report.ReportTaskDAO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
@@ -26,6 +27,14 @@ public class ReportActivityServiceImpl implements ReportActivityService {
 
     @Resource
     private ReportActivityDAO activityDAO;
+
+    @Resource
+    private ReportTaskDAO reportTaskDAO;
+
+    @Override
+    public void startSync(String reportId) {
+        reportTaskDAO.startSync(reportId);
+    }
 
     @Override
     public void syncActivity(String reportId) {

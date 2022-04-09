@@ -27,6 +27,7 @@ import io.shulie.takin.web.common.pojo.dto.SceneTaskDto;
 import io.shulie.takin.web.common.util.CommonUtil;
 import io.shulie.takin.web.common.util.SceneTaskUtils;
 import io.shulie.takin.web.data.dao.leakverify.LeakVerifyResultDAO;
+import io.shulie.takin.web.data.dao.report.ReportTaskDAO;
 import io.shulie.takin.web.diff.api.scenetask.SceneTaskApi;
 import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
@@ -93,6 +94,9 @@ public class ReportTaskServiceImpl implements ReportTaskService {
 
     @Resource
     private ReportClient reportClient;
+
+    @Resource
+    private ReportTaskDAO reportTaskDAO;
 
     @Override
     public Boolean finishReport(Long reportId, TenantCommonExt commonExt) {
@@ -291,6 +295,7 @@ public class ReportTaskServiceImpl implements ReportTaskService {
      * @param reportId 报告Id
      */
     private void notifyAnalyzeReportData(Long reportId) {
+        reportTaskDAO.startAnalyze(reportId);
         reportClient.startAnalyze(reportId);
     }
 }

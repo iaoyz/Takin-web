@@ -186,6 +186,7 @@ public class ReportController {
     @ApiOperation("报告分析任务完成通知")
     public void reportAnalyzeCompleted(@PathVariable("reportId") String reportId) {
         // 更新状态，并开始同步数据
+        activityService.startSync(reportId);
         CompletableFuture.allOf(CompletableFuture.runAsync(() -> activityService.syncActivity(reportId)),
             CompletableFuture.runAsync(() -> interfaceService.syncActivityInterface(reportId)))
             .thenRun(() -> metricsService.syncInterfaceMetrics(reportId));

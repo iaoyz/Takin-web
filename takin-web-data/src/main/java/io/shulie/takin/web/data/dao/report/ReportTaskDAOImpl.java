@@ -1,5 +1,7 @@
 package io.shulie.takin.web.data.dao.report;
 
+import java.util.Date;
+
 import javax.annotation.Resource;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -14,6 +16,20 @@ public class ReportTaskDAOImpl extends ServiceImpl<ReportTaskMapper, ReportTaskE
 
     @Resource
     private ReportTaskMapper reportTaskMapper;
+
+    @Override
+    public void startAnalyze(Long reportId) {
+        ReportTaskEntity entity = new ReportTaskEntity();
+        entity.setReportId(reportId);
+        entity.setGmtCreate(new Date());
+        entity.setState(0);
+        this.save(entity);
+    }
+
+    @Override
+    public void startSync(String reportId) {
+        reportTaskMapper.startSync(reportId);
+    }
 
     public void syncSuccess(String reportId) {
         reportTaskMapper.syncSuccess(reportId);

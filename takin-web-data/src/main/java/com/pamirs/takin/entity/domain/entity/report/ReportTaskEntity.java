@@ -28,11 +28,11 @@ public class ReportTaskEntity implements Serializable {
      * 创建时间
      */
     @TableField(value = "gmt_create")
-    private String gmtCreate;
+    private Date gmtCreate;
 
     /**
      * 修改时间
      */
     @TableField(value = "gmt_update")
-    private String gmtUpdate;
+    private Date gmtUpdate;
 }
