@@ -182,7 +182,7 @@ public class ReportController {
         return response;
     }
 
-    @PutMapping("public/report/completed/{reportId}")
+    @PutMapping("report/completed/{reportId}")
     @ApiOperation("报告分析任务完成通知")
     public void reportAnalyzeCompleted(@PathVariable("reportId") String reportId) {
         // 更新状态，并开始同步数据
