@@ -168,8 +168,6 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                     ResponseResult<String> responseResult = sceneTaskApi.updateReportStatus(conclusionReq);
                     log.info("修改压测报告的结果:[{}]", JSON.toJSONString(responseResult));
                 }
-                // 通知大数据，启动压测数据分析
-                notifyAnalyzeReportData(reportId);
                 reportDataCache.clearDataCache(reportId);
                 log.info("报告id={}汇总成功，花费时间={}", reportId, (System.currentTimeMillis() - startTime));
             } catch (Exception e) {
@@ -186,6 +184,9 @@ public class ReportTaskServiceImpl implements ReportTaskService {
 
         } catch (Exception e) {
             log.error("QueryRunningReport Error :{}", e.getMessage());
+        } finally {
+            // 通知大数据，启动压测数据分析
+            notifyAnalyzeReportData(reportId);
         }
         return true;
     }
@@ -295,7 +296,11 @@ public class ReportTaskServiceImpl implements ReportTaskService {
      * @param reportId 报告Id
      */
     private void notifyAnalyzeReportData(Long reportId) {
-        reportTaskDAO.startAnalyze(reportId);
-        reportClient.startAnalyze(reportId);
+        try {
+            reportTaskDAO.startAnalyze(reportId);
+            reportClient.startAnalyze(reportId);
+        } catch (Exception e) {
+            log.error("启动压测分析任务异常", e);
+        }
     }
 }
