@@ -12,4 +12,6 @@ public interface ReportActivityInterfaceDAO {
     List<ReportActivityInterfaceEntity> selectByReportId(String reportId);
 
     List<ReportActivityInterfaceEntity> queryByParam(ReportActivityInterfaceQueryParam param);
+
+    void updateInterfaceCostPercent(List<ReportActivityInterfaceEntity> entities);
 }
