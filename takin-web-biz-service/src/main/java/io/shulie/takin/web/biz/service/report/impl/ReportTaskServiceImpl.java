@@ -3,6 +3,7 @@ package io.shulie.takin.web.biz.service.report.impl;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.Objects;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -122,6 +123,10 @@ public class ReportTaskServiceImpl implements ReportTaskService {
             // 压测结束才锁报告
             Integer status = report.getTaskStatus();
             if (status == null || status != 1) {
+                if (Objects.nonNull(status) && status == 2) {
+                    // 可能sla触发压测停止，压测引擎修改了压测报告的状态
+                    notifyAnalyzeReportData(reportId);
+                }
                 return false;
             }
             ReportDetailDTO reportDetailDTO = reportDataCache.getReportDetailDTO(reportId);
