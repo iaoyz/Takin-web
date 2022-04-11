@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pamirs.takin.entity.domain.entity.report.ReportInterfaceMetricsEntity;
 import io.shulie.takin.web.data.mapper.mysql.ReportInterfaceMetricsMapper;
 import io.shulie.takin.web.data.param.report.ReportInterfaceMetricsQueryParam;
-import io.shulie.takin.web.data.param.report.ReportInterfaceMetricsQueryParam.ServiceParam;
+import io.shulie.takin.web.data.param.report.ReportInterfaceMetricsQueryParam.MetricsServiceParam;
 import io.shulie.takin.web.data.util.MPUtil;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Repository;
@@ -30,7 +30,7 @@ public class ReportInterfaceMetricsDAOImpl extends ServiceImpl<ReportInterfaceMe
     private Wrapper<ReportInterfaceMetricsEntity> buildQueryWrapper(ReportInterfaceMetricsQueryParam param) {
         LambdaQueryWrapper<ReportInterfaceMetricsEntity> wrapper = this.getLambdaQueryWrapper()
             .eq(ReportInterfaceMetricsEntity::getReportId, param.getReportId());
-        List<ServiceParam> services = param.getServices();
+        List<MetricsServiceParam> services = param.getServices();
         if (CollectionUtils.isNotEmpty(services)) {
             wrapper.and(wp -> services.forEach(entrance -> wp.or()
                 .and(

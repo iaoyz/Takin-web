@@ -9,10 +9,10 @@ import lombok.Data;
 public class ReportInterfaceMetricsQueryParam implements Serializable {
 
     private Long reportId;
-    private List<ServiceParam> services;
+    private List<MetricsServiceParam> services;
 
     @Data
-    public static class ServiceParam implements Serializable {
+    public static class MetricsServiceParam implements Serializable {
         private String appName;
         private String serviceName;
         private String methodName;

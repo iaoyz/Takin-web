@@ -33,6 +33,7 @@ import io.shulie.takin.web.biz.service.report.ReportInterfaceMetricsService;
 import io.shulie.takin.web.data.dao.report.ReportInterfaceMetricsDAO;
 import io.shulie.takin.web.data.dao.report.ReportTaskDAO;
 import io.shulie.takin.web.data.param.report.ReportInterfaceMetricsQueryParam;
+import io.shulie.takin.web.data.param.report.ReportInterfaceMetricsQueryParam.MetricsServiceParam;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
@@ -94,7 +95,16 @@ public class ReportInterfaceMetricsServiceImpl implements ReportInterfaceMetrics
     public ReportPerformanceCostTrendDTO queryCostTrend(ReportPerformanceCostTrendRequest request) {
         fillServiceParamIfNecessary(request);
         ReportInterfaceMetricsQueryParam param = new ReportInterfaceMetricsQueryParam();
-        BeanUtils.copyProperties(request, param);
+        BeanUtils.copyProperties(request, param, "services");
+        List<ServiceParam> services = request.getServices();
+        if (CollectionUtils.isNotEmpty(services)) {
+            List<MetricsServiceParam> serviceParams = services.stream().map(service -> {
+                MetricsServiceParam serviceParam = new MetricsServiceParam();
+                BeanUtils.copyProperties(service, serviceParam);
+                return serviceParam;
+            }).collect(Collectors.toList());
+            param.setServices(serviceParams);
+        }
         List<ReportInterfaceMetricsEntity> entities = metricsDAO.queryByParam(param);
         return reassembledInterfaceMetrics(entities);
     }
