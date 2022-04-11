@@ -2,6 +2,8 @@ package io.shulie.takin.web.data.dao.report;
 
 import java.util.List;
 
+import javax.annotation.Resource;
+
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -20,6 +22,9 @@ public class ReportActivityInterfaceDAOImpl
     extends ServiceImpl<ReportActivityInterfaceMapper, ReportActivityInterfaceEntity>
     implements ReportActivityInterfaceDAO, MPUtil<ReportActivityInterfaceEntity> {
 
+    @Resource
+    private ReportActivityInterfaceMapper mapper;
+
     @Override
     public boolean batchInsert(List<ReportActivityInterfaceEntity> entityList) {
         return this.saveBatch(entityList, 200);
@@ -35,6 +40,13 @@ public class ReportActivityInterfaceDAOImpl
     @Override
     public List<ReportActivityInterfaceEntity> queryByParam(ReportActivityInterfaceQueryParam param) {
         return this.list(buildQueryWrapper(param));
+    }
+
+    @Override
+    public void updateInterfaceCostPercent(List<ReportActivityInterfaceEntity> entities) {
+        if (CollectionUtils.isNotEmpty(entities)) {
+            entities.forEach(entity -> mapper.updateInterfaceCostPercent(entity));
+        }
     }
 
     private Wrapper<ReportActivityInterfaceEntity> buildQueryWrapper(ReportActivityInterfaceQueryParam param) {

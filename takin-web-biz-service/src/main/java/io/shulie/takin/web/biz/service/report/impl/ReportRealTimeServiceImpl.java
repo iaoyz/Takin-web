@@ -40,7 +40,6 @@ import com.pamirs.takin.entity.domain.dto.report.ReportTraceDetailDTO;
 import com.pamirs.takin.entity.domain.entity.linkmanage.figure.RpcType;
 
 import io.shulie.takin.web.amdb.api.TraceClient;
-import io.shulie.takin.web.common.util.ActivityUtil;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.service.risk.util.DateUtil;
 import io.shulie.takin.web.biz.service.report.ReportService;
@@ -371,6 +370,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
             dto.setAppName(result.getApplicationName());
             dto.setEntrance(result.getEntrace());
             dto.setBusinessType(result.getType());
+            dto.setLinkId(result.getLinkId());
             entranceList.add(dto);
         }
         return entranceList;
@@ -400,6 +400,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         if (StringUtils.isBlank(xpathMd5)) {
             SceneManageWrapperResp response = cloudSceneApi.getSceneDetail(new SceneManageIdReq() {{
                 setId(sceneId);
+                setReportId(reportId);
             }});
             List<SceneBusinessActivityRefResp> businessActivityConfig = response.getBusinessActivityConfig();
             return businessActivityConfig.stream().

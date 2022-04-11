@@ -42,6 +42,7 @@ public class ReportActivityInterfaceQueryParam extends PagingDevice {
     }
 
     @Data
+    @EqualsAndHashCode
     public static class EntranceParam {
         private String appName;
         private String serviceName;
