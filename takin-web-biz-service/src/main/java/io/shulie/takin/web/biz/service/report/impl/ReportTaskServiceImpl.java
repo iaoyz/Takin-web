@@ -172,6 +172,8 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 log.info("报告id={}汇总成功，花费时间={}", reportId, (System.currentTimeMillis() - startTime));
             } catch (Exception e) {
                 // log.error("客户端生成报告id={}数据异常:{}", reportId, e.getMessage(), e);
+                // 通知大数据，启动压测数据分析
+                notifyAnalyzeReportData(reportId);
                 //生成报告异常，清空本轮生成表数据
                 reportClearService.clearReportData(reportId);
                 //压测结束，生成压测报告异常，解锁报告
@@ -184,9 +186,6 @@ public class ReportTaskServiceImpl implements ReportTaskService {
 
         } catch (Exception e) {
             log.error("QueryRunningReport Error :{}", e.getMessage());
-        } finally {
-            // 通知大数据，启动压测数据分析
-            notifyAnalyzeReportData(reportId);
         }
         return true;
     }
