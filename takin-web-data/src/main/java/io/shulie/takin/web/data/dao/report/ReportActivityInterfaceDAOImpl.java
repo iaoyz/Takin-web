@@ -2,6 +2,7 @@ package io.shulie.takin.web.data.dao.report;
 
 import java.util.List;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -43,15 +44,16 @@ public class ReportActivityInterfaceDAOImpl
         if (CollectionUtils.isNotEmpty(entrances)) {
             wrapper.and(wp -> entrances.forEach(entrance -> wp.or()
                 .and(
-                    p -> p.eq(ReportActivityInterfaceEntity::getAppName, entrance.getAppName())
-                        .eq(ReportActivityInterfaceEntity::getServiceName, entrance.getServiceName())
-                        .eq(ReportActivityInterfaceEntity::getMethodName, entrance.getMethodName())
-                        .eq(ReportActivityInterfaceEntity::getRpcType, entrance.getRpcType())
+                    p -> p.eq(ReportActivityInterfaceEntity::getEntranceAppName, entrance.getAppName())
+                        .eq(ReportActivityInterfaceEntity::getEntranceServiceName, entrance.getServiceName())
+                        .eq(ReportActivityInterfaceEntity::getEntranceMethodName, entrance.getMethodName())
+                        .eq(ReportActivityInterfaceEntity::getEntranceRpcType, entrance.getRpcType())
                 )));
         }
         String sortField = param.getSortField();
         if (StringUtils.isNotBlank(sortField)) {
-            wrapper.last(" order by " + sortField + " " + param.getSortType() + " ");
+            // 驼峰转下划线
+            wrapper.last(" order by " + StrUtil.toUnderlineCase(sortField) + " " + param.getSortType() + " ");
         }
         return wrapper;
     }
