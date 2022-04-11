@@ -37,6 +37,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.mockito.internal.util.collections.Sets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -187,9 +189,9 @@ public class ReportLocalController {
         return Response.success(pair.getKey(), pair.getValue());
     }
 
-    @GetMapping("/report/performanceInterface/costTrend")
+    @PostMapping("/report/performanceInterface/costTrend")
     @ApiOperation("自耗时趋势")
-    public Response<ReportPerformanceCostTrendDTO> queryCostTrend(ReportPerformanceCostTrendRequest request) {
+    public Response<ReportPerformanceCostTrendDTO> queryCostTrend(@RequestBody ReportPerformanceCostTrendRequest request) {
         return Response.success(reportLocalService.queryCostTrend(request));
     }
 
