@@ -104,8 +104,9 @@ public class ReportActivityInterfaceServiceImpl implements ReportActivityInterfa
             entity.setEntranceMethodName(key.getMethodName());
             entity.setEntranceRpcType(key.getRpcType());
             entity.setServiceAvgCost(entry.getValue());
-            interfaceDAO.updateInterfaceCostPercent(entities);
+            entities.add(entity);
         }
+        interfaceDAO.updateInterfaceCostPercent(entities);
     }
 
     private void updateActivityCost(Long reportId, Map<EntranceParam, BigDecimal> metricsCost) {
@@ -119,8 +120,9 @@ public class ReportActivityInterfaceServiceImpl implements ReportActivityInterfa
             entity.setMethodName(key.getMethodName());
             entity.setRpcType(key.getRpcType());
             entity.setAvgCost(entry.getValue());
-            activityDAO.updateEntranceAvgCost(entities);
+            entities.add(entity);
         }
+        activityDAO.updateEntranceAvgCost(entities);
     }
 
     /**
