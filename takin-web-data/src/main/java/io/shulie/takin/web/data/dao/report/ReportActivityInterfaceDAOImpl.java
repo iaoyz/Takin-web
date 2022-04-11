@@ -42,8 +42,7 @@ public class ReportActivityInterfaceDAOImpl
             .eq(ReportActivityInterfaceEntity::getReportId, param.getReportId());
         List<EntranceParam> entrances = param.getEntrances();
         if (CollectionUtils.isNotEmpty(entrances)) {
-            wrapper.and(wp -> entrances.forEach(entrance -> wp.or()
-                .and(
+            wrapper.and(wp -> entrances.forEach(entrance -> wp.or(
                     p -> p.eq(ReportActivityInterfaceEntity::getEntranceAppName, entrance.getAppName())
                         .eq(ReportActivityInterfaceEntity::getEntranceServiceName, entrance.getServiceName())
                         .eq(ReportActivityInterfaceEntity::getEntranceMethodName, entrance.getMethodName())
