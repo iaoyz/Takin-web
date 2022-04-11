@@ -32,8 +32,7 @@ public class ReportInterfaceMetricsDAOImpl extends ServiceImpl<ReportInterfaceMe
             .eq(ReportInterfaceMetricsEntity::getReportId, param.getReportId());
         List<MetricsServiceParam> services = param.getServices();
         if (CollectionUtils.isNotEmpty(services)) {
-            wrapper.and(wp -> services.forEach(entrance -> wp.or()
-                .and(
+            wrapper.and(wp -> services.forEach(entrance -> wp.or(
                     p -> p.eq(ReportInterfaceMetricsEntity::getAppName, entrance.getAppName())
                         .eq(ReportInterfaceMetricsEntity::getServiceName, entrance.getServiceName())
                         .eq(ReportInterfaceMetricsEntity::getMethodName, entrance.getMethodName())
