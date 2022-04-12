@@ -121,12 +121,9 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 collectDataThreadPool.execute(collectData(reportId,commonExt,lockKey));
             }
             // 压测结束才锁报告
+            processGenerated(report, reportId, commonExt);
             Integer status = report.getTaskStatus();
             if (status == null || status != 1) {
-                if (Objects.nonNull(status) && status == 2) {
-                    // 可能sla触发压测停止，压测引擎修改了压测报告的状态
-                    notifyAnalyzeReportData(reportId);
-                }
                 return false;
             }
             ReportDetailDTO reportDetailDTO = reportDataCache.getReportDetailDTO(reportId);
@@ -306,6 +303,18 @@ public class ReportTaskServiceImpl implements ReportTaskService {
             reportClient.startAnalyze(reportId);
         } catch (Exception e) {
             log.error("启动压测分析任务异常", e);
+        }
+    }
+
+    private void processGenerated(ReportDetailOutput report, Long reportId, TenantCommonExt commonExt) {
+        Integer status = report.getTaskStatus();
+        if (Objects.nonNull(status) && status == 2) {
+            // 可能sla触发压测停止，压测引擎修改了压测报告的状态
+            String reportKey = WebRedisKeyConstant.getReportKey(reportId);
+            if (redisTemplate.opsForValue().getOperations().hasKey(reportKey)) {
+                notifyAnalyzeReportData(reportId);
+                removeReportKey(reportId, commonExt);
+            }
         }
     }
 }
