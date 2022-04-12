@@ -1,14 +1,16 @@
 package io.shulie.takin.web.entrypoint.controller.scenemanage;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javax.annotation.Resource;
+
 import com.alibaba.fastjson.JSON;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.google.common.collect.Lists;
 import com.pamirs.takin.common.constant.Constants;
 import com.pamirs.takin.common.constant.VerifyTypeEnum;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneBusinessActivityRefDTO;
@@ -21,10 +23,11 @@ import io.shulie.takin.cloud.sdk.model.response.scenetask.SceneActionResp;
 import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
+import io.shulie.takin.web.amdb.api.ReportClient;
 import io.shulie.takin.web.biz.constant.BizOpConstants;
 import io.shulie.takin.web.biz.pojo.request.leakverify.LeakVerifyTaskStartRequest;
 import io.shulie.takin.web.biz.pojo.request.leakverify.LeakVerifyTaskStopRequest;
+import io.shulie.takin.web.biz.pojo.request.scenemanage.TaskPreStopRequest;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.UpdateTpsRequest;
 import io.shulie.takin.web.biz.service.VerifyTaskService;
 import io.shulie.takin.web.biz.service.scenemanage.SceneManageService;
@@ -36,6 +39,7 @@ import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
 import io.shulie.takin.web.common.util.SceneTaskUtils;
 import io.shulie.takin.web.diff.api.scenetask.SceneTaskApi;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.collections4.CollectionUtils;
@@ -68,6 +72,19 @@ public class SceneTaskController {
     private SceneManageService sceneManageService;
     @Autowired
     private RedisClientUtils redisClientUtils;
+    @Resource
+    private ReportClient reportClient;
+
+    @ApiOperation("|_ 启动时停止")
+    @PutMapping("/preStop")
+    @ModuleDef(
+        moduleName = BizOpConstants.Modules.PRESSURE_TEST_MANAGE,
+        subModuleName = BizOpConstants.SubModules.PRESSURE_TEST_SCENE,
+        logMsgKey = BizOpConstants.Message.MESSAGE_PRESSURE_TEST_SCENE_STOP
+    )
+    public void preStop(@Validated @RequestBody TaskPreStopRequest request) {
+        sceneTaskService.preStop(request.getSceneId());
+    }
 
     /**
      * 启动场景
@@ -99,13 +116,22 @@ public class SceneTaskController {
             SceneActionResp startTaskResponse = sceneTaskService.startTask(param);
             // 开启漏数
             startCheckLeakTask(param, sceneData);
+            // 根据报告Id建表
+            createReportTraceTable(startTaskResponse.getData());
             return WebResponse.success(startTaskResponse);
         } catch (TakinWebException ex) {
             // 解除 场景锁
             redisClientUtils.delete(SceneTaskUtils.getSceneTaskKey(param.getSceneId()));
             SceneActionResp sceneStart = new SceneActionResp();
             //sceneStart.setMsg(Arrays.asList(StringUtils.split(ex.getMessage(), Constants.SPLIT)));
-            sceneStart.setMsg(Arrays.asList(ex.getMessage()));
+            List<String> message = Lists.newArrayList();
+            if(StringUtils.isNotBlank(ex.getMessage())) {
+                message.addAll(Collections.singletonList(ex.getMessage()));
+            }
+            if(ex.getSource() != null) {
+                message.addAll(Collections.singletonList(JsonHelper.bean2Json(ex.getSource())));
+            }
+            sceneStart.setMsg(message.stream().distinct().collect(Collectors.toList()));
             return WebResponse.success(sceneStart);
         }
     }
@@ -137,6 +163,10 @@ public class SceneTaskController {
     private void setStartLogVars(SceneManageWrapperDTO sceneData) {
         OperationLogContextHolder.addVars(BizOpConstants.Vars.SCENE_ID, String.valueOf(sceneData.getId()));
         OperationLogContextHolder.addVars(BizOpConstants.Vars.SCENE_NAME, sceneData.getPressureTestSceneName());
+    }
+
+    private void createReportTraceTable(Long reportId) {
+        reportClient.createReportTraceTable(reportId);
     }
 
     /**
@@ -197,8 +227,8 @@ public class SceneTaskController {
 
     @GetMapping("/queryTaskTps")
     @ApiOperation(value = "查询运行中修改之后的tps")
-    public ResponseResult<Long> queryTaskTps(@RequestParam Long reportId, @RequestParam Long sceneId) {
-        Long totalTps = sceneTaskService.queryTaskTps(reportId, sceneId);
+    public ResponseResult<Long> queryTaskTps(@RequestParam Long reportId, @RequestParam Long sceneId, @RequestParam String xpathMd5) {
+        Long totalTps = sceneTaskService.queryTaskTps(reportId, sceneId, xpathMd5);
         return ResponseResult.success(totalTps);
     }
 
