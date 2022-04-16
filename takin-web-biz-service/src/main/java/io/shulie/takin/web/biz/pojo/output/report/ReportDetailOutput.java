@@ -6,10 +6,10 @@ import java.util.List;
 
 import com.pamirs.takin.entity.domain.dto.report.LeakVerifyResult;
 import io.shulie.takin.cloud.common.bean.scenemanage.WarnBean;
-import io.shulie.takin.cloud.sdk.model.ScriptNodeSummaryBean;
-import io.shulie.takin.cloud.sdk.model.common.SlaBean;
-import io.shulie.takin.cloud.sdk.model.common.StopReasonBean;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.BusinessActivitySummaryBean;
+import io.shulie.takin.adapter.api.model.ScriptNodeSummaryBean;
+import io.shulie.takin.adapter.api.model.common.SlaBean;
+import io.shulie.takin.adapter.api.model.common.StopReasonBean;
+import io.shulie.takin.adapter.api.model.response.scenemanage.BusinessActivitySummaryBean;
 import io.shulie.takin.web.ext.entity.UserCommonExt;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;

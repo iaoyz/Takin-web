@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.pamirs.takin.common.exception.ApiException;
-import io.shulie.takin.cloud.entrypoint.scene.manage.SceneManageApi;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageIdReq;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageWrapperResp;
+import io.shulie.takin.adapter.api.entrypoint.scene.manage.SceneManageApi;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
+import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
 import io.shulie.takin.web.amdb.bean.common.EntranceTypeEnum;
 import io.shulie.takin.web.biz.pojo.response.ApplicationEntryResponse;
 import io.shulie.takin.web.biz.service.PressureService;

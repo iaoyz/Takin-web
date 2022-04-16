@@ -19,28 +19,22 @@ import org.springframework.stereotype.Component;
 public class CloudApiAspect {
 
     @Pointcut("execution(public * io.shulie.takin.web.diff.cloud.impl..*.*(..))")
-    public void myAspect() {
+    private void cloudDiff() {
 
     }
 
-    @Before("myAspect()")
+    @Pointcut("execution(public * io.shulie.takin.adapter.cloud.impl.common.*.*(..))")
+    private void sdkCommon() {
+
+    }
+
+    @Pointcut("execution(public * io.shulie.takin.adapter.cloud.impl.scene.task.*.*(..))")
+    private void sdkTask() {
+
+    }
+
+    @Before("cloudDiff() || sdkCommon() || sdkTask()")
     public void doBefore(JoinPoint joinPoint) {
-        Object[] params = joinPoint.getArgs();
-        if (params != null && params.length == 1) {
-            if (params[0] instanceof ContextExt) {
-                ContextExt inParam = (ContextExt)params[0];
-                WebPluginUtils.fillCloudUserData(inParam);
-            }
-        }
-    }
-
-    @Pointcut("execution(public * io.shulie.takin.cloud.sdk.impl..*.*(..))")
-    public void sdk() {
-
-    }
-
-    @Before("sdk()")
-    public void beforeSdk(JoinPoint joinPoint) {
         Object[] params = joinPoint.getArgs();
         if (params != null && params.length == 1) {
             if (params[0] instanceof ContextExt) {

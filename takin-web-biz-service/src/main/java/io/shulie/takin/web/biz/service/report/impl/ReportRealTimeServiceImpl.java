@@ -13,9 +13,9 @@ import javax.annotation.Resource;
 import com.alibaba.fastjson.JSON;
 
 import com.pamirs.takin.entity.domain.dto.report.ReportTraceQueryDTO;
-import io.shulie.takin.cloud.entrypoint.scene.manage.SceneManageApi;
-import io.shulie.takin.cloud.sdk.model.request.report.ScriptNodeTreeQueryReq;
-import io.shulie.takin.cloud.sdk.model.response.report.ScriptNodeTreeResp;
+import io.shulie.takin.adapter.api.entrypoint.scene.manage.SceneManageApi;
+import io.shulie.takin.adapter.api.model.request.report.ScriptNodeTreeQueryReq;
+import io.shulie.takin.adapter.api.model.response.report.ScriptNodeTreeResp;
 import io.shulie.takin.web.diff.api.report.ReportApi;
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,11 +55,11 @@ import io.shulie.takin.web.biz.service.report.ReportRealTimeService;
 import io.shulie.takin.web.data.dao.linkmanage.BusinessLinkManageDAO;
 import io.shulie.takin.web.biz.pojo.output.report.ReportDetailOutput;
 import io.shulie.takin.web.biz.utils.business.script.ScriptDebugUtil;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageIdReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.web.biz.pojo.response.report.ReportLinkDetailResponse;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageWrapperResp;
+import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptDebugRequestListResponse;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageWrapperResp.SceneBusinessActivityRefResp;
+import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp.SceneBusinessActivityRefResp;
 
 /**
  * @author qianshui
