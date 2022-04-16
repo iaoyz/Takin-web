@@ -4,9 +4,10 @@ import java.util.List;
 
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import com.pamirs.takin.entity.domain.vo.report.SceneActionParam;
-import io.shulie.takin.cloud.sdk.model.response.scenetask.SceneActionResp;
-import io.shulie.takin.cloud.sdk.model.response.scenetask.SceneJobStateResp;
+import io.shulie.takin.adapter.api.model.response.scenetask.SceneActionResp;
+import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.web.biz.pojo.request.scenemanage.TaskPreStopRequest;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.UpdateTpsRequest;
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 
@@ -69,9 +70,9 @@ public interface SceneTaskService {
     /**
      * 压测启动中停止
      *
-     * @param sceneId 场景id
+     * @param req 停止请求
      */
-    void preStop(Long sceneId);
+    void preStop(TaskPreStopRequest req);
 
     /**
      * 停止
@@ -81,4 +82,5 @@ public interface SceneTaskService {
      */
     ResponseResult<String> stop(Long sceneId);
 
+    CheckResultVo preCheck(SceneActionParam param);
 }

@@ -27,7 +27,10 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
     "com.pamirs.takin.*.dao",
     "io.shulie.takin.web.data.mapper.mysql",
     "io.shulie.takin.web.data.dao.statistics",
-    "io.shulie.takin.web.data.convert.*"
+    "io.shulie.takin.web.data.convert.*",
+    "io.shulie.takin.cloud.data.mapper.mysql",
+    "io.shulie.takin.cloud.data.dao.statistics",
+    "com.pamirs.takin.cloud.*.dao"
 })
 @EnableAspectJAutoProxy
 @SpringBootApplication
