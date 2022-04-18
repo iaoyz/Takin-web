@@ -81,7 +81,6 @@ public class DataSourceServiceImpl implements DataSourceService {
     @Autowired
     private BusinessLinkManageDAO businessLinkManageDAO;
 
-
     @Override
     @Transactional(rollbackFor = Throwable.class)
     public void createDatasource(DataSourceCreateRequest createRequest) {
@@ -138,7 +137,7 @@ public class DataSourceServiceImpl implements DataSourceService {
         }
         // 3、判断当前登录用户是否有更新权限
         if (!checkUpdatePermission(idResult.getUserId())) {
-            throw new TakinWebException(ExceptionCode.DATASOURCE_UPDATE_ERROR, "数据权限不足");
+            throw new TakinWebException(ExceptionCode.DATASOURCE_UPDATE_ERROR, "更新权限不足");
         }
         // 4、除过本id外，检查名称是否重复
         if (!idResult.getName().equals(name) && checkIsExistName(name)) {
@@ -228,7 +227,9 @@ public class DataSourceServiceImpl implements DataSourceService {
             }
         }
         String name = queryRequest.getDatasourceName();
+        name = name == null ? null : name.replace("%", "\\%").replace("_", "\\_").replace("-", "\\-");
         String jdbcUrl = queryRequest.getJdbcUrl();
+        jdbcUrl = jdbcUrl == null ? null : jdbcUrl.replace("%", "\\%").replace("_", "\\_").replace("-", "\\-");
         DataSourceQueryParam queryParam = new DataSourceQueryParam();
         queryParam.setCurrent(queryRequest.getCurrent() + 1);
         queryParam.setPageSize(queryRequest.getPageSize());
@@ -243,7 +244,7 @@ public class DataSourceServiceImpl implements DataSourceService {
         }
         PagingList<DataSourceResult> pagingList = dataSourceDAO.selectPage(queryParam);
         if (pagingList.isEmpty()) {
-            return PagingList.of(Lists.newArrayList(),pagingList.getTotal());
+            return PagingList.of(Lists.newArrayList(), pagingList.getTotal());
         }
         List<Long> dataSourceIdList =
             pagingList.getList().stream().map(DataSourceResult::getId).collect(Collectors.toList());
@@ -295,6 +296,8 @@ public class DataSourceServiceImpl implements DataSourceService {
                     response.setTags(tagManageResponseList);
                 }
             }
+            // 补充权限
+            WebPluginUtils.fillQueryResponse(response);
             return response;
         }).collect(Collectors.toList());
         return PagingList.of(responseList, pagingList.getTotal());

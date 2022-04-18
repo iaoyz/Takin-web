@@ -17,9 +17,11 @@ import io.shulie.takin.common.beans.page.PagingList;
 
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
+import io.shulie.takin.web.common.util.CommonUtil;
 import io.shulie.takin.web.data.mapper.mysql.ScriptExecuteResultMapper;
 import io.shulie.takin.web.common.enums.script.ScriptManageDeployStatusEnum;
 import io.shulie.takin.web.data.dao.scriptmanage.ScriptManageDAO;
+import io.shulie.takin.web.data.mapper.mysql.ScriptFileRefMapper;
 import io.shulie.takin.web.data.mapper.mysql.ScriptManageDeployMapper;
 import io.shulie.takin.web.data.mapper.mysql.ScriptManageMapper;
 import io.shulie.takin.web.data.model.mysql.ScriptExecuteResultEntity;
@@ -29,6 +31,7 @@ import io.shulie.takin.web.data.param.scriptmanage.ScriptExecuteResultCreatePara
 import io.shulie.takin.web.data.param.scriptmanage.ScriptManageDeployCreateParam;
 import io.shulie.takin.web.data.param.scriptmanage.ScriptManageDeployPageQueryParam;
 import io.shulie.takin.web.data.param.scriptmanage.shell.ShellExecuteParam;
+import io.shulie.takin.web.data.result.scriptmanage.ScriptDeployDetailResult;
 import io.shulie.takin.web.data.result.scriptmanage.ScriptExecuteResult;
 import io.shulie.takin.web.data.result.scriptmanage.ScriptManageDeployResult;
 import io.shulie.takin.web.data.result.scriptmanage.ScriptManageResult;
@@ -55,6 +58,9 @@ public class ScriptManageDAOImpl
     @Autowired
     private ScriptExecuteResultMapper scriptExecuteResultMapper;
 
+    @Autowired
+    private ScriptFileRefMapper scriptFileRefMapper;
+
     @Override
     public ScriptManageResult selectScriptManageById(Long scriptId) {
         ScriptManageResult scriptManageResult = new ScriptManageResult();
@@ -69,8 +75,13 @@ public class ScriptManageDAOImpl
         if (scriptManageDeployEntity == null) {
             return null;
         }
-
-        return BeanUtil.copyProperties(scriptManageDeployEntity, ScriptManageDeployResult.class);
+        ScriptManageDeployResult scriptManageDeployResult = BeanUtil.copyProperties(scriptManageDeployEntity, ScriptManageDeployResult.class);
+        ScriptManageEntity scriptManageEntity = scriptManageMapper.selectById(scriptManageDeployEntity.getScriptId());
+        if (scriptManageEntity == null){
+            return null;
+        }
+        scriptManageDeployResult.setMVersion(scriptManageEntity.getMVersion());
+        return scriptManageDeployResult;
     }
 
     @Override
@@ -89,67 +100,6 @@ public class ScriptManageDAOImpl
     }
 
     @Override
-    public void deleteScriptManageDeployById(Long scriptDeployId) {
-        ScriptManageDeployEntity scriptManageDeployEntity = scriptManageDeployMapper.selectById(scriptDeployId);
-        if (scriptManageDeployEntity == null) {
-            return;
-        }
-        scriptManageDeployMapper.deleteById(scriptDeployId);
-        LambdaQueryWrapper<ScriptManageDeployEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ScriptManageDeployEntity::getScriptId, scriptManageDeployEntity.getScriptId());
-        Integer count = scriptManageDeployMapper.selectCount(wrapper);
-        if (count == 0) {
-            scriptManageMapper.deleteById(scriptManageDeployEntity.getScriptId());
-        }
-    }
-
-    @Override
-    public PagingList<ScriptManageDeployResult> pageQueryScriptManageDeploy(ScriptManageDeployPageQueryParam param) {
-        LambdaQueryWrapper<ScriptManageDeployEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.select(
-            ScriptManageDeployEntity::getId,
-            ScriptManageDeployEntity::getGmtUpdate,
-            ScriptManageDeployEntity::getName,
-            ScriptManageDeployEntity::getRefType,
-            ScriptManageDeployEntity::getRefValue,
-            ScriptManageDeployEntity::getScriptId,
-            ScriptManageDeployEntity::getScriptVersion,
-            ScriptManageDeployEntity::getStatus,
-            ScriptManageDeployEntity::getType);
-        if (StringUtils.isNotBlank(param.getName())) {
-            wrapper.like(ScriptManageDeployEntity::getName, param.getName());
-        }
-        if (StringUtils.isNotBlank(param.getRefType())) {
-            wrapper.eq(ScriptManageDeployEntity::getRefType, param.getRefType());
-        }
-        if (StringUtils.isNotBlank(param.getRefValue())) {
-            wrapper.eq(ScriptManageDeployEntity::getRefValue, param.getRefValue());
-        }
-        if (CollectionUtils.isNotEmpty(param.getScriptDeployIds())) {
-            wrapper.in(ScriptManageDeployEntity::getId, param.getScriptDeployIds());
-        }
-        if (CollectionUtils.isNotEmpty(param.getScriptIds())) {
-            wrapper.in(ScriptManageDeployEntity::getScriptId, param.getScriptIds());
-        }
-        //这个分页工具是从1开始分页的
-        Page<ScriptManageDeployEntity> page = new Page<>(param.getCurrent() + 1, param.getPageSize());
-        wrapper.orderByDesc(ScriptManageDeployEntity::getGmtUpdate);
-        Page<ScriptManageDeployEntity> scriptManageDeployEntityPage = scriptManageDeployMapper.selectPage(page,
-            wrapper);
-        if (CollectionUtils.isEmpty(scriptManageDeployEntityPage.getRecords())) {
-            return PagingList.of(Lists.newArrayList(),scriptManageDeployEntityPage.getTotal());
-        }
-        List<ScriptManageDeployResult> scriptManageDeployResults = scriptManageDeployEntityPage.getRecords().stream()
-            .map(scriptManageDeployEntity -> {
-                ScriptManageDeployResult scriptManageDeployResult = new ScriptManageDeployResult();
-                BeanUtils.copyProperties(scriptManageDeployEntity, scriptManageDeployResult);
-                return scriptManageDeployResult;
-            }).collect(Collectors.toList());
-
-        return PagingList.of(scriptManageDeployResults, scriptManageDeployEntityPage.getTotal());
-    }
-
-    @Override
     public ScriptManageDeployResult createScriptManageDeploy(ScriptManageDeployCreateParam scriptManageDeployCreateParam) {
         if (scriptManageDeployCreateParam == null) {
             throw new TakinWebException(TakinWebExceptionEnum.SCENE_VALIDATE_ERROR, "创建部署脚本时入参为空！");
@@ -163,6 +113,7 @@ public class ScriptManageDAOImpl
                 scriptManageEntity.setName(scriptManageDeployCreateParam.getName());
                 scriptManageEntity.setScriptVersion(scriptManageDeployCreateParam.getScriptVersion());
                 scriptManageEntity.setFeature(scriptManageDeployCreateParam.getFeature());
+                scriptManageEntity.setMVersion(scriptManageDeployCreateParam.getMVersion());
                 scriptManageMapper.insert(scriptManageEntity);
                 scriptManageDeployCreateParam.setScriptId(scriptManageEntity.getId());
             }
@@ -286,8 +237,9 @@ public class ScriptManageDAOImpl
             ScriptManageEntity::getName,
             ScriptManageEntity::getGmtUpdate,
             ScriptManageEntity::getScriptVersion,
-            ScriptManageEntity::getCustomerId,
-            ScriptManageEntity::getUserId
+            ScriptManageEntity::getTenantId,
+            ScriptManageEntity::getUserId,
+            ScriptManageEntity::getMVersion
         );
         wrapper.in(ScriptManageEntity::getId, scriptIdList);
         Page<ScriptManageEntity> page = new Page<>(param.getCurrent() + 1, param.getPageSize());
@@ -315,7 +267,11 @@ public class ScriptManageDAOImpl
                     o -> o.getScriptId().equals(scriptManageEntity.getId()) &&
                         o.getScriptVersion().equals(scriptManageEntity.getScriptVersion())).collect(
                     Collectors.toList());
-                return collect.get(0);
+                ScriptManageDeployResult scriptManageDeployResult = collect.get(0);
+                if (scriptManageDeployResult != null){
+                    scriptManageDeployResult.setMVersion(scriptManageEntity.getMVersion());
+                }
+                return scriptManageDeployResult;
             }).collect(Collectors.toList());
         List<ScriptManageEntity> entityList = scriptManageEntityPage.getRecords();
         for (ScriptManageDeployResult result : scriptManageDeploys) {
@@ -323,7 +279,7 @@ public class ScriptManageDAOImpl
                 .stream()
                 .filter(scriptManageEntity -> scriptManageEntity.getId().equals(result.getScriptId()))
                 .findFirst().get();
-            result.setCustomerId(entity.getCustomerId());
+            result.setTenantId(entity.getTenantId());
             result.setUserId(entity.getUserId());
         }
         return PagingList.of(scriptManageDeploys, scriptManageEntityPage.getTotal());
@@ -377,6 +333,8 @@ public class ScriptManageDAOImpl
         if (param.getScriptType() != null) {
             wrapper.eq(ScriptManageDeployEntity::getType, param.getScriptType());
         }
+
+
         wrapper.orderByDesc(ScriptManageDeployEntity::getGmtUpdate);
         List<ScriptManageDeployEntity> scriptManageDeployEntities = scriptManageDeployMapper.selectList(wrapper);
         if (CollectionUtils.isEmpty(scriptManageDeployEntities)) {
@@ -413,6 +371,12 @@ public class ScriptManageDAOImpl
     @Override
     public ScriptManageDeployEntity getDeployByDeployId(Long scriptDeployId) {
         return scriptManageDeployMapper.selectById(scriptDeployId);
+    }
+
+    @Override
+    public ScriptDeployDetailResult getScriptDeployByDeployId(Long scriptDeployId) {
+        return CommonUtil.copyBeanPropertiesWithNull(this.getDeployByDeployId(scriptDeployId),
+            ScriptDeployDetailResult.class);
     }
 
     @Override
@@ -457,4 +421,10 @@ public class ScriptManageDAOImpl
         }).collect(Collectors.toList());
         return PagingList.of(results, pageList.getTotal());
     }
+
+    @Override
+    public List<String> listFilePathByScriptDeployId(Long scriptDeployId) {
+        return scriptFileRefMapper.listUploadPathByScriptDeployId(scriptDeployId);
+    }
+
 }

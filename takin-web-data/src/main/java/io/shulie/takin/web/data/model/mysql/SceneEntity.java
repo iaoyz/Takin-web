@@ -1,20 +1,22 @@
 package io.shulie.takin.web.data.model.mysql;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.shulie.takin.web.data.model.mysql.base.UserBaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 场景表
  */
 @Data
 @TableName(value = "t_scene")
-public class SceneEntity {
+@EqualsAndHashCode(callSuper = true)
+public class SceneEntity extends UserBaseEntity {
     /**
      * 主键
      */
@@ -52,18 +54,6 @@ public class SceneEntity {
     private Integer isChanged;
 
     /**
-     * 租户id
-     */
-    @TableField(value = "customer_id", fill = FieldFill.INSERT)
-    private Long customerId;
-
-    /**
-     * 用户id
-     */
-    @TableField(value = "user_id", fill = FieldFill.INSERT)
-    private Long userId;
-
-    /**
      * 是否有效 0:有效;1:无效
      */
     @TableField(value = "IS_DELETED")
@@ -73,11 +63,41 @@ public class SceneEntity {
      * 创建时间
      */
     @TableField(value = "CREATE_TIME")
-    private LocalDateTime createTime;
+    private Date createTime;
 
     /**
      * 更新时间
      */
     @TableField(value = "UPDATE_TIME")
-    private LocalDateTime updateTime;
+    private Date updateTime;
+
+    /**
+     * 场景类型，标识1为jmeter上传，默认0
+     */
+    @TableField(value = "type")
+    private Integer type;
+
+    /**
+     * 存储树状结构
+     */
+    @TableField(value = "script_jmx_node")
+    private String scriptJmxNode;
+
+    /**
+     * 脚本实例id
+     */
+    @TableField(value = "script_deploy_id")
+    private Long scriptDeployId;
+
+    /**
+     * 关联节点数
+     */
+    @TableField(value = "link_relate_num")
+    private Integer linkRelateNum;
+
+    /**
+     * 脚本总节点数
+     */
+    @TableField(value = "total_node_num")
+    private Integer totalNodeNum;
 }

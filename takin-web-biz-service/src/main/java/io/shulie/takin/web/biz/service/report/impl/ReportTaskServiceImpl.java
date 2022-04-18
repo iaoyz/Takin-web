@@ -1,26 +1,36 @@
 package io.shulie.takin.web.biz.service.report.impl;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
 
 import com.alibaba.fastjson.JSON;
 
 import com.pamirs.takin.entity.domain.dto.report.ReportDetailDTO;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
-import io.shulie.takin.cloud.open.req.report.UpdateReportConclusionReq;
+import io.shulie.takin.cloud.sdk.model.request.report.UpdateReportConclusionReq;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
+import io.shulie.takin.web.biz.pojo.output.report.ReportDetailOutput;
+import io.shulie.takin.web.biz.service.DistributedLock;
 import io.shulie.takin.web.biz.service.report.ReportService;
 import io.shulie.takin.web.biz.service.report.ReportTaskService;
 import io.shulie.takin.web.biz.service.risk.ProblemAnalysisService;
-import io.shulie.takin.web.common.domain.WebResponse;
+import io.shulie.takin.web.biz.utils.job.JobRedisUtils;
+import io.shulie.takin.web.common.common.Separator;
+import io.shulie.takin.web.common.pojo.dto.SceneTaskDto;
+import io.shulie.takin.web.common.util.CommonUtil;
 import io.shulie.takin.web.common.util.SceneTaskUtils;
 import io.shulie.takin.web.data.dao.leakverify.LeakVerifyResultDAO;
 import io.shulie.takin.web.diff.api.scenetask.SceneTaskApi;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 /**
@@ -42,9 +52,6 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class ReportTaskServiceImpl implements ReportTaskService {
-
-
-    private static AtomicBoolean RUNNINT = new AtomicBoolean(false);
 
     @Autowired
     private ReportDataCache reportDataCache;
@@ -71,34 +78,51 @@ public class ReportTaskServiceImpl implements ReportTaskService {
     private SceneTaskApi sceneTaskApi;
 
     @Autowired
-    @Qualifier("fastDebugThreadPool")
-    private ThreadPoolExecutor fastDebugThreadPool;
+    @Qualifier("collectDataThreadPool")
+    private ThreadPoolExecutor collectDataThreadPool;
 
+    @Autowired
+    @Qualifier("redisTemplate")
+    private RedisTemplate redisTemplate;
+
+    @Autowired
+    private DistributedLock distributedLock;
 
     @Override
-    public void finishReport(Long reportId) {
+    public Boolean finishReport(Long reportId, TenantCommonExt commonExt) {
         try {
-            if (RUNNINT.get()) {
-                return;
-            }
-            if (!RUNNINT.compareAndSet(false, true)) {
-                return;
-            }
             try {
                 //Ready 数据准备
                 reportDataCache.readyCloudReportData(reportId);
             } catch (Exception e) {
-                log.error("finish report data preparation：{},errorMsg= {}", reportId,e.getMessage());
+                log.error("finish report data preparation：{},errorMsg= {}", reportId, e.getMessage());
+            }
+            // 查询报告状态
+            final ReportDetailOutput report = reportService.getReportById(reportId);
+            if (report == null) {
+                return false;
+            }
+            // 加锁
+            // 分布式锁
+            String lockKey = JobRedisUtils.getRedisJobReport(WebPluginUtils.traceTenantId(), WebPluginUtils.traceEnvCode(),reportId);
+            if (!distributedLock.checkLock(lockKey)) {
+                // 收集数据 单独线程收集
+                collectDataThreadPool.execute(collectData(reportId,commonExt,lockKey));
+            }
+            // 压测结束才锁报告
+            Integer status = report.getTaskStatus();
+            if (status == null || status != 1) {
+                return false;
             }
             ReportDetailDTO reportDetailDTO = reportDataCache.getReportDetailDTO(reportId);
             if (reportDetailDTO == null) {
-                return;
+                log.error("未查到报告明细！reportId={}",reportId);
+                return false;
             }
-            // 压测结束才锁报告
             Date endTime = reportDetailDTO.getEndTime();
-            if (endTime == null) {
-                return;
-            }
+            //更新任务的结束时间
+            if (!this.updateTaskEndTime(reportId, commonExt, endTime)) { return false; }
+
             // 解除 场景锁
             redisClientUtils.delete(SceneTaskUtils.getSceneTaskKey(reportDetailDTO.getSceneId()));
             try {
@@ -106,23 +130,22 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 //删除redis数据
                 redisClientUtils.del(WebRedisKeyConstant.REPORT_WARN_PREFIX + reportId);
                 // 删除key
-                redisClientUtils.del(String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY,reportId));
-                Long startTime = System.currentTimeMillis();
-                WebResponse lockResponse = reportService.lockReport(reportId);
-                if (!lockResponse.getSuccess() || lockResponse.getData() == null || !((Boolean)lockResponse.getData())) {
-                    log.error("Lock Running Report Data Failure, reportId={},errorMsg= {}...", reportId,lockResponse.getError());
+                String redisKey = CommonUtil.generateRedisKeyWithSeparator(Separator.Separator3,
+                    WebPluginUtils.traceTenantAppKey(), WebPluginUtils.traceEnvCode(),
+                    String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY, reportId));
+                redisClientUtils.del(redisKey);
+                long startTime = System.currentTimeMillis();
+                Boolean lockResponse = reportService.lockReport(reportId);
+                if (!lockResponse) {
+                    log.error("锁定运行报告数据失败, reportId={}", reportId);
                 }
                 log.info("finish report，total data  Running Report :{}", reportId);
 
-                // 收集数据 单独线程收集
-                fastDebugThreadPool.execute(this.collectData(reportId));
-
                 // 停止报告
-                WebResponse webResponse = reportService.finishReport(reportId);
-                if (!webResponse.getSuccess() || !(Boolean)webResponse.getData()) {
+                Boolean webResponse = reportService.finishReport(reportId);
+                if (!webResponse) {
                     log.info("压测结束失败 Report :{}，cloud更新失败", reportId);
                 }
-
 
                 Boolean isLeaked = leakVerifyResultDAO.querySceneIsLeaked(reportId);
                 if (isLeaked) {
@@ -143,14 +166,47 @@ public class ReportTaskServiceImpl implements ReportTaskService {
                 //生成报告异常，清空本轮生成表数据
                 reportClearService.clearReportData(reportId);
                 //压测结束，生成压测报告异常，解锁报告
-                reportService.unLockReport(reportId);
-                log.error("Unlock Report Success, reportId={} ,errorMsg= {}...", reportId,e.getMessage());
+                Boolean unLockReportResult = reportService.unLockReport(reportId);
+                log.error("Unlock Report Success, reportId={} ,unLockReportResult= {}...", reportId, unLockReportResult,
+                    e);
+            } finally {
+                removeReportKey(reportId, commonExt);
             }
+
         } catch (Exception e) {
             log.error("QueryRunningReport Error :{}", e.getMessage());
-        } finally {
-            RUNNINT.compareAndSet(true, false);
         }
+        return true;
+    }
+
+    private boolean updateTaskEndTime(Long reportId, TenantCommonExt commonExt, Date endTime) {
+        if (endTime == null) {
+            return false;
+        }
+        LocalDateTime endTimeLocal = null;
+        try {
+            endTimeLocal = endTime.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        } catch (Exception e) {
+            log.error("endTime日期转化有误，endTime={}", JSON.toJSONString(endTime), e);
+            return false;
+        }
+        SceneTaskDto task = new SceneTaskDto(commonExt, reportId);
+        task.setEndTime(endTimeLocal);
+        String reportKey = null;
+        try {
+            reportKey = WebRedisKeyConstant.getReportKey(reportId);
+            redisTemplate.opsForValue().set(reportKey, JSON.toJSONString(task));
+        } catch (Exception e) {
+            log.error("更新redis任务有误，key={}", reportKey, e);
+            return false;
+        }
+        return true;
+    }
+
+    private void removeReportKey(Long reportId, TenantCommonExt commonExt) {
+        final String reportKey = WebRedisKeyConstant.getReportKey(reportId);
+        redisTemplate.opsForList().remove(WebRedisKeyConstant.SCENE_REPORTID_KEY, 0, reportKey);
+        redisTemplate.opsForValue().getOperations().delete(reportKey);
     }
 
     /**
@@ -159,68 +215,66 @@ public class ReportTaskServiceImpl implements ReportTaskService {
      * @param reportId 报告 id
      * @return 可运行
      */
-    private Runnable collectData(Long reportId) {
+    private synchronized Runnable collectData(Long reportId, TenantCommonExt commonExt,String lockKey) {
         return () -> {
+            boolean tryLock = distributedLock.tryLock(lockKey, 1L, 1L, TimeUnit.MINUTES);
+            if(!tryLock) {
+                return;
+            }
+            WebPluginUtils.setTraceTenantContext(commonExt);
+
             try {
                 // 检查风险机器
                 problemAnalysisService.checkRisk(reportId);
             } catch (Exception e) {
-                log.error("reportId = {}: Check the risk machine,errorMsg= {} ", reportId,e.getMessage());
+                log.error("reportId = {}: Check the risk machine,errorMsg= {} ", reportId, e.getMessage());
             }
             try {
                 // 瓶颈处理
                 problemAnalysisService.processBottleneck(reportId);
             } catch (Exception e) {
-                log.error("reportId = {}: Bottleneck handling,errorMsg= {} ", reportId,e.getMessage());
+                log.error("reportId = {}: Bottleneck handling,errorMsg= {} ", reportId, e.getMessage());
             }
             try {
                 //then 报告汇总接口
                 summaryService.calcReportSummay(reportId);
             } catch (Exception e) {
-                log.error("reportId = {}: total report ,errorMsg= {}", reportId,e.getMessage());
+                log.error("reportId = {}: total report ,errorMsg= {}", reportId, e.getMessage());
             }
+            distributedLock.unLockSafely(lockKey);
         };
     }
 
     @Override
     public void syncMachineData(Long reportId) {
-        try {
-            //Ready 数据准备
-            reportDataCache.readyCloudReportData(reportId);
-            //first 同步应用基础信息
-            long startTime = System.currentTimeMillis();
-            problemAnalysisService.syncMachineData(reportId);
-            log.info("reportId={} syncMachineData success，cost time={}s", reportId, (System.currentTimeMillis() - startTime) / 1000);
-        } catch (Exception e) {
-            log.error("reportId={} syncMachineData false,errorMsg= {}", reportId,e.getMessage());
-        }
+        //Ready 数据准备
+        reportDataCache.readyCloudReportData(reportId);
+        //first 同步应用基础信息
+        long startTime = System.currentTimeMillis();
+        problemAnalysisService.syncMachineData(reportId);
+        log.debug("reportId={} syncMachineData success，cost time={}s", reportId,
+            (System.currentTimeMillis() - startTime) / 1000);
     }
 
     @Override
     public void calcTpsTarget(Long reportId) {
-        try {
-            long startTime = System.currentTimeMillis();
-            //Ready 数据准备
-            reportDataCache.readyCloudReportData(reportId);
-            //then tps指标图
-            summaryService.calcTpsTarget(reportId);
-            log.info("reportId={} calcTpsTarget success，cost time={}s", reportId, (System.currentTimeMillis() - startTime) / 1000);
-        } catch (Exception e) {
-            log.error("reportId={} calcTpsTarget false,errorMsg= {}", reportId,e.getMessage());
-        }
+        long startTime = System.currentTimeMillis();
+        //Ready 数据准备
+        reportDataCache.readyCloudReportData(reportId);
+        //then tps指标图
+        summaryService.calcTpsTarget(reportId);
+        log.debug("reportId={} calcTpsTarget success，cost time={}s", reportId,
+            (System.currentTimeMillis() - startTime) / 1000);
     }
 
     @Override
     public void calcApplicationSummary(Long reportId) {
-        try {
-            long startTime = System.currentTimeMillis();
-            //Ready 数据准备
-            reportDataCache.readyCloudReportData(reportId);
-            //汇总应用 机器数 风险机器数
-            summaryService.calcApplicationSummary(reportId);
-            log.info("reportId={} calcApplicationSummary success，cost time={}s", reportId, (System.currentTimeMillis() - startTime) / 1000);
-        } catch (Exception e) {
-            log.error("reportId={} calcApplicationSummary false,errorMsg= {}", reportId,e.getMessage());
-        }
+        long startTime = System.currentTimeMillis();
+        //Ready 数据准备
+        reportDataCache.readyCloudReportData(reportId);
+        //汇总应用 机器数 风险机器数
+        summaryService.calcApplicationSummary(reportId);
+        log.debug("reportId={} calcApplicationSummary success，cost time={}s", reportId,
+            (System.currentTimeMillis() - startTime) / 1000);
     }
 }

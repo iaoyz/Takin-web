@@ -1,16 +1,17 @@
 package io.shulie.takin.web.entrypoint.controller.scriptmanage;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 import javax.validation.Valid;
 
 import com.google.common.collect.Lists;
+import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
+import io.shulie.takin.common.beans.annotation.AuthVerification;
 import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.common.beans.page.PagingList;
-import io.shulie.takin.web.biz.service.scriptmanage.ScriptManageService;
-import io.shulie.takin.common.beans.annotation.AuthVerification;
 import io.shulie.takin.web.biz.constant.BizOpConstants;
-import io.shulie.takin.web.common.context.OperationLogContextHolder;
 import io.shulie.takin.web.biz.pojo.request.filemanage.FileManageCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.filemanage.FileManageUpdateRequest;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.ScriptManageDeployCreateRequest;
@@ -32,14 +33,14 @@ import io.shulie.takin.web.biz.pojo.response.scriptmanage.SupportJmeterPluginNam
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.SupportJmeterPluginVersionResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.WebPartResponse;
 import io.shulie.takin.web.biz.pojo.response.tagmanage.TagManageResponse;
-import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
+import io.shulie.takin.web.biz.service.scriptmanage.ScriptManageService;
+import io.shulie.takin.web.common.context.OperationLogContextHolder;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -67,8 +68,7 @@ public class ScriptManageController {
         needAuth = ActionTypeEnum.DOWNLOAD
     )
     public ScriptManageStringResponse getZipFileUrl(@RequestParam("scriptId") @Valid Long scriptDeployId) {
-        String zipFileUrl = scriptManageService.getZipFileUrl(scriptDeployId);
-        return new ScriptManageStringResponse(zipFileUrl);
+        return new ScriptManageStringResponse(scriptManageService.getZipFileNameByScriptDeployId(scriptDeployId));
     }
 
     @PutMapping
@@ -254,6 +254,23 @@ public class ScriptManageController {
     public List<SupportJmeterPluginNameResponse> getSupportJmeterPluginNameList(
         @Valid SupportJmeterPluginNameRequest nameRequest) {
         return scriptManageService.getSupportJmeterPluginNameList(nameRequest);
+    }
+
+    @GetMapping("/support/plugin/list/all")
+    @ApiOperation(value = "获取全部支持的插件列表及版本")
+    public List<LinkedHashMap<String, Object>> getAllJmeterPluginNameList() {
+        List<SupportJmeterPluginNameResponse> old = scriptManageService.getAllJmeterPluginNameList();
+        List<LinkedHashMap<String, Object>> result = new ArrayList<>(old.size());
+        old.forEach(t -> t.getSinglePluginRenderResponseList().forEach(c ->
+            result.add(new LinkedHashMap<String, Object>(3) {{
+                put("id", c.getValue());
+                put("type", t.getType());
+                put("name", c.getLabel());
+                put("version", getSupportJemterPluginVersionList(new SupportJmeterPluginVersionRequest() {{
+                    setPluginId(c.getValue());
+                }}).getVersionList());
+            }})));
+        return result;
     }
 
     @GetMapping("/support/plugin/version")

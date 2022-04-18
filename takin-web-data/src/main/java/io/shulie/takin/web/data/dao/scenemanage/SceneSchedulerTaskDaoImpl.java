@@ -84,22 +84,29 @@ public class SceneSchedulerTaskDaoImpl implements SceneSchedulerTaskDao {
 
     @Override
     public List<SceneSchedulerTaskResult> selectByExample(SceneSchedulerTaskQueryParam queryParam) {
+
         LambdaQueryWrapper<SceneSchedulerTaskEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.select(
             SceneSchedulerTaskEntity::getId,
             SceneSchedulerTaskEntity::getExecuteTime,
             SceneSchedulerTaskEntity::getSceneId,
             SceneSchedulerTaskEntity::getIsExecuted,
-            SceneSchedulerTaskEntity::getUserId
+            SceneSchedulerTaskEntity::getUserId,
+            SceneSchedulerTaskEntity::getEnvCode,
+            SceneSchedulerTaskEntity::getTenantId
         );
         wrapper.lt(SceneSchedulerTaskEntity::getExecuteTime, queryParam.getEndTime());
         wrapper.eq(SceneSchedulerTaskEntity::getIsExecuted, 0);
         wrapper.eq(SceneSchedulerTaskEntity::getIsDeleted,false);
+        // 查所有
+        wrapper.like(SceneSchedulerTaskEntity::getTenantId,"");
+        wrapper.like(SceneSchedulerTaskEntity::getEnvCode,"");
+
         List<SceneSchedulerTaskEntity> sceneSchedulerTaskEntities = sceneSchedulerTaskMapper.selectList(wrapper);
         return entrys2ResultList(sceneSchedulerTaskEntities);
     }
 
-    SceneSchedulerTaskResult enty2Result(SceneSchedulerTaskEntity entity) {
+    SceneSchedulerTaskResult entity2Result(SceneSchedulerTaskEntity entity) {
         SceneSchedulerTaskResult result = new SceneSchedulerTaskResult();
         BeanUtils.copyProperties(entity, result);
         return result;
@@ -110,8 +117,8 @@ public class SceneSchedulerTaskDaoImpl implements SceneSchedulerTaskDao {
             return Lists.newArrayList();
         }
         List<SceneSchedulerTaskResult> resultList = new ArrayList<>();
-        sceneSchedulerTaskEntities.stream().forEach(entity -> {
-            resultList.add(enty2Result(entity));
+        sceneSchedulerTaskEntities.forEach(entity -> {
+            resultList.add(entity2Result(entity));
         });
         return resultList;
     }

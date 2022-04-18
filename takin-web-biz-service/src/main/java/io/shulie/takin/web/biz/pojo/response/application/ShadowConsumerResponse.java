@@ -3,7 +3,6 @@ package io.shulie.takin.web.biz.pojo.response.application;
 import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import io.shulie.takin.web.common.enums.shadow.ShadowMqConsumerType;
 import io.shulie.takin.web.ext.entity.AuthQueryResponseCommonExt;
 import lombok.Data;
 
@@ -21,7 +20,7 @@ public class ShadowConsumerResponse extends AuthQueryResponseCommonExt {
      */
     private String unionId;
 
-    private ShadowMqConsumerType type;
+    private String type;
 
     private String topicGroup;
 
@@ -29,7 +28,7 @@ public class ShadowConsumerResponse extends AuthQueryResponseCommonExt {
 
     private Date gmtCreate;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date gmtUpdate;
 
     private Integer deleted ;

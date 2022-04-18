@@ -2,9 +2,9 @@ package io.shulie.takin.web.biz.convert.db.parser;
 
 import cn.hutool.core.util.BooleanUtil;
 import com.alibaba.fastjson.JSON;
-import com.pamirs.attach.plugin.dynamic.Converter;
-import com.pamirs.attach.plugin.dynamic.Type;
-import com.pamirs.attach.plugin.dynamic.template.Template;
+import com.pamirs.attach.plugin.dynamic.one.Converter;
+import com.pamirs.attach.plugin.dynamic.one.Type;
+import com.pamirs.attach.plugin.dynamic.one.template.Template;
 import com.pamirs.takin.common.enums.ds.DsTypeEnum;
 import com.pamirs.takin.entity.domain.vo.dsmanage.DataSource;
 import io.shulie.takin.web.amdb.api.ApplicationClient;
@@ -30,7 +30,6 @@ import org.springframework.stereotype.Service;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -119,6 +118,7 @@ public class DbTemplateParser extends AbstractTemplateParser {
         shadowDetailResponse.setUrl(convert.getUrl());
         shadowDetailResponse.setUsername(StringUtils.isBlank(convert.getUserName())?"-":convert.getUserName());
         shadowDetailResponse.setPassword(convert.getPwd());
+        shadowDetailResponse.setIsManual(convert.getSource());
 
         String shaDowFileExtedn = convert.getShaDowFileExtedn();
         if (StringUtils.isBlank(convert.getShaDowFileExtedn())

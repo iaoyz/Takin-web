@@ -23,6 +23,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 
 import com.alibaba.excel.EasyExcelFactory;
 import com.alibaba.excel.metadata.Sheet;
@@ -46,17 +47,15 @@ import com.pamirs.takin.common.redis.RedisKey;
 import com.pamirs.takin.common.redis.WhiteBlackListRedisKey;
 import com.pamirs.takin.common.util.PageInfo;
 import com.pamirs.takin.common.util.TakinFileUtil;
-import com.pamirs.takin.entity.dao.confcenter.TApplicationMntDao;
 import com.pamirs.takin.entity.dao.confcenter.TLinkMntDao;
-import com.pamirs.takin.entity.dao.confcenter.TWhiteListMntDao;
 import com.pamirs.takin.entity.domain.entity.TAlarm;
 import com.pamirs.takin.entity.domain.entity.TApplicationIp;
-import com.pamirs.takin.entity.domain.entity.TApplicationMnt;
 import com.pamirs.takin.entity.domain.entity.TBList;
 import com.pamirs.takin.entity.domain.entity.TLinkServiceMnt;
 import com.pamirs.takin.entity.domain.entity.TPradaHttpData;
 import com.pamirs.takin.entity.domain.entity.TSecondLinkMnt;
 import com.pamirs.takin.entity.domain.entity.TWList;
+import com.pamirs.takin.entity.domain.query.ApplicationQueryRequest;
 import com.pamirs.takin.entity.domain.query.BListQueryParam;
 import com.pamirs.takin.entity.domain.query.Result;
 import com.pamirs.takin.entity.domain.query.TWListVo;
@@ -68,22 +67,28 @@ import com.pamirs.takin.entity.domain.vo.TLinkNodesVo;
 import com.pamirs.takin.entity.domain.vo.TLinkServiceMntVo;
 import com.pamirs.takin.entity.domain.vo.TLinkTopologyInfoVo;
 import com.pamirs.takin.entity.domain.vo.TUploadInterfaceDataVo;
+import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.cache.AgentConfigCacheManager;
 import io.shulie.takin.web.biz.common.CommonService;
-import io.shulie.takin.web.biz.service.linkManage.AppRemoteCallService;
-import io.shulie.takin.web.biz.service.linkManage.impl.WhiteListFileService;
+import io.shulie.takin.web.biz.service.linkmanage.AppRemoteCallService;
+import io.shulie.takin.web.biz.service.linkmanage.impl.WhiteListFileService;
 import io.shulie.takin.web.common.common.Response;
 import io.shulie.takin.web.common.context.OperationLogContextHolder;
+import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
 import io.shulie.takin.web.common.util.whitelist.WhitelistUtil;
 import io.shulie.takin.web.data.dao.application.ApplicationDAO;
 import io.shulie.takin.web.data.dao.application.ApplicationPluginsConfigDAO;
+import io.shulie.takin.web.data.dao.application.WhiteListDAO;
 import io.shulie.takin.web.data.dao.blacklist.BlackListDAO;
 import io.shulie.takin.web.data.model.mysql.ApplicationPluginsConfigEntity;
 import io.shulie.takin.web.data.param.application.ApplicationCreateParam;
 import io.shulie.takin.web.data.param.application.ApplicationPluginsConfigParam;
+import io.shulie.takin.web.data.param.application.ApplicationQueryParam;
 import io.shulie.takin.web.data.param.blacklist.BlackListCreateParam;
+import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
+import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -94,7 +99,6 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,20 +114,19 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Slf4j
 public class ConfCenterService extends CommonService {
-    /**
-     * session 令牌
-     */
-    public static final String CONST_CAS_ASSERTION = "_const_cas_assertion_";
+
+    private Integer number;
+
     @Autowired
     @Qualifier("modifyMonitorThreadPool")
     protected ThreadPoolExecutor modifyMonitorExecutor;
 
     @Autowired
     private WhiteListFileService whiteListFileService;
-    @Value("${spring.config.whiteListPath}")
-    private String whiteListPath;
+
     @Autowired
     private BlackListDAO blackListDAO;
+
     @Autowired
     private ApplicationDAO applicationDAO;
 
@@ -139,19 +142,18 @@ public class ConfCenterService extends CommonService {
     @Autowired
     private AgentConfigCacheManager agentConfigCacheManager;
 
-    @Value("${whitelist.number.limit:5}")
-    private Integer number;
-
-    /**
-     * 是否更新版本
-     * true:更新
-     * false 不更新
-     */
-    @Value("${agent.http.update.version:true}")
-    private Boolean isUpdateAgentVersion;
-
     @Autowired
     private ApplicationService applicationService;
+
+    @Resource(name = "redisTemplate")
+    private RedisTemplate redisTemplate;
+
+    public static final String APPLICATION_CACHE_PREFIX = "application:cache";
+
+    @PostConstruct
+    public void init() {
+        number = ConfigServerHelper.getWrapperIntegerValueByKey(ConfigServerKeyEnum.TAKIN_WHITE_LIST_NUMBER_LIMIT);
+    }
 
     /**
      * 说明: 先校验该应用是否已经存在,不存在则进行添加,存在则返回提示信息
@@ -160,9 +162,9 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     @Transactional(rollbackFor = Exception.class)
-    public void saveApplication(TApplicationMnt tApplicationMnt) throws TakinModuleException {
-        int applicationExist = tApplicationMntDao.applicationExistByCustomerIdAndAppName(
-            WebPluginUtils.getCustomerId(), tApplicationMnt.getApplicationName());
+    public void saveApplication(ApplicationCreateParam tApplicationMnt) throws TakinModuleException {
+        int applicationExist = applicationDAO.applicationExistByTenantIdAndAppName(
+                WebPluginUtils.traceTenantId(), WebPluginUtils.traceEnvCode(), tApplicationMnt.getApplicationName());
         if (applicationExist > 0) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_ADD_APPLICATION_DUPICATE_EXCEPTION);
         }
@@ -172,7 +174,7 @@ public class ConfCenterService extends CommonService {
         addPluginsConfig(tApplicationMnt);//插件管理-添加影子key默认过期时间
     }
 
-    private void addPluginsConfig(TApplicationMnt applicationMnt) {
+    private void addPluginsConfig(ApplicationCreateParam applicationMnt) {
         ApplicationPluginsConfigParam param = new ApplicationPluginsConfigParam();
         param.setConfigItem("redis影子key有效期");
         param.setConfigKey("redis_expire");
@@ -180,14 +182,16 @@ public class ConfCenterService extends CommonService {
         param.setConfigValue("-1");
         param.setApplicationName(applicationMnt.getApplicationName());
         param.setApplicationId(applicationMnt.getApplicationId());
-        param.setCustomerId(applicationMnt.getCustomerId());
+        param.setTenantId(applicationMnt.getTenantId());
+        param.setEnvCode(applicationMnt.getEnvCode());
         param.setUserId(applicationMnt.getUserId());
         pluginsConfigService.add(param);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void saveAgentRegisteApplication(TApplicationMnt tApplicationMnt) {
-        int applicationExist = tApplicationMntDao.applicationExistByCustomerIdAndAppName(WebPluginUtils.getCustomerId(), tApplicationMnt.getApplicationName());
+    public void saveAgentRegisterApplication(ApplicationCreateParam tApplicationMnt) {
+        int applicationExist = applicationDAO.applicationExistByTenantIdAndAppName(
+                WebPluginUtils.traceTenantId(), WebPluginUtils.traceEnvCode(), tApplicationMnt.getApplicationName());
         if (applicationExist > 0) {
             OperationLogContextHolder.ignoreLog();
             return;
@@ -205,7 +209,7 @@ public class ConfCenterService extends CommonService {
      *
      * @author shulie
      */
-    private void addApplicationToLinkDetection(TApplicationMnt tApplicationMnt) {
+    private void addApplicationToLinkDetection(ApplicationCreateParam tApplicationMnt) {
         Map<String, Object> map = new HashMap<String, Object>(10) {
             private static final long serialVersionUID = 1L;
 
@@ -223,7 +227,7 @@ public class ConfCenterService extends CommonService {
      * @param tApplicationMnt 应用实体对象
      * @author shulie
      */
-    private void addApplicationToDataBuild(TApplicationMnt tApplicationMnt) {
+    private void addApplicationToDataBuild(ApplicationCreateParam tApplicationMnt) {
         Map<String, Object> map = new HashMap<String, Object>(10) {
             private static final long serialVersionUID = 1L;
 
@@ -249,18 +253,17 @@ public class ConfCenterService extends CommonService {
      * @param tApplicationMnt 应用管理实体类
      * @author shulie
      */
-    private void addApplication(TApplicationMnt tApplicationMnt) {
+    private void addApplication(ApplicationCreateParam tApplicationMnt) {
         tApplicationMnt.setApplicationId(snowflake.next());
         tApplicationMnt.setCacheExpTime(
-            StringUtils.isEmpty(tApplicationMnt.getCacheExpTime()) ? "0" : tApplicationMnt.getCacheExpTime());
-        ApplicationCreateParam createParam = new ApplicationCreateParam();
-        BeanUtils.copyProperties(tApplicationMnt, createParam);
-        applicationDAO.insert(createParam);
+                StringUtils.isEmpty(tApplicationMnt.getCacheExpTime()) ? "0" : tApplicationMnt.getCacheExpTime());
+
+        applicationDAO.insert(tApplicationMnt);
 
         try {
             TakinFileUtil.createFile(getBasePath() + tApplicationMnt.getApplicationName());
-        } catch (Throwable throwable) {
-            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_CONFIG_FILE_CREATE_ERROR, "文件创建失败！");
+        } catch (Throwable e) {
+            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_CONFIG_FILE_CREATE_ERROR, "文件创建失败！", e);
         }
 
     }
@@ -279,8 +282,8 @@ public class ConfCenterService extends CommonService {
         String whiteListUrl = MapUtils.getString(paramMap, "whiteListUrl");
         Long applicationId = MapUtils.getLong(paramMap, "applicationId");
         PageHelper.startPage(PageInfo.getPageNum(paramMap), PageInfo.getPageSize(paramMap));
-        List<TApplicationInterface> queryWhiteListInfo = tWListMntDao.queryOnlyWhiteList(applicationName, principalNo, type,
-            whiteListUrl, null, applicationId);
+        List<TApplicationInterface> queryWhiteListInfo = whiteListDAO.queryOnlyWhiteList(applicationName, principalNo, type,
+                whiteListUrl, null, applicationId);
 
         return new PageInfo<>(queryWhiteListInfo.isEmpty() ? Lists.newArrayList() : queryWhiteListInfo);
     }
@@ -293,35 +296,28 @@ public class ConfCenterService extends CommonService {
         List<String> applicationIds = null;
         Object whiteListIds = paramMap.get("wlistIds");
         if (null != whiteListIds) {
-            applicationIds = (List)whiteListIds;
+            applicationIds = (List) whiteListIds;
         }
-        return tWListMntDao.queryOnlyWhiteList(applicationName, principalNo, type, whiteListUrl, applicationIds, null);
+        return whiteListDAO.queryOnlyWhiteList(applicationName, principalNo, type, whiteListUrl, applicationIds, null);
     }
 
     /**
      * 项目压测开关
      */
     public void projectPressureSwitch(Long applicationId) {
-        // tWListMntDao.updateWListById();
+        // whiteListDAO.updateWListById();
     }
 
     /**
      * 说明: 查询应用列表信息
      *
-     * @param paramMap 参数集合
      * @return 应用列表
      * @author shulie
      */
-    public PageInfo<TApplicationMnt> queryApplicationList(Map<String, Object> paramMap) {
-        String applicationName = MapUtils.getString(paramMap, "applicationName");
-        List<String> applicationIds = (List<String>)MapUtils.getObject(paramMap, "applicationIds");
-        if (!StringUtils.equals("-1", MapUtils.getString(paramMap, "pageSize"))) {
-            PageHelper.startPage(PageInfo.getPageNum(paramMap), PageInfo.getPageSize(paramMap));
-        }
-        List<TApplicationMnt> queryApplicationList = tApplicationMntDao.queryApplicationList(applicationName,
-            applicationIds);
-
-        return new PageInfo<>(queryApplicationList.isEmpty() ? Lists.newArrayList() : queryApplicationList);
+    public PagingList<ApplicationDetailResult> queryApplicationList(ApplicationQueryRequest request) {
+        ApplicationQueryParam param = new ApplicationQueryParam();
+        BeanUtils.copyProperties(request, param);
+        return applicationDAO.queryApplicationList(param);
     }
 
     /**
@@ -331,8 +327,8 @@ public class ConfCenterService extends CommonService {
      * @return 应用对象
      * @author shulie
      */
-    public TApplicationMnt queryApplicationinfoById(long applicationId) {
-        return tApplicationMntDao.queryApplicationinfoById(applicationId);
+    public ApplicationDetailResult queryApplicationInfoById(long applicationId) {
+        return applicationDAO.getApplicationById(applicationId);
     }
 
     /**
@@ -342,8 +338,8 @@ public class ConfCenterService extends CommonService {
      * @return 应用对象
      * @author JasonYan
      */
-    public TApplicationMnt queryApplicationinfoByIdAndRole(long applicationId) {
-        TApplicationMnt tApplicationMnt = tApplicationMntDao.queryApplicationinfoById(applicationId);
+    public ApplicationDetailResult queryApplicationInfoByIdAndRole(long applicationId) {
+        ApplicationDetailResult tApplicationMnt = applicationDAO.getApplicationById(applicationId);
         return tApplicationMnt;
     }
 
@@ -354,38 +350,39 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     @Transactional(rollbackFor = Exception.class)
-    public String deleteApplicationinfoByIds(String applicationIds) {
-        GetDeleteIds deleteIds = new GetDeleteIds(applicationIds, "applicationName").invoke(tApplicationMntDao);
-        List<String> ableDeleteApplicationList = deleteIds.getAbleDeleteList();
+    public String deleteApplicationInfoByIds(String applicationIds) {
+        GetDeleteIds deleteIds = new GetDeleteIds(applicationIds, "applicationName").invoke(applicationDAO);
+        List<Long> ableDeleteApplicationList = deleteIds.getAbleDeleteList();
         if (!ableDeleteApplicationList.isEmpty()) {
-            tWListMntDao.deleteApplicationInfoRelatedInterfaceByIds(ableDeleteApplicationList);
+            whiteListDAO.deleteApplicationInfoRelatedInterfaceByIds(ableDeleteApplicationList);
             ableDeleteApplicationList.forEach(applicationId -> {
-                TApplicationMnt tApplicationMnt = tApplicationMntDao.queryApplicationinfoById(
-                    Long.parseLong(applicationId));
+                ApplicationDetailResult tApplicationMnt = applicationDAO.getApplicationById(applicationId);
                 redisManager.removeKey(
-                    WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY + tApplicationMnt.getApplicationName());
+                        WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY + tApplicationMnt.getApplicationName());
                 redisManager.removeKey(
-                    WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY_METRIC + tApplicationMnt.getApplicationName());
+                        WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY_METRIC + tApplicationMnt.getApplicationName());
                 // 采用租户的userAppKey
+                //todo Aganet改造点
                 agentConfigCacheManager.evictRecallCalls(tApplicationMnt.getApplicationName());
+                delApplicationCache(tApplicationMnt.getApplicationName());
             });
             //删除白名单需要更新缓存
             redisManager.removeKey(WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY);
             redisManager.removeKey(WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY_METRIC);
-            tApplicationMntDao.queryApplicationName(ableDeleteApplicationList).forEach(
-                applicationName -> TakinFileUtil.recursiveDeleteFile(new File(getBasePath() + applicationName)));
-            tApplicationMntDao.deleteApplicationinfoByIds(ableDeleteApplicationList);
+            applicationDAO.getApplicationByIds(ableDeleteApplicationList).forEach(
+                    applicationName -> TakinFileUtil.recursiveDeleteFile(new File(getBasePath() + applicationName)));
+            applicationDAO.deleteApplicationInfoByIds(ableDeleteApplicationList);
             TDataBuildDao.deleteApplicationToDataBuild(ableDeleteApplicationList);
             TLinkDetectionDao.deleteApplicationToLinkDetection(ableDeleteApplicationList);
             tShadowTableDataSourceDao.deleteByApplicationIdList(ableDeleteApplicationList);
 
             Map<String, Object> logMap = Maps.newHashMap();
-            List<Map<String, Object>> ableDeleteApplicationWlistData = tApplicationMntDao.queryApplicationListByIds(
-                ableDeleteApplicationList);
+            List<Map<String, Object>> ableDeleteApplicationWlistData = applicationDAO.queryApplicationListByIds(
+                    ableDeleteApplicationList);
             List<Map<String, Object>> ableDeleteDataBuild = TDataBuildDao.queryDataBuildListByIds(
-                ableDeleteApplicationList);
+                    ableDeleteApplicationList);
             List<Map<String, Object>> ableDeleteLinkDetection = TLinkDetectionDao.queryLinkDetectionListByIds(
-                ableDeleteApplicationList);
+                    ableDeleteApplicationList);
             logMap.put("ableDeleteApplicationWlistData", ableDeleteApplicationWlistData);
             logMap.put("ableDeleteDataBuild", ableDeleteDataBuild);
             logMap.put("ableDeleteLinkDetection", ableDeleteLinkDetection);
@@ -406,12 +403,10 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     public List<Map<String, Object>> queryApplicationdata() {
-        List<Map<String, Object>> list = transferElementToString(tApplicationMntDao.queryApplicationdata());
+        List<Map<String, Object>> list = transferElementToString(applicationDAO.queryApplicationData());
 
         return list;
     }
-
-    //    private static final String whiteListPath = "/opt/takin/conf/takin-remote/api/confcenter/wbmnt/query/";
 
     /**
      * 说明: 根据应用id更新应用信息
@@ -420,13 +415,16 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     @Transactional(rollbackFor = Exception.class)
-    public void updateApplicationinfo(TApplicationMnt tApplicationMnt) throws TakinModuleException {
-        TApplicationMnt originApplicationMnt = tApplicationMntDao.queryApplicationinfoById(
-            tApplicationMnt.getApplicationId());
+    public void updateApplicationInfo(ApplicationCreateParam tApplicationMnt) throws TakinModuleException {
+        ApplicationDetailResult originApplicationMnt = applicationDAO.getApplicationById(tApplicationMnt.getApplicationId());
+        if (originApplicationMnt == null) {
+            log.error("updateApplicationInfo 应用不存在 【{}】", tApplicationMnt.getApplicationName());
+            return;
+        }
         String originApplicationName = originApplicationMnt.getApplicationName();
         //比较是否更改了  applicationName  ，再看这个appName是否存在
         if (!StringUtils.equals(originApplicationName, tApplicationMnt.getApplicationName())) {
-            int applicationExist = tApplicationMntDao.applicationExist(tApplicationMnt.getApplicationName());
+            int applicationExist = applicationDAO.applicationExist(tApplicationMnt.getApplicationName());
             if (applicationExist > 0) {
 
                 throw new TakinModuleException(TakinErrorEnum.CONFCENTER_UPDATE_APPLICATION_DUPICATE_EXCEPTION);
@@ -434,13 +432,13 @@ public class ConfCenterService extends CommonService {
             TakinFileUtil.recursiveDeleteFile(new File(getBasePath() + originApplicationName));
             TakinFileUtil.createFile(getBasePath() + tApplicationMnt.getApplicationName());
         }
-        tApplicationMntDao.updateApplicationinfo(tApplicationMnt);
+        applicationDAO.updateApplicationInfo(tApplicationMnt);
         //之所以这里要多维护一次是因为 agent也要使用这个表的applicationName
         updatePlugins(tApplicationMnt);
-
+        delApplicationCache(originApplicationName);
     }
 
-    private void updatePlugins(TApplicationMnt tApplicationMnt) {
+    private void updatePlugins(ApplicationCreateParam tApplicationMnt) {
         ApplicationPluginsConfigParam param = new ApplicationPluginsConfigParam();
         param.setApplicationId(tApplicationMnt.getApplicationId());
         List<ApplicationPluginsConfigEntity> list = applicationPluginsConfigDAO.findList(param);
@@ -453,7 +451,6 @@ public class ConfCenterService extends CommonService {
             param.setConfigValue(entity.getConfigValue());
             pluginsConfigService.update(param);
         }
-
     }
 
     /**
@@ -467,7 +464,7 @@ public class ConfCenterService extends CommonService {
         List<String> duplicateUrlList = Lists.newArrayList();
         //MQ单独处理, 和其他白名单相比没有接口名interfaceName,只有queueName
         if (WListTypeEnum.MQ.getValue().equals(twListVo.getType())) {
-            int wListExist = tWListMntDao.queryWhiteListCountByMqInfo(twListVo);
+            int wListExist = whiteListDAO.queryWhiteListCountByMqInfo(twListVo);
             if (wListExist > 0) {
                 throw new TakinModuleException(TakinErrorEnum.CONFCENTER_ADD_WLIST_DUPICATE_EXCEPTION);
             }
@@ -480,7 +477,7 @@ public class ConfCenterService extends CommonService {
             List<String> list = twListVo.getList();
             List<TWList> twLists = Lists.newArrayList();
             list.forEach(url -> {
-                int wListExist = tWListMntDao.whiteListExist(appId, url, twListVo.getUseYn());
+                int wListExist = whiteListDAO.whiteListExist(appId, url, twListVo.getUseYn());
                 if (wListExist > 0) {
                     duplicateUrlList.add(url);
                 } else {
@@ -507,6 +504,7 @@ public class ConfCenterService extends CommonService {
 
     private void writeWhiteListFile() {
         try {
+            String whiteListPath = ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_WHITE_LIST_CONFIG_PATH);
             Map<String, List<Map<String, Object>>> result = queryBlackWhiteList("");
             if (null != result && result.size() > 0) {
                 File file = new File(whiteListPath);
@@ -540,7 +538,7 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     private void batchAddWhiteList(List<TWList> twLists) {
-        tWListMntDao.batchAddWhiteList(twLists);
+        whiteListDAO.batchAddWhiteList(twLists);
     }
 
     /**
@@ -550,7 +548,7 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     private void addWhiteList(TWList tWhiteList) {
-        tWListMntDao.addWhiteList(tWhiteList);
+        whiteListDAO.addWhiteList(tWhiteList);
     }
 
     /**
@@ -564,24 +562,12 @@ public class ConfCenterService extends CommonService {
      */
 
     public List<TApplicationInterface> queryOnlyWhiteList(String applicationName, String principalNo, String type, String x,
-        Long appId) {
-        List<TApplicationInterface> queryWhiteListInfo = tWListMntDao.queryOnlyWhiteList(applicationName, principalNo, type, x,
-            null, null);
+                                                          Long appId) {
+        List<TApplicationInterface> queryWhiteListInfo = whiteListDAO.queryOnlyWhiteList(applicationName, principalNo, type, x,
+                null, null);
         return queryWhiteListInfo.isEmpty() ? Lists.newArrayList() : queryWhiteListInfo;
     }
 
-    /**
-     * 说明: 当链路为空查询不到查询白名单列表时，根据应用名称,负责人和白名单类型查询应用信息
-     *
-     * @param applicationName 应用名称
-     * @param principalNo     负责人
-     * @param type            白名单类型
-     * @return 应用服务列表
-     * @author shulie
-     */
-    public List<TApplicationInterface> queryWhiteList(String applicationName, String principalNo, String type) {
-        return tWListMntDao.queryWhiteList(applicationName, principalNo, type);
-    }
 
     /**
      * 说明: 根据id查询白名单信息
@@ -592,7 +578,7 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     public TWList querySingleWhiteListById(String whitelistId) throws TakinModuleException {
-        TWList tWlist = tWListMntDao.querySingleWhiteListById(whitelistId);
+        TWList tWlist = whiteListDAO.querySingleWhiteListById(whitelistId);
         if (tWlist == null) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_QUERY_WLISTBYID_NOTEXIST);
         }
@@ -607,18 +593,18 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     public void updateWhiteListById(TWList param) throws TakinModuleException {
-        TWList dbData = tWListMntDao.querySingleWhiteListById(String.valueOf(param.getWlistId()));
+        TWList dbData = whiteListDAO.querySingleWhiteListById(String.valueOf(param.getWlistId()));
         if (dbData == null) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_QUERY_WLISTBYID_NOTEXIST);
         }
-        int applicationExist = tWListMntDao.whiteListExist(param.getApplicationId(), param.getInterfaceName(),
-            param.getUseYn());
+        int applicationExist = whiteListDAO.whiteListExist(param.getApplicationId(), param.getInterfaceName(),
+                param.getUseYn());
         //            修改时,排除当前白名单记录,所以存在至少1个白名单
         if (applicationExist > 1) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_UPDATE_WLIST_DUPICATE_EXCEPTION);
         }
         //更新白名单需要更新缓存
-        tWListMntDao.updateSelective(param);
+        whiteListDAO.updateSelective(param);
         //写入文件 nginx访问
         writeWhiteListFile();
     }
@@ -630,15 +616,14 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     public String deleteWhiteListByIds(String whiteListIds) {
-        GetDeleteIds deleteIds = new GetDeleteIds(whiteListIds, "interfaceName").invoke(tWListMntDao);
+        GetDeleteIds deleteIds = new GetDeleteIds(whiteListIds, "interfaceName").invoke(whiteListDAO);
         List<String> ableDeleteWhiteList = deleteIds.getAbleDeleteList();
         if (!ableDeleteWhiteList.isEmpty()) {
-            List<TWList> ableDeleteWhiteLists = tWListMntDao.queryWhiteListByIds(ableDeleteWhiteList);
-            tWListMntDao.deleteWhiteListByIds(ableDeleteWhiteList);
+            List<TWList> ableDeleteWhiteLists = whiteListDAO.queryWhiteListByIds(ableDeleteWhiteList);
+            whiteListDAO.deleteWhiteListByIds(ableDeleteWhiteList);
             //删除白名单需要更新缓存
             ableDeleteWhiteLists.stream().map(TWList::getApplicationId).distinct().forEach(applicationId -> {
-                TApplicationMnt tApplicationMnt = tApplicationMntDao.queryApplicationinfoById(
-                    Long.parseLong(applicationId));
+
             });
 
         }
@@ -653,8 +638,8 @@ public class ConfCenterService extends CommonService {
      */
     public void deleteWhiteListByIds(List<Long> ids) {
         if (!ids.isEmpty()) {
-            List<TWList> ableDeleteWhiteLists = tWListMntDao.getWhiteListByIds(ids);
-            tWListMntDao.deleteByIds(ids);
+            List<TWList> ableDeleteWhiteLists = whiteListDAO.getWhiteListByIds(ids);
+            whiteListDAO.deleteByIds(ids);
 
         }
         writeWhiteListFile();
@@ -694,8 +679,8 @@ public class ConfCenterService extends CommonService {
         param.setCreateTime(new Date());
         param.setUpdateTime(new Date());
         blackListDAO.insert(param);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile();
     }
 
     /**
@@ -717,8 +702,8 @@ public class ConfCenterService extends CommonService {
     public void updateBlackListById(TBList tBlackList) {
         TBList originBlackList = tBListMntDao.querySingleBListById(String.valueOf(tBlackList.getBlistId()));
         tBListMntDao.updateBListById(tBlackList);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**
@@ -730,11 +715,11 @@ public class ConfCenterService extends CommonService {
     @Deprecated
     public void deleteBlackListByIds(String blistIds) {
         List<String> blistIdList = Arrays.stream(blistIds.split(",")).filter(StringUtils::isNotEmpty).distinct()
-            .collect(Collectors.toList());
+                .collect(Collectors.toList());
         tBListMntDao.deleteBListByIds(blistIdList);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
         List<TBList> deleteBlackLists = tBListMntDao.queryBListByIds(blistIdList);
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     public List<TBList> queryBlackListByIds(List<Long> blistIds) {
@@ -758,7 +743,7 @@ public class ConfCenterService extends CommonService {
         paramMap.put("pageSize", bListQueryParam.getPageSize());
         String redisKey = bListQueryParam.getRedisKey();
         PageHelper.startPage(PageInfo.getPageNum(paramMap), PageInfo.getPageSize(paramMap));
-        List<TBList> queryBlackList = tBListMntDao.queryBList(redisKey, "");
+        List<TBList> queryBlackList = tBListMntDao.queryBList(redisKey, "", WebPluginUtils.getQueryAllowUserIdList());
         if (CollectionUtils.isNotEmpty(queryBlackList)) {
             for (TBList tbList : queryBlackList) {
                 List<Long> allowUpdateUserIdList = WebPluginUtils.getUpdateAllowUserIdList();
@@ -777,7 +762,7 @@ public class ConfCenterService extends CommonService {
         }
         PageInfo<TBList> pageInfo = new PageInfo<>(queryBlackList.isEmpty() ? Lists.newArrayList() : queryBlackList);
         Response response = Response.success(pageInfo.getList(),
-            CollectionUtils.isEmpty(pageInfo.getList()) ? 0 : pageInfo.getTotal());
+                CollectionUtils.isEmpty(pageInfo.getList()) ? 0 : pageInfo.getTotal());
         return response;
     }
 
@@ -794,14 +779,14 @@ public class ConfCenterService extends CommonService {
         if (StringUtils.isNotEmpty(appName)) {
             appNameKey = appName;
         }
-        List<Map<String, Object>> wLists = tWListMntDao.queryWhiteListList(appName);
+        List<Map<String, Object>> wLists = whiteListDAO.queryWhiteListList(appName);
         List<Map<String, Object>> bLists = tBListMntDao.queryBListList();
         Map<String, List<Map<String, Object>>> resultMap = Maps.newHashMapWithExpectedSize(30);
         List<Map<String, Object>> wListsResult = Lists.newArrayList();
         if (wLists != null) {
             for (Map<String, Object> whiteItem : wLists) {
-                String type = (String)whiteItem.get("TYPE");
-                String interfaceName = (String)whiteItem.get("INTERFACE_NAME");
+                String type = (String) whiteItem.get("TYPE");
+                String interfaceName = (String) whiteItem.get("INTERFACE_NAME");
                 // 格式校验
                 if (WhitelistUtil.checkWhiteFormatError(interfaceName, number)) {
                     continue;
@@ -840,13 +825,13 @@ public class ConfCenterService extends CommonService {
             appNameKey = appName;
         }
         Optional<Object> wListValue = redisManager.valueGet(
-            WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY_METRIC + appNameKey);
+                WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY_METRIC + appNameKey);
         if (wListValue.isPresent()) {
-            wLists = (List<Map<String, Object>>)wListValue.get();
+            wLists = (List<Map<String, Object>>) wListValue.get();
         } else {
             RedisKey wListRedis = new RedisKey(WhiteBlackListRedisKey.TAKIN_WHITE_LIST_KEY_METRIC + appNameKey,
-                WhiteBlackListRedisKey.TIMEOUT);
-            wLists = tWListMntDao.queryWhiteListList(appName);
+                    WhiteBlackListRedisKey.TIMEOUT);
+            wLists = whiteListDAO.queryWhiteListList(appName);
             // 查询完白名单列表后，需要加工成海明需要的数据格式
             //先筛选出来type=mq的，然后再根据mqType计算出是ibmmq还是rocketmq
             //如果没查到直接报查询异常
@@ -854,9 +839,9 @@ public class ConfCenterService extends CommonService {
                 throw new TakinModuleException(TakinErrorEnum.CONFCENTER_QUERY_NOT_WLIST_FOR_APPNAME_EXCEPTION);
             }
             wLists.forEach(map -> {
-                String type = (String)map.get("TYPE");
+                String type = (String) map.get("TYPE");
                 if ("mq".equals(type)) {
-                    String mqType = (String)map.get("MQ_TYPE");
+                    String mqType = (String) map.get("MQ_TYPE");
                     //如果是ESB/IBM，则将type修改成ibmmq
                     if (MQConstant.ESB.equals(mqType) || MQConstant.IBM.equals(mqType)) {
                         map.put("TYPE", "ibmmq");
@@ -869,10 +854,10 @@ public class ConfCenterService extends CommonService {
         }
         Optional<Object> blackListValue = redisManager.valueGet(WhiteBlackListRedisKey.TAKIN_BLACK_LIST_KEY);
         if (blackListValue.isPresent()) {
-            bLists = (List<Map<String, Object>>)blackListValue.get();
+            bLists = (List<Map<String, Object>>) blackListValue.get();
         } else {
             RedisKey bListRedis = new RedisKey(WhiteBlackListRedisKey.TAKIN_BLACK_LIST_KEY,
-                WhiteBlackListRedisKey.TIMEOUT);
+                    WhiteBlackListRedisKey.TIMEOUT);
             bLists = tBListMntDao.queryBListList();
             redisManager.valuePut(bListRedis, bLists);
         }
@@ -973,10 +958,10 @@ public class ConfCenterService extends CommonService {
      * @author shulie
      */
     private void addParam(TLinkServiceMntVo tLinkServiceMntVo,
-        String linkId,
-        List<TLinkServiceMnt> tLinkServiceMntList,
-        List<TLinkServiceMnt> tLinkServiceMntLists,
-        String linkExist) throws TakinModuleException {
+                          String linkId,
+                          List<TLinkServiceMnt> tLinkServiceMntList,
+                          List<TLinkServiceMnt> tLinkServiceMntLists,
+                          String linkExist) throws TakinModuleException {
         if (tLinkServiceMntList.isEmpty()) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_ADD_LINK_PARAM_EXCEPTION);
         }
@@ -1021,14 +1006,14 @@ public class ConfCenterService extends CommonService {
             return new PageInfo<>(Lists.newArrayList());
         }
         queryBasicLinkList = queryBasicLinkList.stream()
-            //                .filter(tLinkApplicationInterface -> !StringUtils.isAnyEmpty(tLinkApplicationInterface
-            //                .getApplicationName(), tLinkApplicationInterface.getInterfaceName()))
-            .peek(tLinkApplicationInterface -> {
-                List<List<Map<String, Object>>> basicLinkList = getRelationLinkRelationShip("t_bs_tch_link",
-                    String.valueOf(tLinkApplicationInterface.getLinkId()));
-                tLinkApplicationInterface.setTechLinks(JSON.toJSONString(basicLinkList));
-            })
-            .collect(Collectors.toList());
+                //                .filter(tLinkApplicationInterface -> !StringUtils.isAnyEmpty(tLinkApplicationInterface
+                //                .getApplicationName(), tLinkApplicationInterface.getInterfaceName()))
+                .peek(tLinkApplicationInterface -> {
+                    List<List<Map<String, Object>>> basicLinkList = getRelationLinkRelationShip("t_bs_tch_link",
+                            String.valueOf(tLinkApplicationInterface.getLinkId()));
+                    tLinkApplicationInterface.setTechLinks(JSON.toJSONString(basicLinkList));
+                })
+                .collect(Collectors.toList());
         newPage.clear();
         newPage.addAll(queryBasicLinkList);
 
@@ -1040,7 +1025,7 @@ public class ConfCenterService extends CommonService {
         List<TLinkServiceMntVo> tLinkServiceMntVos = tLinkMnDao.queryBasicLinkListDownload(paramMap);
         for (TLinkServiceMntVo tLinkServiceMntVo : tLinkServiceMntVos) {
             List<TLinkServiceMnt> tLinkServiceMnts = tLinkMntDao.queryLinkInterface(
-                String.valueOf(tLinkServiceMntVo.getLinkId()));
+                    String.valueOf(tLinkServiceMntVo.getLinkId()));
             tLinkServiceMntVo.settLinkServiceMntList(tLinkServiceMnts);
         }
 
@@ -1084,8 +1069,8 @@ public class ConfCenterService extends CommonService {
     private void setTechLinks(TLinkServiceMntVo tLinkServiceMntVo) {
         if (StringUtils.isNotBlank(tLinkServiceMntVo.getTechLinks())) {
             List<List<String>> techLinks = JSON.parseObject(tLinkServiceMntVo.getTechLinks(),
-                new TypeReference<List<List<String>>>() {
-                }); // Json 转List
+                    new TypeReference<List<List<String>>>() {
+                    }); // Json 转List
 
             List<List<Map<String, Object>>> showTechLinks = Lists.newArrayListWithExpectedSize(techLinks.size());
             techLinks.forEach(lstString -> {
@@ -1099,7 +1084,7 @@ public class ConfCenterService extends CommonService {
 
     private void setNodes(TLinkServiceMntVo tLinkServiceMntVo) {
         List<TLinkNodesVo> tLinkNodesVoList = tLinkMntDao.getNodesByBlinkId(
-            String.valueOf(tLinkServiceMntVo.getLinkId()));
+                String.valueOf(tLinkServiceMntVo.getLinkId()));
         if (CollectionUtils.isNotEmpty(tLinkNodesVoList)) {
             Map<String, Object> linkNode = Maps.newHashMapWithExpectedSize(tLinkNodesVoList.size());
             Integer maxBlank = tLinkNodesVoList.stream().mapToInt(tempNode -> tempNode.gettLinkBank()).max().getAsInt();
@@ -1112,7 +1097,7 @@ public class ConfCenterService extends CommonService {
             parentNode.put("bank", "0");
             parentNode.put("x", "1");
             parentNode.put("y",
-                maxBlank % 2 == 0 ? String.valueOf(maxBlank / 2 + 0.5) : String.valueOf(maxBlank / 2 + 1));
+                    maxBlank % 2 == 0 ? String.valueOf(maxBlank / 2 + 0.5) : String.valueOf(maxBlank / 2 + 1));
             parentNode.put("text", tLinkServiceMntVo.getLinkName());
             parentNode.put("baseLinkId", String.valueOf(tLinkServiceMntVo.getLinkId()));
             parentNode.put("key", String.valueOf(parentKey));
@@ -1125,10 +1110,10 @@ public class ConfCenterService extends CommonService {
                     tempLink.put("source", tLinkServiceMntVo.getLinkName());
                 } else {
                     tempLink.put("from",
-                        String.valueOf(parentKey + nodeVo.gettLinkBank() * 10000 + nodeVo.gettLinkOrder() - 1));
+                            String.valueOf(parentKey + nodeVo.gettLinkBank() * 10000 + nodeVo.gettLinkOrder() - 1));
                     tempLink.put("source", tLinkNodesVoList.stream().filter(
-                        s -> s.gettLinkBank().equals(nodeVo.gettLinkBank()) && s.gettLinkOrder()
-                            .equals(nodeVo.gettLinkOrder() - 1)).findFirst().get().getLinkName());
+                            s -> s.gettLinkBank().equals(nodeVo.gettLinkBank()) && s.gettLinkOrder()
+                                    .equals(nodeVo.gettLinkOrder() - 1)).findFirst().get().getLinkName());
                 }
                 tempLink.put("to", String.valueOf(parentKey + nodeVo.gettLinkBank() * 10000 + nodeVo.gettLinkOrder()));
                 tempLink.put("target", nodeVo.getLinkName());
@@ -1140,7 +1125,7 @@ public class ConfCenterService extends CommonService {
                 childNode.put("text", nodeVo.getLinkName());
                 childNode.put("techLinkId", String.valueOf(nodeVo.gettLinkId()));
                 childNode.put("key",
-                    String.valueOf(parentKey + nodeVo.gettLinkBank() * 10000 + nodeVo.gettLinkOrder()));
+                        String.valueOf(parentKey + nodeVo.gettLinkBank() * 10000 + nodeVo.gettLinkOrder()));
                 nodeList.add(childNode);
             });
             tLinkServiceMntVo.setLinks(linksList);
@@ -1164,7 +1149,7 @@ public class ConfCenterService extends CommonService {
             tLinkMnDao.deleteLinkInterfaceByLinkIds(ableDeleteBasicLink);
             //删除二级链路和业务/技术链路关系
             tLinkMnDao.deleteSecondBasicLinkRef(Splitter.on(",").trimResults().omitEmptyStrings()
-                .splitToList(basicLinkIds));
+                    .splitToList(basicLinkIds));
             List<TLinkServiceMntVo> tLinkServiceMntVos = tLinkMnDao.queryLinksByLinkIds(ableDeleteBasicLink);
 
         }
@@ -1180,7 +1165,7 @@ public class ConfCenterService extends CommonService {
      */
     public void deleteLinkInterfaceByLinkServiceId(String linkServiceIds) {
         List<String> linkServiceIdsList = Arrays.stream(linkServiceIds.split(",")).filter(
-            e -> StringUtils.isNotEmpty(e)).distinct().collect(Collectors.toList());
+                e -> StringUtils.isNotEmpty(e)).distinct().collect(Collectors.toList());
         List<TLinkServiceMntVo> tLinkServiceMntVos = tLinkMnDao.queryLinksByLinkIds(linkServiceIdsList);
 
         tLinkMnDao.deleteLinkInterfaceByLinkServiceId(linkServiceIdsList);
@@ -1211,7 +1196,7 @@ public class ConfCenterService extends CommonService {
             if (tLinkServiceMntList != null && !tLinkServiceMntList.isEmpty()) {
                 tLinkServiceMntList.forEach(tLinkServiceMnt -> {
                     int linkInterfaceExist = tLinkMnDao.updateLinkInterfaceExist(String.valueOf(linkId),
-                        String.valueOf(tLinkServiceMnt.getLinkServiceId()));
+                            String.valueOf(tLinkServiceMnt.getLinkServiceId()));
                     if (linkInterfaceExist == 0) {
                         tLinkServiceMnt.setLinkServiceId(snowflake.next());
                         tLinkServiceMnt.setLinkId(linkId);
@@ -1244,7 +1229,7 @@ public class ConfCenterService extends CommonService {
                     List<TLinkServiceMnt> updateServiceMntLists2 = Lists.newArrayList();
                     updateServiceMntLists2.add(mnt);
                     LOGGER.info("update object:" + org.apache.commons.lang3.builder.ToStringBuilder
-                        .reflectionToString(mnt, org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE));
+                            .reflectionToString(mnt, org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE));
 
                     tLinkMnDao.updateLinkInterface(updateServiceMntLists2);
                 }
@@ -1256,7 +1241,7 @@ public class ConfCenterService extends CommonService {
             tLinkMnDao.addBasicLink(tLinkServiceMntVo);
 
             addParam(tLinkServiceMntVo, String.valueOf(linkId), tLinkServiceMntList, saveServiceMntLists,
-                String.valueOf(linkExist));
+                    String.valueOf(linkExist));
             tLinkMnDao.addLinkInterface(saveServiceMntLists);
 
         }
@@ -1288,7 +1273,7 @@ public class ConfCenterService extends CommonService {
             if (tLinkServiceMntList != null && !tLinkServiceMntList.isEmpty()) {
                 tLinkServiceMntList.forEach(tLinkServiceMnt -> {
                     int linkInterfaceExist = tLinkMnDao.updateLinkInterfaceExist(String.valueOf(linkId),
-                        String.valueOf(tLinkServiceMnt.getLinkServiceId()));
+                            String.valueOf(tLinkServiceMnt.getLinkServiceId()));
                     if (linkInterfaceExist == 0) {
                         tLinkServiceMnt.setLinkServiceId(snowflake.next());
                         tLinkServiceMnt.setLinkId(linkId);
@@ -1304,13 +1289,13 @@ public class ConfCenterService extends CommonService {
             //++ 更新链路与二级链路的关系
             //存在就更新，不存在(迎合以前的旧数据)就新增,
             int existSecondLinkRef = tLinkMnDao.existSecondLinkRef(tLinkServiceMntVo.getSecondLinkId(),
-                String.valueOf(tLinkServiceMntVo.getLinkId()));
+                    String.valueOf(tLinkServiceMntVo.getLinkId()));
             if (existSecondLinkRef > 0) {
                 tLinkMnDao.updateSecondLinkRef(tLinkServiceMntVo.getSecondLinkId(),
-                    String.valueOf(tLinkServiceMntVo.getLinkId()));
+                        String.valueOf(tLinkServiceMntVo.getLinkId()));
             } else {
                 tLinkMnDao.addSecondLinkRef(tLinkServiceMntVo.getSecondLinkId(),
-                    String.valueOf(tLinkServiceMntVo.getLinkId()));
+                        String.valueOf(tLinkServiceMntVo.getLinkId()));
             }
 
             if (!saveServiceMntLists.isEmpty()) {
@@ -1325,7 +1310,7 @@ public class ConfCenterService extends CommonService {
                     List<TLinkServiceMnt> updateServiceMntLists2 = Lists.newArrayList();
                     updateServiceMntLists2.add(mnt);
                     LOGGER.info("update object:" + org.apache.commons.lang3.builder.ToStringBuilder
-                        .reflectionToString(mnt, org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE));
+                            .reflectionToString(mnt, org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE));
 
                     tLinkMnDao.updateLinkInterface(updateServiceMntLists2);
                 }
@@ -1344,7 +1329,7 @@ public class ConfCenterService extends CommonService {
             tLinkMnDao.addBasicLink(tLinkServiceMntVo);
 
             addParam(tLinkServiceMntVo, String.valueOf(linkId), tLinkServiceMntList, saveServiceMntLists,
-                String.valueOf(linkExist));
+                    String.valueOf(linkExist));
             tLinkMnDao.addLinkInterface(saveServiceMntLists);
 
         }
@@ -1419,7 +1404,7 @@ public class ConfCenterService extends CommonService {
         if ("1".equals(type) && StringUtils.isEmpty(interfaceName)) {
 
             RedisTemplate redisTemplate = redisManager.getRedisTemplate();
-            String pradaSynchronizedToRedisStatus = (String)redisTemplate.opsForValue().get("pradaSynchronizedToRedis");
+            String pradaSynchronizedToRedisStatus = (String) redisTemplate.opsForValue().get("pradaSynchronizedToRedis");
             if ("Success".equals(pradaSynchronizedToRedisStatus)) {
                 Long total = redisTemplate.opsForList().size(applicationName);
                 int pageNumN = Integer.parseInt(pageNum);
@@ -1454,16 +1439,16 @@ public class ConfCenterService extends CommonService {
         PageHelper.startPage(PageInfo.getPageNum(paramMap), PageInfo.getPageSize(paramMap));
         switch (type) {
             case "1":
-                List<TPradaHttpData> tPradaHttpData = tWListMntDao.queryInterfaceByAppNameByTPHD(applicationName, type,
-                    interfaceName);
+                List<TPradaHttpData> tPradaHttpData = whiteListDAO.queryInterfaceByAppNameByTPHD(applicationName, type,
+                        interfaceName);
                 return new PageInfo<>(tPradaHttpData.isEmpty() ? Lists.newArrayList() : tPradaHttpData);
             case "2":
-                List<TUploadInterfaceDataVo> dubboData = tWListMntDao.queryInterfaceByAppNameFromTUID(applicationName,
-                    type, interfaceName);
+                List<TUploadInterfaceDataVo> dubboData = whiteListDAO.queryInterfaceByAppNameFromTUID(applicationName,
+                        type, interfaceName);
                 return new PageInfo<>(dubboData.isEmpty() ? Lists.newArrayList() : dubboData);
             case "4":
-                List<TUploadInterfaceDataVo> jobData = tWListMntDao.queryInterfaceByAppNameFromTUID(applicationName,
-                    type, interfaceName);
+                List<TUploadInterfaceDataVo> jobData = whiteListDAO.queryInterfaceByAppNameFromTUID(applicationName,
+                        type, interfaceName);
                 return new PageInfo<>(jobData.isEmpty() ? Lists.newArrayList() : jobData);
             default:
                 break;
@@ -1496,7 +1481,7 @@ public class ConfCenterService extends CommonService {
         List<String> wmsDpjjwmsList = Lists.newArrayListWithCapacity(200);
         for (String info : list) {
             if (info.contains(WListRuleEnum.CUBC.getRule()) && NumberUtils.isDigits(
-                StringUtils.substringAfterLast(info, "/"))) {
+                    StringUtils.substringAfterLast(info, "/"))) {
                 cubcList.add(info);
                 continue;
             }
@@ -1506,7 +1491,7 @@ public class ConfCenterService extends CommonService {
             }
             String domain = StringUtils.substringBetween(info, "//", "/");
             String domainNumber = domain.replaceAll("\\.", "")
-                .replaceAll(":", "");
+                    .replaceAll(":", "");
             boolean numberDomain = NumberUtils.isDigits(domainNumber);
             if (numberDomain && info.contains(WListRuleEnum.NVAS_VAS_CAS_WEB.getRule())) {
                 numberDomainList.add(info);
@@ -1532,29 +1517,6 @@ public class ConfCenterService extends CommonService {
         return filterList;
     }
 
-    /**
-     * 说明: 查询应用信息列表(prada同步表查数据)
-     *
-     * @return 应用列表
-     * @author shulie
-     * @date 2019/3/7 9:20
-     */
-    public List<?> queryAppNameList() {
-
-        List<Object> returnList = Lists.newArrayListWithCapacity(200);
-        List<String> list = tApplicationMntDao.queryAppNameList();
-        if (CollectionUtils.isEmpty(list)) {
-            return Lists.newArrayList();
-        }
-        list.sort(String::compareTo);
-        list.forEach(appName -> {
-                Map<String, Object> map = Maps.newHashMapWithExpectedSize(1);
-                map.put("key", appName);
-                returnList.add(map);
-            }
-        );
-        return returnList;
-    }
 
     /**
      * 查询白名单列表
@@ -1563,7 +1525,7 @@ public class ConfCenterService extends CommonService {
      * @return
      */
     public List<Map<String, Object>> queryWhiteListByAppId(String applicationId) {
-        return tWListMntDao.queryWhiteListByAppId(applicationId);
+        return whiteListDAO.queryWhiteListByAppId(applicationId);
 
     }
 
@@ -1587,10 +1549,10 @@ public class ConfCenterService extends CommonService {
 
             int index = 0;
             for (Object list : lists) {
-                ArrayList inVo = (ArrayList)list;
+                ArrayList inVo = (ArrayList) list;
                 TLinkServiceMntVo vo = new TLinkServiceMntVo();
                 vo.setAswanId(String.valueOf(inVo.get(0)));
-                List<JSONObject> mnts = JSONObject.parseObject((String)inVo.get(1), List.class);
+                List<JSONObject> mnts = JSONObject.parseObject((String) inVo.get(1), List.class);
                 List<TLinkServiceMnt> tLinkServiceMntList = new ArrayList<>(mnts.size());
                 StringBuffer sb = new StringBuffer();
                 mnts.forEach(mnt -> {
@@ -1656,10 +1618,10 @@ public class ConfCenterService extends CommonService {
     private String getKey(TakinDictTypeEnum enums, Object key) {
         String key1 = String.valueOf(key);
         Map data = this.queryDicList(enums);
-        Map dataList = (Map)data.get("dicList");
+        Map dataList = (Map) data.get("dicList");
         Iterator iterator = dataList.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry entry = (Map.Entry)iterator.next();
+            Map.Entry entry = (Map.Entry) iterator.next();
             if (StringUtils.equalsIgnoreCase(ObjectUtils.toString(entry.getValue()), key1)) {
                 return String.valueOf(entry.getKey());
             }
@@ -1672,10 +1634,10 @@ public class ConfCenterService extends CommonService {
     private String getValue(TakinDictTypeEnum enums, Object value) {
         String key = String.valueOf(value);
         Map data = this.queryDicList(enums);
-        Map dataList = (Map)data.get("dicList");
+        Map dataList = (Map) data.get("dicList");
         Iterator iterator = dataList.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry entry = (Map.Entry)iterator.next();
+            Map.Entry entry = (Map.Entry) iterator.next();
             if (StringUtils.equalsIgnoreCase(ObjectUtils.toString(entry.getValue()), key)) {
                 return String.valueOf(entry.getKey());
             }
@@ -1706,24 +1668,24 @@ public class ConfCenterService extends CommonService {
             for (Object list : lists) {
 
                 TWListVo vo = new TWListVo();
-                ArrayList excelVo = (ArrayList)list;
+                ArrayList excelVo = (ArrayList) list;
                 String applicationName = String.valueOf(excelVo.get(1));
                 if (!applicationSet.contains(applicationName)) {
                     throw new TakinModuleException(TakinErrorEnum.CONFCENTER_ADD_APPLICATION_NOTEXIST_EXCEPTION);
 
                 }
                 vo.setPrincipalNo("000000");
-                Long id = tApplicationMntDao.queryIdByApplicationName(String.valueOf(excelVo.get(1)));
+                Long id = applicationDAO.queryIdByApplicationName(String.valueOf(excelVo.get(1)));
                 vo.setApplicationId(String.valueOf(id));
                 //植入白名单类型的值
                 WListTypeEnum[] wListTypeEnums = WListTypeEnum.values();
                 Arrays.asList(wListTypeEnums).forEach(
-                    wListTypeEnum -> {
-                        if (StringUtils.equalsIgnoreCase(wListTypeEnum.getName()
-                            , StringUtils.trim(String.valueOf(excelVo.get(2))))) {
-                            vo.setType(wListTypeEnum.getValue());
+                        wListTypeEnum -> {
+                            if (StringUtils.equalsIgnoreCase(wListTypeEnum.getName()
+                                    , StringUtils.trim(String.valueOf(excelVo.get(2))))) {
+                                vo.setType(wListTypeEnum.getValue());
+                            }
                         }
-                    }
                 );
                 String httpType = isEmPty(excelVo.get(3)) ? null : String.valueOf(excelVo.get(3));
                 vo.setHttpType(httpType);
@@ -1774,8 +1736,8 @@ public class ConfCenterService extends CommonService {
 
     private boolean isEmPty(Object t) {
         return null == t
-            || StringUtils.isBlank(ObjectUtils.toString(t))
-            || "null".equalsIgnoreCase(ObjectUtils.toString(t));
+                || StringUtils.isBlank(ObjectUtils.toString(t))
+                || "null".equalsIgnoreCase(ObjectUtils.toString(t));
     }
 
     private String pageLevel(String pageLevel) {
@@ -1798,10 +1760,10 @@ public class ConfCenterService extends CommonService {
     public List<TLinkBasicVO> queryLinkByLinkType(Map<String, Object> queryMap) {
         List<Integer> linkTypeList = new ArrayList<>();
         if (queryMap != null && queryMap.get("linkType") != null) {
-            String linkTypeString = (String)queryMap.get("linkType");
+            String linkTypeString = (String) queryMap.get("linkType");
             if (StringUtils.isNotEmpty(linkTypeString)) {
                 linkTypeList = Arrays.asList(linkTypeString.split(",")).stream().map(s -> Integer.parseInt(s.trim()))
-                    .collect(Collectors.toList());
+                        .collect(Collectors.toList());
             }
         }
         return tLinkMntDao.queryLinksByLinkType(linkTypeList);
@@ -1816,21 +1778,21 @@ public class ConfCenterService extends CommonService {
      * @throws TakinModuleException
      */
     @Transactional(rollbackFor = Throwable.class)
-    public void updateAppAgentVersion(String appName, String agentVersion, String pradarVersion) throws
-        TakinModuleException {
+    public void updateAppAgentVersion(String appName, String agentVersion, String pradarVersion) throws TakinModuleException {
         // 是否执行
-        if (!isUpdateAgentVersion) {
+        if (!ConfigServerHelper.getBooleanValueByKey(ConfigServerKeyEnum.AGENT_HTTP_UPDATE_VERSION)) {
             return;
         }
+
         if (StringUtils.isEmpty(appName)) {
             throw new TakinModuleException(TakinErrorEnum.CONFCENTER_UPDATE_APPLICATION_AGENT_VERSION_EXCEPTION);
         }
-        TApplicationMnt applicationMnt = applicationService.queryTApplicationMntByName(appName);
-        if (applicationMnt == null) {
+        Long applicationId = applicationService.queryApplicationIdByAppName(appName);
+        if (applicationId == null) {
             log.warn("应用查询异常，未查到, updateAppAgentVersion fail!");
             return;
         }
-        tApplicationMntDao.updateApplicaionAgentVersion(applicationMnt.getApplicationId(), agentVersion, pradarVersion);
+        applicationDAO.updateApplicationAgentVersion(applicationId, agentVersion, pradarVersion);
     }
 
     /**
@@ -1848,7 +1810,7 @@ public class ConfCenterService extends CommonService {
      * @return
      */
     public List<Map<String, String>> getWhiteListForLink() {
-        return tWListMntDao.getWhiteListForLink();
+        return whiteListDAO.getWhiteListForLink();
     }
 
     /**
@@ -1870,7 +1832,7 @@ public class ConfCenterService extends CommonService {
          */
         for (TLinkMntDictoryVo tLinkMntDictoryVo : linkHeaderInfo) {
             collect.computeIfAbsent(tLinkMntDictoryVo.getName() + ";" + tLinkMntDictoryVo.getOrder(),
-                k -> new ArrayList<>()).add(tLinkMntDictoryVo);
+                    k -> new ArrayList<>()).add(tLinkMntDictoryVo);
         }
         collect.forEach((nameOrder, tLinkMntDictoryVoList) -> {
             Map<String, Object> resultMap = Maps.newHashMap();
@@ -1893,7 +1855,7 @@ public class ConfCenterService extends CommonService {
             resultMap.put("calcVolumeLinkList", list);
             resultList.add(resultMap);
         });
-        Collections.sort(resultList, Comparator.comparingInt(o -> Integer.valueOf((String)o.get("order"))));
+        Collections.sort(resultList, Comparator.comparingInt(o -> Integer.valueOf((String) o.get("order"))));
         return resultList;
     }
 
@@ -1915,7 +1877,7 @@ public class ConfCenterService extends CommonService {
          */
         for (TLinkTopologyInfoVo tLinkTopologyInfoVo : linkHeaderInfo) {
             collect.computeIfAbsent(tLinkTopologyInfoVo.getName() + ";" + tLinkTopologyInfoVo.getOrder(),
-                k -> new ArrayList<>()).add(tLinkTopologyInfoVo);
+                    k -> new ArrayList<>()).add(tLinkTopologyInfoVo);
         }
         collect.forEach((nameOrder, tLinkTopologyInfoVoList) -> {
             Map<String, Object> resultMap = Maps.newHashMap();
@@ -1939,8 +1901,8 @@ public class ConfCenterService extends CommonService {
             for (TLinkTopologyInfoVo tLinkTopologyInfoVo : tLinkTopologyInfoVoList) {
                 if (StringUtils.isNotEmpty(tLinkTopologyInfoVo.getSecondLinkId())) {
                     collect1.computeIfAbsent(
-                        tLinkTopologyInfoVo.getSecondLinkId() + ";" + tLinkTopologyInfoVo.getSecondLinkName(),
-                        k -> new ArrayList<>()).add(tLinkTopologyInfoVo);
+                            tLinkTopologyInfoVo.getSecondLinkId() + ";" + tLinkTopologyInfoVo.getSecondLinkName(),
+                            k -> new ArrayList<>()).add(tLinkTopologyInfoVo);
                 }
             }
             collect1.forEach((secondLinkIdName, secondLinkIdNameList) -> {
@@ -1955,7 +1917,7 @@ public class ConfCenterService extends CommonService {
             resultMap.put("calcVolumeLinkList", list);
             resultList.add(resultMap);
         });
-        Collections.sort(resultList, Comparator.comparingInt(o -> Integer.valueOf((String)o.get("order"))));
+        Collections.sort(resultList, Comparator.comparingInt(o -> Integer.valueOf((String) o.get("order"))));
         return resultList;
     }
 
@@ -1986,7 +1948,7 @@ public class ConfCenterService extends CommonService {
         }
         int applicationExist = tBListMntDao.bListExist(tBList.getRedisKey());
         if (applicationExist > 0) {
-            throw new TakinWebException(TakinErrorEnum.CONFCENTER_ADD_BLIST_DUPICATE_EXCEPTION,"");
+            throw new TakinWebException(TakinErrorEnum.CONFCENTER_ADD_BLIST_DUPICATE_EXCEPTION, "");
         }
         addBList(tBList);
         writeWhiteListFile();
@@ -2005,8 +1967,8 @@ public class ConfCenterService extends CommonService {
         param.setCreateTime(new Date());
         param.setUpdateTime(new Date());
         blackListDAO.insert(param);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**
@@ -2030,7 +1992,7 @@ public class ConfCenterService extends CommonService {
     public void updateBListById(TBList tBList) {
         TBList originBList = tBListMntDao.querySingleBListById(String.valueOf(tBList.getBlistId()));
         tBListMntDao.updateBListById(tBList);
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**
@@ -2042,10 +2004,10 @@ public class ConfCenterService extends CommonService {
     @Deprecated
     public void deleteBListByIds(String blistIds) {
         List<String> blistIdList = Arrays.stream(blistIds.split(",")).filter(StringUtils::isNotEmpty).distinct()
-            .collect(Collectors.toList());
+                .collect(Collectors.toList());
         tBListMntDao.deleteBListByIds(blistIdList);
-        configSyncService.syncBlockList(WebPluginUtils.getTenantUserAppKey());
-        whiteListFileService.writeWhiteListFile(WebPluginUtils.getCustomerId(), WebPluginUtils.getTenantUserAppKey());
+        configSyncService.syncBlockList(WebPluginUtils.traceTenantCommonExt());
+        whiteListFileService.writeWhiteListFile(WebPluginUtils.traceTenantCommonExt());
     }
 
     /**
@@ -2061,7 +2023,7 @@ public class ConfCenterService extends CommonService {
         paramMap.put("pageSize", bListQueryParam.getPageSize());
         String redisKey = bListQueryParam.getRedisKey();
         PageHelper.startPage(PageInfo.getPageNum(paramMap), PageInfo.getPageSize(paramMap));
-        List<TBList> queryBList = tBListMntDao.queryBList(redisKey, "");
+        List<TBList> queryBList = tBListMntDao.queryBList(redisKey, "", WebPluginUtils.getQueryAllowUserIdList());
         if (CollectionUtils.isNotEmpty(queryBList)) {
             for (TBList tbList : queryBList) {
                 List<Long> allowUpdateUserIdList = WebPluginUtils.getUpdateAllowUserIdList();
@@ -2080,7 +2042,7 @@ public class ConfCenterService extends CommonService {
         }
         PageInfo<TBList> pageInfo = new PageInfo<>(queryBList.isEmpty() ? Lists.newArrayList() : queryBList);
         Response response = Response.success(pageInfo.getList(),
-            CollectionUtils.isEmpty(pageInfo.getList()) ? 0 : pageInfo.getTotal());
+                CollectionUtils.isEmpty(pageInfo.getList()) ? 0 : pageInfo.getTotal());
         return response;
     }
 
@@ -2093,10 +2055,7 @@ public class ConfCenterService extends CommonService {
     }
 
 
-
-
     // =================================== 黑名单管理=====================================================
-
 
 
     /**
@@ -2109,7 +2068,7 @@ public class ConfCenterService extends CommonService {
     private class GetDeleteIds<T> {
         private String ids;
         private String disableName;
-        private List<String> ableDeleteList;
+        private List<Long> ableDeleteList;
         private String result;
 
         public GetDeleteIds(String ids, String disableName) {
@@ -2117,7 +2076,7 @@ public class ConfCenterService extends CommonService {
             this.disableName = disableName;
         }
 
-        public List<String> getAbleDeleteList() {
+        public List<Long> getAbleDeleteList() {
             return ableDeleteList;
         }
 
@@ -2130,15 +2089,15 @@ public class ConfCenterService extends CommonService {
             StringBuffer sb = new StringBuffer();
             Splitter.on(",").omitEmptyStrings().trimResults().splitToList(ids).stream().distinct().forEach(id -> {
                 Map<String, Object> map = null;
-                if (t instanceof TApplicationMntDao) {
-                    map = tApplicationMntDao.queryApplicationRelationBasicLinkByApplicationId(id);
-                } else if (t instanceof TWhiteListMntDao) {
-                    map = tWListMntDao.queryWhiteListRelationBasicLinkByWhiteListId(id);
+                if (t instanceof ApplicationDAO) {
+                    map = applicationDAO.queryApplicationRelationBasicLinkByApplicationId(id);
+                } else if (t instanceof WhiteListDAO) {
+                    map = whiteListDAO.queryWhiteListRelationBasicLinkByWhiteListId(id);
                 } else if (t instanceof TLinkMntDao) {
                     map = tLinkMnDao.querySecondLinkRelationBasicLinkByBasicLinkId(id);
                 }
                 if (Objects.isNull(map)) {
-                    ableDeleteList.add(id);
+                    ableDeleteList.add(Long.valueOf(id));
                 } else {
                     sb.append(MapUtils.getString(map, disableName)).append(",");
                 }
@@ -2146,5 +2105,14 @@ public class ConfCenterService extends CommonService {
             result = StringUtils.substringBeforeLast(sb.toString(), ",");
             return this;
         }
+    }
+
+    private void delApplicationCache(String applicationName) {
+        redisTemplate.opsForHash().delete(APPLICATION_CACHE_PREFIX, generateApplicationCacheKey(applicationName));
+    }
+
+    // 生成应用缓存key
+    public static String generateApplicationCacheKey(String applicationName) {
+        return String.format("%s:%s:%s", WebPluginUtils.traceTenantId(), WebPluginUtils.traceEnvCode(), applicationName);
     }
 }

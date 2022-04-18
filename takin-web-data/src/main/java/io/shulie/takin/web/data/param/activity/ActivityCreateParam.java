@@ -15,6 +15,8 @@ public class ActivityCreateParam extends UserCommonExt {
 
     private String applicationName;
 
+    private Long applicationId;
+
     private String entranceName;
 
     private EntranceTypeEnum type;
@@ -63,4 +65,6 @@ public class ActivityCreateParam extends UserCommonExt {
      * 虚拟业务mq类型
      */
     private EntranceTypeEnum serverMiddlewareType;
+
+    private boolean persistence = true;
 }
