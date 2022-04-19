@@ -61,9 +61,12 @@ import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageListResp;
 import io.shulie.takin.cloud.sdk.model.response.scenemanage.ScriptCheckResp;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.utils.PathFormatForTest;
 import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.utils.linux.LinuxHelper;
+import io.shulie.takin.utils.security.MD5Utils;
 import io.shulie.takin.utils.string.StringUtil;
+import io.shulie.takin.web.biz.cache.agentimpl.FileManageSignCache;
 import io.shulie.takin.web.biz.convert.performace.TraceManageResponseConvertor;
 import io.shulie.takin.web.biz.pojo.request.filemanage.FileManageCreateRequest;
 import io.shulie.takin.web.biz.pojo.request.filemanage.FileManageUpdateRequest;
@@ -144,7 +147,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
@@ -193,6 +198,9 @@ public class ScriptManageServiceImpl implements ScriptManageService {
     private ScriptManageDeployDAO scriptManageDeployDAO;
     @Resource
     private SceneLinkRelateDAO sceneLinkRelateDAO;
+
+    @Autowired
+    RedisTemplate redisTemplate;
 
     //TODO 这里不要直接用mapper，用dao，而且mapper用新版本，不带T的， 带T的逐渐要删除
     @Resource
@@ -427,6 +435,7 @@ public class ScriptManageServiceImpl implements ScriptManageService {
         scriptCheckAndUpdateReq.setUploadPath(scriptFileUploadPath);
         scriptCheckAndUpdateReq.setAbsolutePath(true);
         scriptCheckAndUpdateReq.setUpdate(true);
+        if (mVersion != null) {scriptCheckAndUpdateReq.setVersion(mVersion);}
         List<BusinessLinkResult> businessActivityList = getBusinessActivity(refType, refValue);
         if (CollectionUtils.isEmpty(businessActivityList)) {
             dto.setErrmsg("找不到关联的业务活动！");
@@ -996,8 +1005,8 @@ public class ScriptManageServiceImpl implements ScriptManageService {
         // 获得业务活动列表
         // 1 1的话, 直接查业务活动表, 2的话, 查web的scene表, 然后
         if (ScriptManageConstant.BUSINESS_PROCESS_REF_TYPE.equals(refType)) {
-            return sceneLinkRelateDAO.listBusinessLinkIdsByBusinessFlowId(
-                Long.valueOf(scriptDeploy.getRefValue()));
+            return sceneLinkRelateDAO.listBusinessLinkIdsByBusinessFlowIds(
+                Arrays.asList(Long.valueOf(scriptDeploy.getRefValue())));
         }
 
         return Collections.singletonList(Long.valueOf(scriptDeploy.getRefValue()));
@@ -1022,6 +1031,11 @@ public class ScriptManageServiceImpl implements ScriptManageService {
             File.separator, scriptDeploy.getName(), ProbeConstants.FILE_TYPE_ZIP);
         ZipUtil.zip(parentFile.getAbsolutePath(), absoluteZipName);
         return absoluteZipName;
+    }
+
+    @Override
+    public List<FileManageEntity> getAllFile() {
+        return fileManageDAO.getAllFile();
     }
 
     private List<FileManageResult> addScriptFile(WebPartRequest partRequest, Long takinScriptId) {
@@ -1241,8 +1255,15 @@ public class ScriptManageServiceImpl implements ScriptManageService {
             fileExtend.put("isOrderSplit", fileManageUpdateRequest.getIsOrderSplit());
             fileExtend.put("isBigFile", fileManageUpdateRequest.getIsBigFile());
             fileManageCreateParam.setFileExtend(JsonHelper.bean2Json(fileExtend));
-            fileManageCreateParam.setUploadPath(targetScriptPath + fileManageUpdateRequest.getFileName());
+            String uploadPath = targetScriptPath + fileManageUpdateRequest.getFileName();
+            uploadPath = PathFormatForTest.format(uploadPath);
+            fileManageCreateParam.setUploadPath(uploadPath);
             fileManageCreateParam.setUploadTime(fileManageUpdateRequest.getUploadTime());
+            String targetP = fileManageCreateParam.getUploadPath().replaceAll("[/]", "");
+            String targetPMd5 = MD5Utils.getInstance().getMD5(targetP);
+            Object bodyMd5 = redisTemplate.opsForValue().get(FileManageSignCache.CACHE_NAME+targetPMd5);
+            //写入md5
+            fileManageCreateParam.setMd5(bodyMd5!=null?bodyMd5.toString():"");
             return fileManageCreateParam;
         }).collect(Collectors.toList());
 
@@ -1339,25 +1360,13 @@ public class ScriptManageServiceImpl implements ScriptManageService {
             .map(scriptManageDeployResult -> {
                 ScriptManageDeployResponse scriptManageDeployResponse = new ScriptManageDeployResponse();
                 BeanUtils.copyProperties(scriptManageDeployResult, scriptManageDeployResponse);
-
-                if (CollectionUtils.isNotEmpty(allowUpdateUserIdList)) {
-                    scriptManageDeployResponse.setCanEdit(
-                        allowUpdateUserIdList.contains(scriptManageDeployResult.getUserId()));
-                }
-                if (CollectionUtils.isNotEmpty(allowDeleteUserIdList)) {
-                    scriptManageDeployResponse.setCanRemove(
-                        allowDeleteUserIdList.contains(scriptManageDeployResult.getUserId()));
-                }
-                if (CollectionUtils.isNotEmpty(allowDownloadUserIdList)) {
-                    scriptManageDeployResponse.setCanDownload(
-                        allowDownloadUserIdList.contains(scriptManageDeployResult.getUserId()));
-                }
                 //负责人id
-                scriptManageDeployResponse.setUserId(scriptManageDeployResult.getUserId());
-                //负责人名称
+                scriptManageDeployResponse.setUserId(scriptManageDeployResult.getUserId());  //负责人名称
                 String userName = Optional.ofNullable(userMap.get(scriptManageDeployResult.getUserId()))
                     .map(UserExt::getName).orElse("");
                 scriptManageDeployResponse.setUserName(userName);
+
+                WebPluginUtils.fillQueryResponse(scriptManageDeployResponse);
 
                 //m1版本不能在脚本管理页面进行编辑和删除操作
                 if (ScriptMVersionEnum.isM_1(scriptManageDeployResult.getMVersion())) {
