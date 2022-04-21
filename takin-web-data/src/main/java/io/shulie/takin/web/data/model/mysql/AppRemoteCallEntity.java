@@ -1,23 +1,27 @@
 package io.shulie.takin.web.data.model.mysql;
 
-import java.util.Date;
-
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.shulie.takin.web.data.annocation.EnableSign;
 import io.shulie.takin.web.data.model.mysql.base.UserBaseEntity;
 import lombok.Data;
 
+import java.util.Date;
+
 /**
-* @author 何仲奇
-* @date 2021/5/29 上午12:12
-*/
+ * @author 何仲奇
+ * @date 2021/5/29 上午12:12
+ */
+
 /**
-    * 远程调用表
-    */
+ * 远程调用表
+ */
 @Data
 @TableName(value = "t_app_remote_call")
+@EnableSign
 public class AppRemoteCallEntity extends UserBaseEntity {
     /**
      * 主键
@@ -31,7 +35,6 @@ public class AppRemoteCallEntity extends UserBaseEntity {
     @TableField(value = "interface_name")
     private String interfaceName;
 
-
     /**
      * 接口类型
      */
@@ -41,7 +44,7 @@ public class AppRemoteCallEntity extends UserBaseEntity {
     /**
      * 服务端应用名
      */
-    @TableField(value = "SERVER_APP_NAME")
+    @TableField(value = "server_app_name")
     private String serverAppName;
 
     /**
@@ -105,6 +108,16 @@ public class AppRemoteCallEntity extends UserBaseEntity {
     private String interfaceChildType;
 
     @TableField(value = "remark")
+
     private String remark;
+
+    /**
+     * 应用名，接口名称，接口类型，租户id,envcode求md5
+     */
+    @TableField(value = "md5")
+    private String md5;
+
+    @TableField(value = "sign",fill = FieldFill.INSERT)
+    private String sign;
 
 }

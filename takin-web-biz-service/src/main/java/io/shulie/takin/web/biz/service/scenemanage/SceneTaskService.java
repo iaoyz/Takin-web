@@ -4,8 +4,8 @@ import java.util.List;
 
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import com.pamirs.takin.entity.domain.vo.report.SceneActionParam;
-import io.shulie.takin.cloud.sdk.model.response.scenetask.SceneActionResp;
-import io.shulie.takin.cloud.sdk.model.response.scenetask.SceneJobStateResp;
+import io.shulie.takin.adapter.api.model.response.scenetask.SceneActionResp;
+import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.UpdateTpsRequest;
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
@@ -29,7 +29,7 @@ public interface SceneTaskService {
 
     void updateTaskTps(UpdateTpsRequest request);
 
-    Long queryTaskTps(Long reportId, Long sceneId);
+    Long queryTaskTps(Long reportId, Long sceneId, String xPathMd5);
 
     /**
      * 校验业务活动下的漏数配置
@@ -65,4 +65,20 @@ public interface SceneTaskService {
      * @return
      */
     ResponseResult<SceneJobStateResp> checkSceneJobStatus(Long sceneId);
+
+    /**
+     * 压测启动中停止
+     *
+     * @param sceneId 场景id
+     */
+    void preStop(Long sceneId);
+
+    /**
+     * 停止
+     *
+     * @param sceneId 场景id
+     * @return 是否成功
+     */
+    ResponseResult<String> stop(Long sceneId);
+
 }

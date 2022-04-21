@@ -2,13 +2,16 @@ package io.shulie.takin.web.data.param.filemanage;
 
 import java.util.Date;
 
-import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 
 /**
  * @author zhaoyong
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class FileManageCreateParam extends TenantCommonExt {
 
     private Long id;
@@ -30,7 +33,6 @@ public class FileManageCreateParam extends TenantCommonExt {
 
     private String fileExtend;
 
-
     private String uploadPath;
 
     /**
@@ -48,5 +50,10 @@ public class FileManageCreateParam extends TenantCommonExt {
      * 是否分隔
      */
     private Integer isSplit;
+
+    /**
+     * 签名
+     */
+    private String md5;
 
 }

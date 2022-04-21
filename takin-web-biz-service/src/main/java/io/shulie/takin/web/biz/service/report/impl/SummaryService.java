@@ -28,7 +28,6 @@ import io.shulie.takin.web.data.param.report.ReportApplicationSummaryCreateParam
 import io.shulie.takin.web.data.param.report.ReportMachineUpdateParam;
 import io.shulie.takin.web.data.param.report.ReportSummaryCreateParam;
 import io.shulie.takin.web.data.result.baseserver.BaseServerResult;
-import io.shulie.takin.web.data.result.report.ReportSummaryResult;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -131,16 +130,9 @@ public class SummaryService {
         reportSummary.setApplicationCount(appCount);
         reportSummary.setMachineCount(totalCount);
         reportSummary.setWarnCount(warnCount);
-
-        ReportSummaryResult summary = reportSummaryDAO.selectOneByReportId(reportId);
-
-        if (summary == null) {
-            try {
-                reportSummaryDAO.insert(reportSummary);
-            }catch (Exception e){
-                log.error("Build ReportSummary error, reportId={},tenantId={},envCode={}", reportId,WebPluginUtils.traceTenantId(),WebPluginUtils.traceEnvCode());
-            }
-        }
+        reportSummary.setTenantId(WebPluginUtils.traceTenantId());
+        reportSummary.setEnvCode(WebPluginUtils.traceEnvCode());
+        reportSummaryDAO.insertOrUpdate(reportSummary);
         log.debug("Build ReportSummary Success, reportId={}", reportId);
     }
 
@@ -217,6 +209,16 @@ public class SummaryService {
     private TpsTargetArray calcTpsTarget(List<Metrices> metrics, Collection<BaseServerResult> vos) {
         if (CollectionUtils.isEmpty(vos)) {
             return null;
+        }
+        // metric数据为空兼容
+        if(CollectionUtils.isEmpty(metrics)) {
+            // 展示原数据
+            metrics = vos.stream().map(result -> {
+                Metrices metrices = new Metrices();
+                metrices.setTime(result.getTime().toEpochMilli());
+                metrices.setAvgTps(0D);
+                return metrices;
+            }).collect(Collectors.toList());
         }
         List<BaseServerResult> bases = Lists.newArrayList(vos);
         int currentIndex = 0;

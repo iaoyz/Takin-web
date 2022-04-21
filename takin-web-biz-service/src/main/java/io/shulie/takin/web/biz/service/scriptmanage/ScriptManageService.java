@@ -20,6 +20,7 @@ import io.shulie.takin.web.biz.pojo.response.scriptmanage.SupportJmeterPluginNam
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.SupportJmeterPluginVersionResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.WebPartResponse;
 import io.shulie.takin.web.biz.pojo.response.tagmanage.TagManageResponse;
+import io.shulie.takin.web.data.model.mysql.FileManageEntity;
 import io.shulie.takin.web.data.result.linkmange.BusinessLinkResult;
 
 /**
@@ -43,7 +44,7 @@ public interface ScriptManageService {
      *
      * @return
      */
-    ScriptCheckDTO checkAndUpdateScript(String refType, String refValue, String scriptFileUploadPath);
+    ScriptCheckDTO checkAndUpdateScript(String refType, String refValue,Integer mVersion, String scriptFileUploadPath);
 
     /**
      * 分页查询脚本列表
@@ -83,7 +84,7 @@ public interface ScriptManageService {
     /**
      * 修改脚本文件
      */
-    void updateScriptManage(ScriptManageDeployUpdateRequest scriptManageDeployUpdateRequest);
+    Long updateScriptManage(ScriptManageDeployUpdateRequest scriptManageDeployUpdateRequest);
 
     /**
      * 查询所有业务流程，再将所有关联的脚本id附带出来
@@ -120,6 +121,13 @@ public interface ScriptManageService {
      * @return
      */
     List<SupportJmeterPluginNameResponse> getSupportJmeterPluginNameList(SupportJmeterPluginNameRequest nameRequest);
+
+    /**
+     * 获取所有的jmeter插件列表名称
+     *
+     * @return jmeter插件列表名称
+     */
+    List<SupportJmeterPluginNameResponse> getAllJmeterPluginNameList();
 
     /**
      * 获取支持的jmeter插件版本列表
@@ -181,5 +189,10 @@ public interface ScriptManageService {
      * @return 压缩文件名称
      */
     String getZipFileNameByScriptDeployId(Long scriptDeployId);
+
+    /**
+     * 查询所有有签名值的文件
+     */
+    List<FileManageEntity> getAllFile();
 
 }
