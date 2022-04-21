@@ -24,6 +24,7 @@ import org.springframework.stereotype.Component;
  * @date 2019/12/2 16:51
  */
 @Slf4j
+@Component
 public class DictionaryCache {
 
     @Resource
