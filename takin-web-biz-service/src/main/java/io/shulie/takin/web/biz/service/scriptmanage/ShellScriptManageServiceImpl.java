@@ -95,7 +95,7 @@ public class ShellScriptManageServiceImpl implements ShellScriptManageService {
     private ScriptTagRefDAO scriptTagRefDAO;
     @Autowired
     private TagManageDAO tagManageDAO;
-    @Autowired
+//    @Autowired
     private RedisClientUtils redisClientUtils;
 
     @Override
