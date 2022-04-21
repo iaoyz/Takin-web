@@ -23,7 +23,6 @@ import org.springframework.stereotype.Component;
  * @author vernon
  * @date 2019/12/2 16:51
  */
-@Component
 @Slf4j
 public class DictionaryCache {
 
