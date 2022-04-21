@@ -3,6 +3,7 @@ package io.shulie.takin.cloud.ext.content.trace;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * 溯源上下文
@@ -38,6 +39,13 @@ public class ContextExt {
      * 租户code
      */
     String tenantCode;
+
+    public String getFilterSql() {
+        if (StringUtils.isBlank(filterSql)) {
+            return null;
+        }
+        return filterSql;
+    }
 
     /**
      * 清除上下文信息

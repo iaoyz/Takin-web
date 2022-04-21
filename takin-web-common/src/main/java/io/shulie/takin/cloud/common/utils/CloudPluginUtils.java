@@ -19,7 +19,7 @@ public class CloudPluginUtils {
         ContextExt ext = new ContextExt();
         ext.setUserId(WebPluginUtils.traceUserId());
         ext.setTenantId(WebPluginUtils.traceTenantId());
-        ext.setFilterSql("");
+        ext.setFilterSql(null);
         ext.setEnvCode(WebPluginUtils.traceEnvCode());
         ext.setTenantCode(WebPluginUtils.traceTenantCode());
         return ext;

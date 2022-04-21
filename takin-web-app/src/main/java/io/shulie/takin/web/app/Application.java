@@ -35,10 +35,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableAspectJAutoProxy
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.pamirs.takin", "io.shulie.takin"},
-    excludeFilters = {
-        @ComponentScan.Filter(type = FilterType.CUSTOM, value = {ApplicationFilter.class}),
-            @ComponentScan.Filter(type = FilterType.REGEX,pattern = "io.shulie.takin.cloud.*")
-})
+    excludeFilters = @ComponentScan.Filter(type = FilterType.CUSTOM, value = {ApplicationFilter.class}))
 @EnableCaching
 public class Application {
 
