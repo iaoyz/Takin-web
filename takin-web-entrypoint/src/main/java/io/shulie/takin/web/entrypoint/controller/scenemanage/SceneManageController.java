@@ -17,12 +17,13 @@ import com.pamirs.takin.entity.domain.vo.scenemanage.SceneBusinessActivityRefVO;
 import com.pamirs.takin.entity.domain.vo.scenemanage.SceneManageQueryVO;
 import com.pamirs.takin.entity.domain.vo.scenemanage.SceneManageWrapperVO;
 import com.pamirs.takin.entity.domain.vo.scenemanage.SceneScriptRefVO;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageDeleteReq;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageWrapperResp;
-import io.shulie.takin.cloud.sdk.model.response.strategy.StrategyResp;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageDeleteReq;
+import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
+import io.shulie.takin.adapter.api.model.response.strategy.StrategyResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.web.biz.pojo.input.scenemanage.SceneManageListOutput;
+import io.shulie.takin.web.biz.pojo.response.scenemanage.SceneDetailResponse;
 import io.shulie.takin.web.biz.service.scenemanage.SceneManageService;
 import io.shulie.takin.web.biz.service.scenemanage.SceneSchedulerTaskService;
 import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
@@ -101,7 +102,7 @@ public class SceneManageController {
         ResponseResult<SceneManageWrapperResp> oldData = sceneManageService.detailScene(sceneVO.getId());
 
         // 数据转换一下...
-        SceneManageWrapperDTO oldSceneData = JsonUtil.json2bean(JsonUtil.bean2Json(oldData.getData()),
+        SceneManageWrapperDTO oldSceneData = JsonUtil.json2Bean(JsonUtil.bean2Json(oldData.getData()),
             SceneManageWrapperDTO.class);
         // 场景名称
         String sceneName = Optional.ofNullable(sceneVO.getPressureTestSceneName())
@@ -229,8 +230,8 @@ public class SceneManageController {
         moduleCode = BizOpConstants.ModuleCode.PRESSURE_TEST_SCENE,
         needAuth = ActionTypeEnum.QUERY
     )
-    public ResponseResult getDetail(@ApiParam(name = "id", value = "ID", required = true) Long id) {
-        return sceneManageService.detailScene(id);
+    public SceneDetailResponse getDetail(@ApiParam(name = "id", value = "ID", required = true) Long id) {
+        return sceneManageService.getById(id);
     }
 
     @GetMapping("/list")

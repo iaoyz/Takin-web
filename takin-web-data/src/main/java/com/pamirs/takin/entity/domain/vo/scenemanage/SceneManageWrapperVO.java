@@ -9,7 +9,7 @@ import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import io.shulie.takin.web.common.domain.WebRequest;
+import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -20,7 +20,7 @@ import lombok.Data;
  */
 @Data
 @ApiModel(description = "场景保存入参")
-public class SceneManageWrapperVO extends WebRequest implements Serializable {
+public class SceneManageWrapperVO extends ContextExt implements Serializable {
 
     private static final long serialVersionUID = -7653146473491831687L;
 
@@ -93,13 +93,19 @@ public class SceneManageWrapperVO extends WebRequest implements Serializable {
     @ApiModelProperty(name = "executeTime", value = "定时执行时间")
     @JsonFormat(pattern = "yyyy-MM-dd hh:mm", timezone = "GMT+8")
     private Date executeTime;
-
     /**
      * 单位是小时
      */
     @ApiModelProperty(name = "scheduleInterval", value = "漏数时间间隔")
     private Integer scheduleInterval;
 
+    @ApiModelProperty("脚本节点信息")
+    private String scriptAnalysisResult;
+
     public SceneManageWrapperVO() {
     }
+
+    @ApiModelProperty("排除检查的应用ids")
+    private List<Long> excludedApplicationIds;
+
 }

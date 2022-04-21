@@ -1,8 +1,8 @@
 package io.shulie.takin.web.app;
 
 import com.pamirs.takin.common.util.SpringContextUtil;
-import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.common.util.RedisHelper;
+import io.shulie.takin.web.data.util.ConfigServerHelper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -27,7 +27,10 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
     "com.pamirs.takin.*.dao",
     "io.shulie.takin.web.data.mapper.mysql",
     "io.shulie.takin.web.data.dao.statistics",
-    "io.shulie.takin.web.data.convert.*"
+    "io.shulie.takin.web.data.convert.*",
+    "io.shulie.takin.cloud.data.mapper.mysql",
+    "io.shulie.takin.cloud.data.dao.statistics",
+    "com.pamirs.takin.cloud.*.dao"
 })
 @EnableAspectJAutoProxy
 @SpringBootApplication
@@ -49,8 +52,10 @@ public class Application {
     private ConfigServerHelper configServerHelper;
 
     public static void main(String[] args) {
+//        PreparedStatementHandler.init();
         ApplicationContext applicationContext = new SpringApplicationBuilder().sources(Application.class).run(args);
         SpringContextUtil.setApplicationContext(applicationContext);
+
 
     }
 }

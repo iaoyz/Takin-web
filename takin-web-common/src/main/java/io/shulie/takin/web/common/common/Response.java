@@ -1,22 +1,22 @@
 package io.shulie.takin.web.common.common;
 
-import java.util.Map;
-import java.util.List;
 import java.util.HashMap;
-import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import javax.servlet.http.HttpServletResponse;
 
-import io.shulie.takin.web.ext.entity.AuthQueryResponseCommonExt;
-import lombok.extern.slf4j.Slf4j;
 import com.github.pagehelper.PageInfo;
-import io.swagger.annotations.ApiModelProperty;
-import io.shulie.takin.web.common.domain.ErrorInfo;
 import io.shulie.takin.common.beans.page.PagingList;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
+import io.shulie.takin.web.common.context.OperationLogContextHolder;
+import io.shulie.takin.web.common.domain.ErrorInfo;
+import io.shulie.takin.web.ext.entity.AuthQueryResponseCommonExt;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpStatus;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
-import io.shulie.takin.web.common.context.OperationLogContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
@@ -143,6 +143,9 @@ public class Response<T> {
     public static Response fail(String code, String msgTemplate, Object... args) {
         OperationLogContextHolder.ignoreLog();
         ErrorInfo errorInfo = ErrorInfo.build(code, msgTemplate, args);
+        HttpServletResponse response = ((ServletRequestAttributes)Objects.requireNonNull(RequestContextHolder.getRequestAttributes())).getResponse();
+        assert response != null;
+        response.setStatus(Integer.parseInt(code));
         return new Response<>(errorInfo, false);
     }
 
@@ -152,12 +155,19 @@ public class Response<T> {
     public static Response fail(String msgTemplate, Object... args) {
         OperationLogContextHolder.ignoreLog();
         ErrorInfo errorInfo = ErrorInfo.build("500", msgTemplate, args);
+        HttpServletResponse response = ((ServletRequestAttributes)Objects.requireNonNull(RequestContextHolder.getRequestAttributes())).getResponse();
+        assert response != null;
+        response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
         return new Response<>(errorInfo, false);
     }
 
     public Response setTotal(Long total) {
         setHeaders(new HashMap<String, String>(1) {{put(PAGE_TOTAL_HEADER, String.valueOf(total));}});
         return this;
+    }
+
+    public String getTotal() {
+        return getHeaders(PAGE_TOTAL_HEADER);
     }
 
     public ErrorInfo getError() {
@@ -202,5 +212,23 @@ public class Response<T> {
             log.debug("设置响应头失败,servletRequestAttributes.getResponse()=null");
         }
         log.debug("设置响应头失败,(ServletRequestAttributes)requestAttributes=null");
+    }
+
+    /**
+     * 设置响应头<br/>最后统一暴露自定义响应头
+     *
+     */
+    public static String getHeaders(String key) {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes servletRequestAttributes = (ServletRequestAttributes)requestAttributes;
+        if (servletRequestAttributes != null) {
+            HttpServletResponse response = servletRequestAttributes.getResponse();
+            if (response != null) {
+               return response.getHeader(key);
+            }
+            log.debug("设置响应头失败,servletRequestAttributes.getResponse()=null");
+        }
+        log.debug("设置响应头失败,(ServletRequestAttributes)requestAttributes=null");
+        return null;
     }
 }

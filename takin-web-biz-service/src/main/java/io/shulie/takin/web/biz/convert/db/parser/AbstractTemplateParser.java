@@ -3,8 +3,8 @@ package io.shulie.takin.web.biz.convert.db.parser;
 import java.util.List;
 import java.util.Map;
 
-import com.pamirs.attach.plugin.dynamic.Converter;
-import com.pamirs.attach.plugin.dynamic.template.Template;
+import com.pamirs.attach.plugin.dynamic.one.Converter;
+import com.pamirs.attach.plugin.dynamic.one.template.Template;
 import io.shulie.takin.common.beans.component.SelectVO;
 import io.shulie.takin.web.biz.convert.db.parser.style.StyleTemplate;
 import io.shulie.takin.web.biz.pojo.response.application.ShadowDetailResponse;
@@ -22,7 +22,7 @@ public abstract class AbstractTemplateParser implements TemplateParser, StyleTem
      * @return
      */
     @Override
-    public ShadowDetailResponse convertDetailByTemplate(Long recordId) {
+    public ShadowDetailResponse convertDetailByTemplate(Long recordId,String appName) {
         return null;
     }
 
@@ -33,7 +33,7 @@ public abstract class AbstractTemplateParser implements TemplateParser, StyleTem
      * @return
      */
     @Override
-    public abstract List<? extends StyleTemplate> convertShadowMsgWithTemplate(Integer dsType, Boolean isNewData, String cacheType, Converter.TemplateConverter.TemplateEnum templateEnum);
+    public abstract List<? extends StyleTemplate> convertShadowMsgWithTemplate(Integer dsType, Boolean isNewData, String cacheType, Converter.TemplateConverter.TemplateEnum templateEnum,ShadowTemplateSelect select);
 
     /**
      * 删除记录

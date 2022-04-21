@@ -3,13 +3,15 @@ package io.shulie.takin.web.entrypoint.controller.v2.ds;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.pamirs.attach.plugin.dynamic.Converter;
-import com.pamirs.attach.plugin.dynamic.Type;
+import com.alibaba.fastjson.JSON;
+import com.pamirs.attach.plugin.dynamic.one.Converter;
+import com.pamirs.attach.plugin.dynamic.one.Type;
 import io.shulie.takin.common.beans.annotation.ActionTypeEnum;
 import io.shulie.takin.common.beans.annotation.AuthVerification;
 import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.common.beans.component.SelectVO;
 import io.shulie.takin.web.biz.constant.BizOpConstants;
+import io.shulie.takin.web.biz.constant.BizOpConstants.Vars;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsCreateInputV2;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsDeleteInputV2;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsEnableInputV2;
@@ -20,6 +22,7 @@ import io.shulie.takin.web.biz.pojo.response.application.ShadowDetailResponse;
 import io.shulie.takin.web.biz.service.dsManage.DsService;
 import io.shulie.takin.web.common.common.Response;
 import io.shulie.takin.web.common.constant.ApiUrls;
+import io.shulie.takin.web.common.context.OperationLogContextHolder;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -54,7 +57,7 @@ public class DsController {
             moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
             needAuth = ActionTypeEnum.QUERY
     )
-    public Response<ApplicationDsV2Response> dsQuery(@RequestParam(value = "applicationId", required = true) Long applicationId) {
+    public List<ApplicationDsV2Response> dsQuery(@RequestParam(value = "applicationId", required = true) Long applicationId) {
         return dsService.dsQueryV2(applicationId);
     }
 
@@ -90,11 +93,18 @@ public class DsController {
             moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
             needAuth = ActionTypeEnum.UPDATE
     )
+    @ModuleDef(
+            moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
+            subModuleName = BizOpConstants.SubModules.SHADOW_DATABASE_TABLE,
+            logMsgKey = BizOpConstants.Message.MESSAGE_SHADOW_DATABASE_TABLE_UPDATE
+    )
     public Response dsUpdateConfig(@RequestBody @Validated ApplicationDsUpdateInputV2 updateRequestV2) {
+        OperationLogContextHolder.operationType(BizOpConstants.OpTypes.UPDATE);
+        OperationLogContextHolder.addVars(Vars.SHADOW_DATABASE_TABLE_JSON, JSON.toJSONString(updateRequestV2));
         return dsService.dsUpdateConfig(updateRequestV2);
     }
 
-    @ApiOperation("获取影子库表样式模版")
+    @ApiOperation(" 获取影子库表样式模版")
     @PostMapping("link/ds/config/template")
     @AuthVerification(
             moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
@@ -102,7 +112,8 @@ public class DsController {
     )
     public Response  dsQueryConfigTemplate(@RequestBody @Validated ApplicationDsTemplateQueryInputV2 inputV2) {
         return dsService.dsQueryConfigTemplate(inputV2.getAgentSourceType(),
-                inputV2.getDsType(),inputV2.getIsNewData(),inputV2.getCacheType(),inputV2.getConnectionPool());
+                inputV2.getDsType(), inputV2.getIsNewData(), inputV2.getCacheType(),
+                inputV2.getConnectionPool(), inputV2.getApplicationName(), inputV2.getApplicationId());
     }
 
 
@@ -112,7 +123,14 @@ public class DsController {
             moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
             needAuth = ActionTypeEnum.DELETE
     )
+    @ModuleDef(
+            moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
+            subModuleName = BizOpConstants.SubModules.SHADOW_DATABASE_TABLE,
+            logMsgKey = BizOpConstants.Message.MESSAGE_SHADOW_DATABASE_TABLE_DELETE
+    )
     public Response  dsDeleteDsConfig(@RequestBody @Validated ApplicationDsDeleteInputV2 inputV2) {
+        OperationLogContextHolder.operationType(BizOpConstants.OpTypes.DELETE);
+        OperationLogContextHolder.addVars(BizOpConstants.Vars.SHADOW_DATABASE_TABLE_JSON, JSON.toJSONString(inputV2));
         dsService.dsDeleteV2(inputV2.getId(),inputV2.getMiddlewareType(),inputV2.getIsNewData(),inputV2.getApplicationId());
         return Response.success();
     }
@@ -123,7 +141,14 @@ public class DsController {
             moduleCode = BizOpConstants.ModuleCode.APPLICATION_MANAGE,
             needAuth = ActionTypeEnum.CREATE
     )
+    @ModuleDef(
+            moduleName = BizOpConstants.Modules.APPLICATION_MANAGE,
+            subModuleName = BizOpConstants.SubModules.SHADOW_DATABASE_TABLE,
+            logMsgKey = BizOpConstants.Message.MESSAGE_SHADOW_DATABASE_TABLE_CREATE
+    )
     public Response dsCreateConfig(@RequestBody @Validated ApplicationDsCreateInputV2 createRequestV2) {
+        OperationLogContextHolder.operationType(BizOpConstants.OpTypes.CREATE);
+        OperationLogContextHolder.addVars(BizOpConstants.Vars.SHADOW_DATABASE_TABLE_JSON, JSON.toJSONString(createRequestV2));
         return dsService.dsCreateConfig(createRequestV2);
     }
 
@@ -179,6 +204,10 @@ public class DsController {
             needAuth = ActionTypeEnum.ENABLE_DISABLE
     )
     public Response enableConfig(@Validated @RequestBody ApplicationDsEnableInputV2 enableRequest) {
+        OperationLogContextHolder.operationType(
+                Integer.valueOf(0).equals(enableRequest.getStatus()) ? BizOpConstants.OpTypes.ENABLE
+                        : BizOpConstants.OpTypes.DISABLE);
+        OperationLogContextHolder.addVars(BizOpConstants.Vars.SHADOW_DATABASE_TABLE_JSON, JSON.toJSONString(enableRequest));
         return dsService.enableConfigV2( enableRequest.getId(),enableRequest.getMiddlewareType(),
                 enableRequest.getIsNewData(),enableRequest.getApplicationId(),enableRequest.getStatus());
     }

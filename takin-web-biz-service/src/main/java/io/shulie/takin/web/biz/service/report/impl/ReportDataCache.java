@@ -1,6 +1,7 @@
 package io.shulie.takin.web.biz.service.report.impl;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,7 +15,7 @@ import com.google.common.collect.Sets;
 import com.pamirs.takin.entity.domain.dto.report.ReportApplicationDTO;
 import com.pamirs.takin.entity.domain.dto.report.ReportDetailDTO;
 import com.pamirs.takin.entity.domain.risk.Metrices;
-import io.shulie.takin.cloud.sdk.model.response.report.MetricesResponse;
+import io.shulie.takin.adapter.api.model.response.report.MetricesResponse;
 import io.shulie.takin.web.biz.service.report.ReportService;
 import io.shulie.takin.web.common.enums.ContextSourceEnum;
 import io.shulie.takin.web.common.util.RedisHelper;
@@ -239,7 +240,7 @@ public class ReportDataCache {
             metrices.setTime(Long.valueOf(entry.getKey().toString()));
             metrices.setAvgTps(Double.valueOf(entry.getValue().toString()));
             return metrices;
-        }).collect(Collectors.toList());
+        }).sorted(Comparator.comparing(Metrices::getTime)).collect(Collectors.toList());
     }
 
     /**

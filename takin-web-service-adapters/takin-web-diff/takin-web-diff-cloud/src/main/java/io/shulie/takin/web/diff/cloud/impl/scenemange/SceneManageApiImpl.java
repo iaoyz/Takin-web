@@ -6,41 +6,45 @@ import java.util.Map;
 
 import javax.annotation.Resource;
 
-import io.shulie.takin.cloud.entrypoint.engine.CloudEngineApi;
-import io.shulie.takin.cloud.entrypoint.scenemanage.CloudSceneApi;
-import io.shulie.takin.cloud.sdk.model.request.engine.EnginePluginDetailsWrapperReq;
-import io.shulie.takin.cloud.sdk.model.request.engine.EnginePluginFetchWrapperReq;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.CloudUpdateSceneFileRequest;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneIpNumReq;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageDeleteReq;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageIdReq;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageQueryByIdsReq;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageQueryReq;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.SceneManageWrapperReq;
-import io.shulie.takin.cloud.sdk.model.request.scenemanage.ScriptCheckAndUpdateReq;
-import io.shulie.takin.cloud.sdk.model.response.engine.EnginePluginDetailResp;
-import io.shulie.takin.cloud.sdk.model.response.engine.EnginePluginSimpleInfoResp;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageListResp;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.SceneManageWrapperResp;
-import io.shulie.takin.cloud.sdk.model.response.scenemanage.ScriptCheckResp;
-import io.shulie.takin.cloud.sdk.model.response.strategy.StrategyResp;
-import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.adapter.api.entrypoint.engine.CloudEngineApi;
+import io.shulie.takin.adapter.api.entrypoint.process.ProcessApi;
+import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
+import io.shulie.takin.adapter.api.model.request.engine.EnginePluginDetailsWrapperReq;
+import io.shulie.takin.adapter.api.model.request.engine.EnginePluginFetchWrapperReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.CloudUpdateSceneFileRequest;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneIpNumReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageDeleteReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageQueryByIdsReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageQueryReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageWrapperReq;
+import io.shulie.takin.adapter.api.model.request.scenemanage.ScriptAnalyzeRequest;
+import io.shulie.takin.adapter.api.model.request.scenemanage.ScriptCheckAndUpdateReq;
+import io.shulie.takin.adapter.api.model.response.engine.EnginePluginDetailResp;
+import io.shulie.takin.adapter.api.model.response.engine.EnginePluginSimpleInfoResp;
+import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageListResp;
+import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
+import io.shulie.takin.adapter.api.model.response.scenemanage.ScriptCheckResp;
+import io.shulie.takin.adapter.api.model.response.strategy.StrategyResp;
+import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.diff.api.scenemanage.SceneManageApi;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import org.springframework.stereotype.Component;
 
 /**
  * @author zhaoyong
  */
-@Component
+@Component("WebSceneManageApiImpl")
 public class SceneManageApiImpl implements SceneManageApi {
 
-    @Resource(type = CloudSceneApi.class)
-    private CloudSceneApi cloudSceneApi;
+    @Resource(type = io.shulie.takin.adapter.api.entrypoint.scene.manage.SceneManageApi.class)
+    private io.shulie.takin.adapter.api.entrypoint.scene.manage.SceneManageApi cloudSceneApi;
 
     @Resource(type = CloudEngineApi.class)
     private CloudEngineApi cloudEngineApi;
+    @Resource(type = ProcessApi.class)
+    private ProcessApi processApi;
 
     @Override
     public ResponseResult<Object> updateSceneFileByScriptId(CloudUpdateSceneFileRequest updateSceneFileRequest) {
@@ -164,5 +168,11 @@ public class SceneManageApiImpl implements SceneManageApi {
         } catch (Throwable e) {
             return ResponseResult.fail(e.getMessage(), "");
         }
+    }
+
+    @Override
+    public List<ScriptNode> scriptAnalyze(ScriptAnalyzeRequest request) {
+        WebPluginUtils.fillCloudUserData(request);
+        return processApi.scriptAnalyze(request);
     }
 }

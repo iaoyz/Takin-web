@@ -5,15 +5,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import com.pamirs.takin.entity.domain.dto.file.FileDTO;
-import io.shulie.takin.cloud.entrypoint.file.CloudFileApi;
-import io.shulie.takin.cloud.sdk.model.request.file.DeleteTempRequest;
-import io.shulie.takin.cloud.sdk.model.request.file.UploadRequest;
-import io.shulie.takin.cloud.sdk.model.response.file.UploadResponse;
+import io.shulie.takin.adapter.api.entrypoint.file.CloudFileApi;
+import io.shulie.takin.adapter.api.model.request.file.DeleteTempRequest;
+import io.shulie.takin.adapter.api.model.request.file.UploadRequest;
+import io.shulie.takin.adapter.api.model.response.file.UploadResponse;
 import io.shulie.takin.web.common.domain.WebResponse;
 import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
 import io.shulie.takin.web.common.util.CommonUtil;
@@ -22,7 +23,7 @@ import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,16 +43,22 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class FileController {
 
-    @Autowired
+    /**
+     * 上传文件的路径
+     */
+    @Value("${takin.data.path}")
+    private String uploadPath;
+
+    @Resource
     private CloudFileApi cloudFileApi;
 
     @ApiOperation("|_ 文件下载")
     @GetMapping("/download")
     public void download(@RequestParam("filePath") String filePath, HttpServletResponse response) {
-        if (!this.filePathValidate(filePath)) {
-            log.error("非法下载路径文件，禁止下载：{}", filePath);
-            return;
-        }
+        //if (!this.filePathValidate(filePath)) {
+        //    log.error("非法下载路径文件，禁止下载：{}", filePath);
+        //    return;
+        //}
 
         File file = new File(filePath);
         if (!file.exists()) {
@@ -65,9 +72,16 @@ public class FileController {
     @PostMapping("/upload")
     @ApiOperation(value = "文件上传")
     public List<UploadResponse> upload(List<MultipartFile> file) {
-        if (CollectionUtil.isEmpty(file)) {throw new RuntimeException("上传文件不能为空");}
+        if (CollectionUtil.isEmpty(file)) {
+            throw new RuntimeException("上传文件不能为空");
+        }
+        for (MultipartFile multipartFile : file) {
+            if (null == multipartFile || multipartFile.isEmpty()) {
+                throw new RuntimeException("上传文件不能为空");
+            }
+        }
         return cloudFileApi.upload(new UploadRequest() {{
-            setFileList(FileUtil.convertMultipartFileList(file));
+            setFileList(file);
         }});
     }
 
@@ -78,13 +92,13 @@ public class FileController {
             return WebResponse.fail("上传文件不能为空");
         }
         List<UploadResponse> response = cloudFileApi.upload(new UploadRequest() {{
-            setFileList(FileUtil.convertMultipartFileList(file));
+            setFileList(file);
         }});
         FileUtil.deleteTempFile(file);
         List<FileDTO> dtoList = response.stream()
-            .map(t -> BeanUtil.copyProperties(t, FileDTO.class))
-            .peek(t -> t.setFileType(2))
-            .collect(Collectors.toList());
+                .map(t -> BeanUtil.copyProperties(t, FileDTO.class))
+                .peek(t -> t.setFileType(2))
+                .collect(Collectors.toList());
         return WebResponse.success(dtoList);
     }
 
@@ -103,14 +117,14 @@ public class FileController {
     public void downloadFileByPath(@RequestParam("filePath") String filePath, HttpServletResponse response) {
         this.download(filePath, response);
         // 删除文件
-        cn.hutool.core.io.FileUtil.del(filePath);
+        //cn.hutool.core.io.FileUtil.del(filePath);
     }
 
     /**
      * 文件路径是否管理策略
      *
      * @param filePath 文件路径
-     * @return 是否
+     * @return 是/否
      */
     private boolean filePathValidate(String filePath) {
         return this.pathInit().stream().anyMatch(filePath::startsWith);
@@ -126,7 +140,7 @@ public class FileController {
         arrayList.add(ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_FILE_UPLOAD_USER_DATA_DIR));
         arrayList.add(ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_FILE_UPLOAD_TMP_PATH));
         arrayList.add(ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_FILE_UPLOAD_SCRIPT_PATH));
-        arrayList.add(ConfigServerHelper.getValueByKey(ConfigServerKeyEnum.TAKIN_DATA_PATH));
+        arrayList.add(uploadPath);
         return arrayList;
     }
 

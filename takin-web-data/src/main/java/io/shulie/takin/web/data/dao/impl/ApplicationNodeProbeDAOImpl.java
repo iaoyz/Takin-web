@@ -2,6 +2,8 @@ package io.shulie.takin.web.data.dao.impl;
 
 import java.util.List;
 
+import javax.annotation.Resource;
+
 import com.baomidou.mybatisplus.extension.toolkit.SqlHelper;
 import io.shulie.takin.web.common.constant.CacheConstants;
 import io.shulie.takin.web.common.util.DataTransformUtil;
@@ -14,7 +16,6 @@ import io.shulie.takin.web.data.result.application.ApplicationNodeProbeResult;
 import io.shulie.takin.web.data.util.MPUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
@@ -28,23 +29,20 @@ import org.springframework.stereotype.Service;
 public class ApplicationNodeProbeDAOImpl implements ApplicationNodeProbeDAO,
     MPUtil<ApplicationNodeProbeEntity>, CacheConstants {
 
-    @Autowired
+    @Resource
     private ApplicationNodeProbeMapper applicationNodeProbeMapper;
 
     @Override
     public ApplicationNodeProbeResult getByApplicationNameAndAgentId(String applicationName, String agentId) {
         ApplicationNodeProbeEntity applicationNodeProbeEntity =
             applicationNodeProbeMapper.selectOne(this.getCustomerLimitOneLambdaQueryWrapper()
-                .select(ApplicationNodeProbeEntity::getId,
-                    ApplicationNodeProbeEntity::getOperateId, ApplicationNodeProbeEntity::getOperate,
-                    ApplicationNodeProbeEntity::getProbeId, ApplicationNodeProbeEntity::getOperateResult)
                 .eq(ApplicationNodeProbeEntity::getApplicationName, applicationName)
                 .eq(ApplicationNodeProbeEntity::getAgentId, agentId));
         return DataTransformUtil.copyBeanPropertiesWithNull(applicationNodeProbeEntity,
             ApplicationNodeProbeResult.class);
     }
 
-    @CacheEvict(value = CACHE_KEY_AGENT_CONFIG, allEntries = true)
+    @CacheEvict(value = CACHE_KEY_AGENT_APPLICATION_NODE, allEntries = true)
     @Override
     public boolean updateById(UpdateOperateResultParam updateOperateResultParam) {
         ApplicationNodeProbeEntity applicationNodeProbeEntity = new ApplicationNodeProbeEntity();
@@ -52,7 +50,7 @@ public class ApplicationNodeProbeDAOImpl implements ApplicationNodeProbeDAO,
         return SqlHelper.retBool(applicationNodeProbeMapper.updateById(applicationNodeProbeEntity));
     }
 
-    @CacheEvict(value = CACHE_KEY_AGENT_CONFIG, allEntries = true)
+    @CacheEvict(value = CACHE_KEY_AGENT_APPLICATION_NODE, allEntries = true)
     @Override
     public boolean create(CreateApplicationNodeProbeParam createApplicationNodeProbeParam) {
         ApplicationNodeProbeEntity applicationNodeProbeEntity = new ApplicationNodeProbeEntity();
@@ -72,7 +70,7 @@ public class ApplicationNodeProbeDAOImpl implements ApplicationNodeProbeDAO,
         return DataTransformUtil.list2list(applicationNodeProbeEntityList, ApplicationNodeProbeResult.class);
     }
 
-    @CacheEvict(value = CACHE_KEY_AGENT_CONFIG, allEntries = true)
+    @CacheEvict(value = CACHE_KEY_AGENT_APPLICATION_NODE, allEntries = true)
     @Override
     public void delByAppNamesAndOperate(Integer operate, List<String> appNames) {
         applicationNodeProbeMapper.delete(this.getLambdaQueryWrapper()
