@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
  * @author liuchuan
  * @date 2021/6/2 1:35 下午
  */
-@Service
+//@Service
 public class RedissonDistributedLock implements DistributedLock {
 
     @Qualifier("redisson")
