@@ -6,7 +6,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.google.common.collect.Lists;
-import io.shulie.takin.cloud.biz.service.scene.SceneManageService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.constants.CollectorConstants;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +49,7 @@ public abstract class AbstractIndicators {
         //                    "   return 0\n" +
         "end";
     @Autowired
-    protected SceneManageService sceneManageService;
+    protected CloudSceneManageService cloudSceneManageService;
     @Autowired
     protected EventCenterTemplate eventCenterTemplate;
     @Resource

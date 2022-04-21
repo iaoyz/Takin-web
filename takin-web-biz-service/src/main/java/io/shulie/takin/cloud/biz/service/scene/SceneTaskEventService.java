@@ -14,7 +14,6 @@ import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
-import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
@@ -43,17 +42,15 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class SceneTaskEventService {
     @Resource
-    private SceneTaskService sceneTaskService;
+    private CloudSceneTaskService cloudSceneTaskService;
     @Resource
-    private SceneManageService sceneManageService;
+    private CloudSceneManageService cloudSceneManageService;
     @Resource
     private EventCenterTemplate eventCenterTemplate;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private EnginePluginFilesService enginePluginFilesService;
-    @Resource
-    private AppConfig appConfig;
 
     @IntrestFor(event = "failed")
     public void failed(Event event) {
@@ -61,7 +58,7 @@ public class SceneTaskEventService {
         Object object = event.getExt();
         TaskResult taskBean = (TaskResult)object;
         if (taskBean != null) {
-            sceneTaskService.handleSceneTaskEvent(taskBean);
+            cloudSceneTaskService.handleSceneTaskEvent(taskBean);
         }
     }
 
@@ -71,7 +68,7 @@ public class SceneTaskEventService {
         Object object = event.getExt();
         TaskResult taskBean = (TaskResult)object;
         if (taskBean != null) {
-            sceneTaskService.handleSceneTaskEvent(taskBean);
+            cloudSceneTaskService.handleSceneTaskEvent(taskBean);
         }
     }
 
@@ -90,10 +87,6 @@ public class SceneTaskEventService {
         scheduleStartRequest.setTaskId(reportId);
         // 客户id
         scheduleStartRequest.setTenantId(customerId);
-        String consoleUrl = DataUtils.mergeUrl(appConfig.getConsole(), ScheduleConstants.getConsoleUrl(sceneId, reportId, customerId));
-        scheduleStartRequest.setConsole(consoleUrl);
-        String callbackUrl = DataUtils.mergeUrl(appConfig.getConsole(), "/api/engine/callback");
-        scheduleStartRequest.setCallbackUrl(callbackUrl);
 
         scheduleStartRequest.setPressureScene(scene.getPressureType());
         scheduleStartRequest.setTotalIp(scene.getIpNum());
@@ -195,7 +188,7 @@ public class SceneTaskEventService {
                 Map<String, Object> extendMap = Maps.newHashMap();
                 SceneManageQueryOpitons options = new SceneManageQueryOpitons();
                 options.setIncludeBusinessActivity(true);
-                SceneManageWrapperOutput dto = sceneManageService.getSceneManage(param.getSceneId(), options);
+                SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(param.getSceneId(), options);
                 if (dto != null && CollectionUtils.isNotEmpty(dto.getBusinessActivityConfig())) {
                     extendMap.put("businessActivityCount", dto.getBusinessActivityConfig().size());
                     extendMap.put("businessActivityBindRef", dto.getBusinessActivityConfig().stream()

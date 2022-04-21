@@ -18,7 +18,7 @@ import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneContactFileOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneContactFileOutput.ContactFileInfo;
 import io.shulie.takin.cloud.biz.pojo.FileSplitInfo;
-import io.shulie.takin.cloud.biz.service.scene.SceneTaskService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.biz.service.schedule.FileSliceService;
 import io.shulie.takin.cloud.biz.utils.FileSplitUtil;
 import io.shulie.takin.cloud.common.enums.FileSliceStatusEnum;
@@ -46,7 +46,7 @@ public class FileSliceServiceImpl implements FileSliceService {
     @Resource
     SceneBigFileSliceDAO fileSliceDAO;
     @Resource
-    private SceneTaskService sceneTaskService;
+    private CloudSceneTaskService cloudSceneTaskService;
 
     @Value("${script.path}")
     private String nfsDir;
@@ -346,7 +346,7 @@ public class FileSliceServiceImpl implements FileSliceService {
         }
 
         //加文件分片清除位点缓存的逻辑
-        sceneTaskService.cleanCachedPosition(param.getSceneId());
+        cloudSceneTaskService.cleanCachedPosition(param.getSceneId());
         //按顺序拆分的文件进行预分片
         if (Objects.nonNull(param.getIsOrderSplit()) && param.getIsOrderSplit() == 1) {
             SceneScriptRefEntity finalEntity = entity;

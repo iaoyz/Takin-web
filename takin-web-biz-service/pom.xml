@@ -66,6 +66,10 @@
                     <artifactId>guava</artifactId>
                     <groupId>com.github.ben-manes.caffeine</groupId>
                 </exclusion>
+                <exclusion>
+                    <groupId>cn.hutool</groupId>
+                    <artifactId>hutool-all</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!--takin common 公共包-->

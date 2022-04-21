@@ -21,7 +21,7 @@ import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneScriptRef;
 import com.pamirs.takin.cloud.entity.domain.query.SceneScriptRefQueryParam;
 import com.pamirs.takin.cloud.entity.domain.vo.file.Part;
 import io.shulie.takin.cloud.biz.service.cloud.server.BigFileService;
-import io.shulie.takin.cloud.biz.service.scene.SceneTaskService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.common.beans.response.ResponseResult;
@@ -61,7 +61,7 @@ public class BigFileServiceImpl implements BigFileService {
     private String scriptPath;
 
     @Autowired
-    private SceneTaskService sceneTaskService;
+    private CloudSceneTaskService cloudSceneTaskService;
 
     @Override
     public ResponseResult<?> upload(Part dto) {
@@ -189,7 +189,7 @@ public class BigFileServiceImpl implements BigFileService {
         log.info("big file merge time cost: {}", end - start);
         //清除位点
         try {
-            sceneTaskService.cleanCachedPosition(part.getSceneId());
+            cloudSceneTaskService.cleanCachedPosition(part.getSceneId());
         } catch (Exception e) {
             throw new TakinCloudException(TakinCloudExceptionEnum.BIGFILE_UPLOAD_ERROR, "重置位点失败:" + part, e);
         }

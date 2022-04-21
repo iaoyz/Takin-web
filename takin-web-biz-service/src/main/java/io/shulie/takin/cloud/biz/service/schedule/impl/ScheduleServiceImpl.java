@@ -18,11 +18,11 @@ import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecor
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.output.engine.EngineLogPtlConfigOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
-import io.shulie.takin.cloud.biz.service.async.AsyncService;
+import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
-import io.shulie.takin.cloud.biz.service.report.ReportService;
-import io.shulie.takin.cloud.biz.service.scene.SceneManageService;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleEventService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
@@ -68,11 +68,11 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Resource
     private ScheduleEventService scheduleEvent;
     @Resource
-    private SceneManageService sceneManageService;
+    private CloudSceneManageService cloudSceneManageService;
     @Resource
     private ScheduleRecordEnginePluginService scheduleRecordEnginePluginService;
     @Resource
-    private AsyncService asyncService;
+    private CloudAsyncService cloudAsyncService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
     @Resource
@@ -81,7 +81,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Qualifier("stopThreadPool")
     protected ThreadPoolExecutor stopExecutor;
     @Resource
-    private ReportService reportService;
+    private CloudReportService cloudReportService;
     @Resource
     private EnginePluginUtils pluginUtils;
     @Resource
@@ -140,25 +140,6 @@ public class ScheduleServiceImpl implements ScheduleService {
             memSetting = CommonUtil.getValue(appConfig.getK8sJvmSettings(), config, StrategyConfigExt::getK8sJvmSettings);
         }
         eventRequest.setMemSetting(memSetting);
-        eventRequest.setZkServers(appConfig.getZkServers());
-        eventRequest.setLogQueueSize(NumberUtil.parseInt(appConfig.getLogQueueSize(), 25000));
-
-        eventRequest.setPressureEngineBackendQueueCapacity(appConfig.getPressureEngineBackendQueueCapacity());
-        eventRequest.setEngineRedisAddress(appConfig.getEngineRedisAddress());
-        eventRequest.setEngineRedisPort(appConfig.getEngineRedisPort());
-        eventRequest.setEngineRedisSentinelNodes(appConfig.getEngineRedisSentinelNodes());
-        eventRequest.setEngineRedisSentinelMaster(appConfig.getEngineRedisSentinelMaster());
-        eventRequest.setEngineRedisPassword(appConfig.getEngineRedisPassword());
-        Integer traceSampling = 1;
-        if (!request.isTryRun() && !request.isInspect()) {
-            traceSampling = CommonUtil.getValue(traceSampling, engineConfigService, EngineConfigService::getLogSimpling);
-        }
-        eventRequest.setTraceSampling(traceSampling);
-        EngineLogPtlConfigOutput engineLogPtlConfigOutput = engineConfigService.getEnginePtlConfig();
-        PtlLogConfigExt ptlLogConfig = BeanUtil.copyProperties(engineLogPtlConfigOutput, PtlLogConfigExt.class);
-        //增加ptl日志上传位置参数
-        ptlLogConfig.setPtlUploadFrom(appConfig.getEngineLogUploadModel());
-        eventRequest.setPtlLogConfig(ptlLogConfig);
 
         //把数据放入缓存，初始化回调调度需要
         stringRedisTemplate.opsForValue().set(scheduleName, JSON.toJSONString(eventRequest));
@@ -200,7 +181,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         Long customerId = startRequest.getTenantId();
 
         // 场景生命周期更新 启动中(文件拆分完成) ---> 创建Job中
-        sceneManageService.updateSceneLifeCycle(
+        cloudSceneManageService.updateSceneLifeCycle(
             UpdateStatusBean.build(sceneId, taskId, customerId)
                 .checkEnum(SceneManageStatusEnum.STARTING, SceneManageStatusEnum.FILE_SPLIT_END)
                 .updateEnum(SceneManageStatusEnum.JOB_CREATING)
@@ -213,11 +194,11 @@ public class ScheduleServiceImpl implements ScheduleService {
             log.info("场景{},任务{},顾客{}开始创建压测引擎Job，压测引擎job创建成功", sceneId, taskId, customerId);
             // 创建job 开始监控 压力节点 启动情况 起一个线程监控  。
             // 启动检查压力节点启动线程，在允许时间内压力节点未启动完成，主动停止任务
-            asyncService.checkStartedTask(request.getRequest());
+            cloudAsyncService.checkStartedTask(request.getRequest());
         } else {
             // 创建失败
             log.info("场景{},任务{},顾客{}开始创建压测引擎Job，压测引擎job创建失败", sceneId, taskId, customerId);
-            sceneManageService.reportRecord(SceneManageStartRecordVO.build(sceneId, taskId, customerId).success(false)
+            cloudSceneManageService.reportRecord(SceneManageStartRecordVO.build(sceneId, taskId, customerId).success(false)
                 .errorMsg("压测引擎job创建失败，失败原因：" + msg).build());
         }
     }
@@ -298,10 +279,10 @@ public class ScheduleServiceImpl implements ScheduleService {
                 // 查看场景状态
                 SceneManageQueryOpitons options = new SceneManageQueryOpitons();
                 options.setIncludeBusinessActivity(true);
-                SceneManageWrapperOutput dto = sceneManageService.getSceneManage(request.getSceneId(), options);
+                SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(request.getSceneId(), options);
                 if (!SceneManageStatusEnum.WAIT.getValue().equals(dto.getStatus())) {
                     // 触发强制停止
-                    reportService.forceFinishReport(request.getTaskId());
+                    cloudReportService.forceFinishReport(request.getTaskId());
                     Event event = new Event();
                     event.setEventName("删除job");
                     TaskResult taskResult = new TaskResult();

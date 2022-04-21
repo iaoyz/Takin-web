@@ -6,10 +6,10 @@ import javax.annotation.Resource;
 
 import com.pamirs.takin.cloud.entity.domain.vo.engine.EngineNotifyParam;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
-import io.shulie.takin.cloud.biz.service.report.ReportService;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.EngineCallbackService;
-import io.shulie.takin.cloud.biz.service.scene.SceneManageService;
-import io.shulie.takin.cloud.biz.service.scene.SceneTaskService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
@@ -30,11 +30,11 @@ import org.springframework.stereotype.Service;
 public class EngineCallbackServiceImpl implements EngineCallbackService {
 
     @Resource
-    private ReportService reportService;
+    private CloudReportService cloudReportService;
     @Resource
-    private SceneTaskService sceneTaskService;
+    private CloudSceneTaskService cloudSceneTaskService;
     @Resource
-    private SceneManageService sceneManageService;
+    private CloudSceneManageService cloudSceneManageService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
@@ -56,13 +56,13 @@ public class EngineCallbackServiceImpl implements EngineCallbackService {
                 String tempFailSign = ScheduleConstants.TEMP_FAIL_SIGN + engineName;
                 Long startFailCount = stringRedisTemplate.opsForValue().increment(tempFailSign, 1);
                 // 记录失败原因，成功则不记录报告中 报告直接完成
-                reportService.updateReportFeatures(notify.getResultId(), ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, notify.getMsg());
+                cloudReportService.updateReportFeatures(notify.getResultId(), ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, notify.getMsg());
 
                 // 如果 这个失败等于 压力节点 数量 则 将本次压测至为失败
                 String pressureNodeTotalKey = ScheduleConstants.getPressureNodeTotalKey(notify.getSceneId(), notify.getResultId(), notify.getTenantId());
                 int podTotal = Integer.parseInt(stringRedisTemplate.opsForValue().get(pressureNodeTotalKey));
                 if (podTotal <= startFailCount) {
-                    sceneManageService.reportRecord(
+                    cloudSceneManageService.reportRecord(
                         SceneManageStartRecordVO
                             .build(notify.getSceneId(), notify.getResultId(), notify.getTenantId())
                             .success(false).errorMsg("").build());
@@ -112,7 +112,7 @@ public class EngineCallbackServiceImpl implements EngineCallbackService {
         stringRedisTemplate.opsForHash().put(tryRunTaskKey,
             SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
         //试跑失败，停掉pod
-        sceneTaskService.stop(sceneId);
+        cloudSceneTaskService.stop(sceneId);
     }
 
 }

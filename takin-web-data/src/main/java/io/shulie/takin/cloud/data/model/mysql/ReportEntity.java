@@ -19,6 +19,24 @@ public class ReportEntity {
     private Long id;
 
     /**
+     * 任务Id
+     */
+    @TableField("task_id")
+    private Long taskId;
+
+    /**
+     * 资源Id
+     */
+    @TableField("resource_id")
+    private String resourceId;
+
+    /**
+     * 压测引擎任务Id
+     */
+    @TableField("pressure_task_id")
+    private Long pressureTaskId;
+
+    /**
      * 流量消耗
      */
     @TableField(value = "amount")

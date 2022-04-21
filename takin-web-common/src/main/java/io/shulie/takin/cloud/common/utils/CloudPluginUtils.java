@@ -1,38 +1,14 @@
 package io.shulie.takin.cloud.common.utils;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-
-import io.shulie.takin.cloud.ext.api.DataTraceExtApi;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
-import io.shulie.takin.plugin.framework.core.PluginManager;
-import org.springframework.stereotype.Component;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 
 /**
  * @author hezhongqi
  * @author 张天赐
  * @date 2021/8/4 14:42
  */
-@Component
 public class CloudPluginUtils {
-    @Resource(type = PluginManager.class)
-    private PluginManager autoPluginManager;
-
-    private static DataTraceExtApi userApi;
-
-    @PostConstruct
-    public void init() {
-        userApi = autoPluginManager.getExtension(DataTraceExtApi.class);
-    }
-
-    /**
-     * 是否带数据溯源模块
-     *
-     * @return true/false
-     */
-    public static Boolean checkUserData() {
-        return userApi != null;
-    }
 
     /**
      * 返回用户id
@@ -40,14 +16,13 @@ public class CloudPluginUtils {
      * @return -
      */
     public static ContextExt getContext() {
-        if (userApi != null) {return userApi.getContext();}
-        return new ContextExt() {{
-            setUserId(-1L);
-            setTenantId(1L);
-            setFilterSql("");
-            setEnvCode("test");
-            setTenantCode("default");
-        }};
+        ContextExt ext = new ContextExt();
+        ext.setUserId(WebPluginUtils.traceUserId());
+        ext.setTenantId(WebPluginUtils.traceTenantId());
+        ext.setFilterSql("");
+        ext.setEnvCode(WebPluginUtils.traceEnvCode());
+        ext.setTenantCode(WebPluginUtils.traceTenantCode());
+        return ext;
     }
 
     /**

@@ -19,7 +19,7 @@ import io.shulie.takin.cloud.biz.input.report.UpdateReportConclusionInput;
 import io.shulie.takin.cloud.biz.input.report.WarnCreateInput;
 import io.shulie.takin.cloud.biz.output.report.ReportDetailOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.WarnDetailOutput;
-import io.shulie.takin.cloud.biz.service.report.ReportService;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
@@ -61,14 +61,14 @@ import org.springframework.stereotype.Service;
 public class CloudReportApiImpl implements CloudReportApi {
 
     @Resource
-    private ReportService reportService;
+    private CloudReportService cloudReportService;
 
     @Resource
     private RedisClientUtils redisClientUtils;
 
     @Override
     public ResponseResult<List<ReportResp>> listReport(ReportQueryReq req) {
-        PageInfo<CloudReportDTO> reportList = reportService.listReport(req);
+        PageInfo<CloudReportDTO> reportList = cloudReportService.listReport(req);
         List<ReportResp> respList = reportList.getList().stream()
             .map(report -> BeanUtil.copyProperties(report, ReportResp.class))
             .collect(Collectors.toList());
@@ -78,13 +78,13 @@ public class CloudReportApiImpl implements CloudReportApi {
     @Override
     public ReportDetailResp detail(ReportDetailByIdReq req) {
         Long reportId = req.getReportId();
-        ReportDetailOutput detailOutput = reportService.getReportByReportId(reportId);
+        ReportDetailOutput detailOutput = cloudReportService.getReportByReportId(reportId);
         if (detailOutput == null) {
             throw new TakinCloudException(TakinCloudExceptionEnum.REPORT_GET_ERROR, "报告不存在Id:" + reportId);
         }
         ReportDetailResp result = BeanUtil.copyProperties(detailOutput, ReportDetailResp.class);
         try {
-            String jtlDownLoadUrl = reportService.getJtlDownLoadUrl(result.getId(), false);
+            String jtlDownLoadUrl = cloudReportService.getJtlDownLoadUrl(result.getId(), false);
             log.debug("获取报告详情时获取JTL下载路径:{}.", jtlDownLoadUrl);
             result.setHasJtl(true);
         } catch (Throwable e) {
@@ -106,11 +106,11 @@ public class CloudReportApiImpl implements CloudReportApi {
                     || CollectionUtils.isEmpty(data.getRt())
                     || CollectionUtils.isEmpty(data.getTps())
                     || CollectionUtils.isEmpty(data.getSuccessRate())) {
-                    data = reportService.queryReportTrend(req);
+                    data = cloudReportService.queryReportTrend(req);
                     redisClientUtils.setString(key, JSON.toJSONString(data));
                 }
             } else {
-                data = reportService.queryReportTrend(req);
+                data = cloudReportService.queryReportTrend(req);
                 redisClientUtils.setString(key, JSON.toJSONString(data));
             }
             return data;
@@ -121,20 +121,20 @@ public class CloudReportApiImpl implements CloudReportApi {
 
     @Override
     public ReportTrendResp tempTrend(ReportTrendQueryReq req) {
-        return reportService.queryTempReportTrend(req);
+        return cloudReportService.queryTempReportTrend(req);
     }
 
     @Override
     public String addWarn(WarnCreateReq req) {
         WarnCreateInput input = BeanUtil.copyProperties(req, WarnCreateInput.class);
-        reportService.addWarn(input);
+        cloudReportService.addWarn(input);
         return "创建告警成功";
     }
 
     @Override
     public ResponseResult<List<WarnDetailResponse>> listWarn(WarnQueryReq req) {
         WarnQueryParam param = BeanUtil.copyProperties(req, WarnQueryParam.class);
-        PageInfo<WarnDetailOutput> list = reportService.listWarn(param);
+        PageInfo<WarnDetailOutput> list = cloudReportService.listWarn(param);
         List<WarnDetailResponse> responses = WarnDetailRespConvertor.INSTANCE.ofList(list.getList());
         return ResponseResult.success(responses, list.getTotal());
     }
@@ -147,7 +147,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public List<ActivityResponse> activityByReportId(ReportDetailByIdReq req) {
-        List<BusinessActivityDTO> dtoList = reportService.queryReportActivityByReportId(req.getReportId());
+        List<BusinessActivityDTO> dtoList = cloudReportService.queryReportActivityByReportId(req.getReportId());
         if (CollectionUtils.isEmpty(dtoList)) {
             return new ArrayList<>(0);
         }
@@ -162,7 +162,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public List<ActivityResponse> activityBySceneId(ReportDetailBySceneIdReq req) {
-        List<BusinessActivityDTO> dtoList = reportService.queryReportActivityBySceneId(req.getSceneId());
+        List<BusinessActivityDTO> dtoList = cloudReportService.queryReportActivityBySceneId(req.getSceneId());
         if (CollectionUtils.isEmpty(dtoList)) {
             return new ArrayList<>(0);
         }
@@ -172,20 +172,20 @@ public class CloudReportApiImpl implements CloudReportApi {
     @Override
     public String updateReportConclusion(UpdateReportConclusionReq req) {
         UpdateReportConclusionInput input = BeanUtil.copyProperties(req, UpdateReportConclusionInput.class);
-        reportService.updateReportConclusion(input);
+        cloudReportService.updateReportConclusion(input);
         return "更新成功";
     }
 
     @Override
     public ReportDetailResp getReportByReportId(ReportDetailByIdReq req) {
         Long reportId = req.getReportId();
-        ReportDetailOutput detailOutput = reportService.getReportByReportId(reportId);
+        ReportDetailOutput detailOutput = cloudReportService.getReportByReportId(reportId);
         if (detailOutput == null) {
             throw new TakinCloudException(TakinCloudExceptionEnum.REPORT_GET_ERROR, "报告不存在Id:" + reportId);
         }
         ReportDetailResp result = BeanUtil.copyProperties(detailOutput, ReportDetailResp.class);
         try {
-            String jtlDownLoadUrl = reportService.getJtlDownLoadUrl(result.getId(), false);
+            String jtlDownLoadUrl = cloudReportService.getJtlDownLoadUrl(result.getId(), false);
             log.debug("获取报告详情时获取JTL下载路径:{}.", jtlDownLoadUrl);
             result.setHasJtl(true);
         } catch (Throwable e) {
@@ -196,7 +196,7 @@ public class CloudReportApiImpl implements CloudReportApi {
 
     @Override
     public ReportDetailResp tempReportDetail(ReportDetailBySceneIdReq req) {
-        ReportDetailOutput detailOutput = reportService.tempReportDetail(req.getSceneId());
+        ReportDetailOutput detailOutput = cloudReportService.tempReportDetail(req.getSceneId());
         if (detailOutput == null) {
             throw new TakinCloudException(TakinCloudExceptionEnum.REPORT_GET_ERROR, "报告不存在");
         }
@@ -209,7 +209,7 @@ public class CloudReportApiImpl implements CloudReportApi {
 
     @Override
     public List<Long> queryListRunningReport(CloudCommonInfoWrapperReq req) {
-        return reportService.queryListRunningReport();
+        return cloudReportService.queryListRunningReport();
     }
 
     /**
@@ -220,7 +220,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public NodeTreeSummaryResp summary(ReportDetailByIdReq req) {
-        return reportService.getNodeSummaryList(req.getReportId());
+        return cloudReportService.getNodeSummaryList(req.getReportId());
     }
 
     /**
@@ -231,7 +231,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public Map<String, Object> warnCount(ReportDetailByIdReq req) {
-        return reportService.getReportWarnCount(req.getReportId());
+        return cloudReportService.getReportWarnCount(req.getReportId());
     }
 
     /**
@@ -242,7 +242,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public Long listRunning(ContextExt req) {
-        return reportService.queryRunningReport(req);
+        return cloudReportService.queryRunningReport(req);
     }
 
     /**
@@ -253,7 +253,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public Boolean lock(ReportDetailByIdReq req) {
-        return reportService.lockReport(req.getReportId());
+        return cloudReportService.lockReport(req.getReportId());
     }
 
     /**
@@ -264,7 +264,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public Boolean unlock(ReportDetailByIdReq req) {
-        return reportService.unLockReport(req.getReportId());
+        return cloudReportService.unLockReport(req.getReportId());
     }
 
     /**
@@ -275,7 +275,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public Boolean finish(ReportDetailByIdReq req) {
-        return reportService.finishReport(req.getReportId());
+        return cloudReportService.finishReport(req.getReportId());
     }
 
     /**
@@ -286,7 +286,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public List<MetricesResponse> metrics(TrendRequest req) {
-        List<Metrices> metrics = reportService.metric(req.getReportId(), req.getSceneId());
+        List<Metrices> metrics = cloudReportService.metric(req.getReportId(), req.getSceneId());
         if (CollectionUtils.isEmpty(metrics)) {
             return new ArrayList<>(0);
         }
@@ -301,7 +301,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public List<ScriptNodeTreeResp> queryNodeTree(ScriptNodeTreeQueryReq req) {
-        return reportService.getNodeTree(req);
+        return cloudReportService.getNodeTree(req);
     }
 
     /**
@@ -313,12 +313,12 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public String getJtlDownLoadUrl(JtlDownloadReq req) {
-        return reportService.getJtlDownLoadUrl(req.getReportId(), true);
+        return cloudReportService.getJtlDownLoadUrl(req.getReportId(), true);
     }
 
     @Override
     public Integer getReportStatusById(ReportDetailByIdReq req) {
-        return reportService.getReportStatusById(req.getReportId());
+        return cloudReportService.getReportStatusById(req.getReportId());
 
     }
 }

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneBusinessActivityRefBean;
+import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
@@ -128,6 +129,10 @@ public class SceneManageWrapperOutput extends ContextExt {
      * 场景类型:0:普通场景，1:流量调试
      */
     private Integer type;
+
+    private StrategyConfigExt strategy;
+
+    private String resourceId;
 
     @Data
     @EqualsAndHashCode(callSuper = true)

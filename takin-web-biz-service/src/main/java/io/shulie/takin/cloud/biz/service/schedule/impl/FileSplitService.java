@@ -18,8 +18,8 @@ import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneFileReadPos
 import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
-import io.shulie.takin.cloud.biz.service.report.ReportService;
-import io.shulie.takin.cloud.biz.service.scene.SceneManageService;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.schedule.FileSliceService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
@@ -55,13 +55,13 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class FileSplitService {
     @Resource
-    private ReportService reportService;
+    private CloudReportService cloudReportService;
     @Resource
     private ScheduleService scheduleService;
     @Resource
     private FileSliceService fileSliceService;
     @Resource
-    private SceneManageService sceneManageService;
+    private CloudSceneManageService cloudSceneManageService;
     @Resource
     private EngineConfigService engineConfigService;
     @Resource
@@ -86,7 +86,7 @@ public class FileSplitService {
             request.getRequest().setDataFile(dataFiles);
         } catch (Exception e) {
             //更新场景状态：启动中--待启动
-            sceneManageService.updateSceneLifeCycle(
+            cloudSceneManageService.updateSceneLifeCycle(
                 UpdateStatusBean.build(startRequest.getSceneId(),
                         startRequest.getTaskId(),
                         startRequest.getTenantId()).checkEnum(
@@ -94,7 +94,7 @@ public class FileSplitService {
                     .updateEnum(SceneManageStatusEnum.WAIT)
                     .build());
 
-            reportService.updateReportOnSceneStartFailed(startRequest.getSceneId(), startRequest.getTaskId(),
+            cloudReportService.updateReportOnSceneStartFailed(startRequest.getSceneId(), startRequest.getTaskId(),
                 "场景启动失败，文件拆分异常");
 
             //设置运行状态为启动失败

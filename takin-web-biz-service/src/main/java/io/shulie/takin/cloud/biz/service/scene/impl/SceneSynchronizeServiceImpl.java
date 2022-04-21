@@ -18,7 +18,7 @@ import com.alibaba.fastjson.TypeReference;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import io.shulie.takin.cloud.biz.service.scene.SceneService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneService;
 import io.shulie.takin.cloud.biz.service.scene.SceneSynchronizeService;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
@@ -49,7 +49,7 @@ import org.springframework.transaction.TransactionStatus;
 @Service
 public class SceneSynchronizeServiceImpl implements SceneSynchronizeService {
     @Resource
-    SceneService sceneService;
+    CloudSceneService cloudSceneService;
     @Resource
     SceneManageMapper sceneManageMapper;
     @Resource
@@ -219,8 +219,8 @@ public class SceneSynchronizeServiceImpl implements SceneSynchronizeService {
         Map<String, Long> businessActivityRef, Map<String, List<String>> businessActivityApplicationRef) {
         // 开始匹配
         //  1. 获取历史数据
-        Map<String, SceneRequest.Goal> sceneGoal = sceneService.getGoal(sceneId);
-        Map<String, SceneRequest.Content> sceneContent = sceneService.getContent(sceneId);
+        Map<String, SceneRequest.Goal> sceneGoal = cloudSceneService.getGoal(sceneId);
+        Map<String, SceneRequest.Content> sceneContent = cloudSceneService.getContent(sceneId);
         // 2.组装历史的节点信息
         Set<String> currentNodeMd5 = new HashSet<>(sceneGoal.keySet());
         currentNodeMd5.addAll(sceneContent.keySet());
@@ -256,7 +256,7 @@ public class SceneSynchronizeServiceImpl implements SceneSynchronizeService {
         int activityClearRows = sceneBusinessActivityRefMapper.delete(Wrappers.lambdaUpdate(SceneBusinessActivityRefEntity.class)
             .eq(SceneBusinessActivityRefEntity::getSceneId, sceneId));
         log.info("事务:{}.场景{}.更新管理业务活动信息。\n清理业务活动数据:{}。", transactionIdentifier.get(), sceneId, activityClearRows);
-        sceneService.buildBusinessActivity(sceneId, contentList, sceneGoal);
+        cloudSceneService.buildBusinessActivity(sceneId, contentList, sceneGoal);
         return true;
     }
 
@@ -274,7 +274,7 @@ public class SceneSynchronizeServiceImpl implements SceneSynchronizeService {
             allNodeMd5.add("0f1a197a2040e645dcdb4dfff8a3f960");
         }
         Map<Long, List<String>> readyUpdateSla = new HashMap<>(allNodeMd5.size());
-        List<SceneRequest.MonitoringGoal> monitoringGoal = sceneService.getMonitoringGoal(sceneId);
+        List<SceneRequest.MonitoringGoal> monitoringGoal = cloudSceneService.getMonitoringGoal(sceneId);
         // 遍历SLA
         for (SceneRequest.MonitoringGoal goal : monitoringGoal) {
             HashSet<String> itemTarget = new HashSet<>(goal.getTarget());
@@ -322,7 +322,7 @@ public class SceneSynchronizeServiceImpl implements SceneSynchronizeService {
     private void setSceneDisabledInFeature(long sceneId, boolean disabled) {
         String disabledKey = "DISABLED";
         // 获取旧的features字段并解析为Map
-        SceneManageEntity scene = sceneService.getScene(sceneId);
+        SceneManageEntity scene = cloudSceneService.getScene(sceneId);
         String featureString = scene.getFeatures();
         Map<String, Object> feature = JSONObject.parseObject(featureString, new TypeReference<Map<String, Object>>() {});
         // 按需填充（如果需要更新数据库，则补充这个变量，会根据这个变量去判断是否更新数据库）

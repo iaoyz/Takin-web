@@ -11,8 +11,8 @@ import com.alibaba.fastjson.JSON;
 
 import cn.hutool.core.util.StrUtil;
 import io.shulie.takin.cloud.biz.output.report.ReportDetailOutput;
-import io.shulie.takin.cloud.biz.service.report.ReportService;
-import io.shulie.takin.cloud.biz.service.scene.SceneService;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneService;
 import io.shulie.takin.cloud.biz.service.scenetask.DynamicTpsService;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
@@ -30,9 +30,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class DynamicTpsServiceImpl implements DynamicTpsService {
     @Resource
-    SceneService sceneService;
+    CloudSceneService cloudSceneService;
     @Resource
-    ReportService reportService;
+    CloudReportService cloudReportService;
     @Resource
     StringRedisTemplate stringRedisTemplate;
 
@@ -77,11 +77,11 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
     @Override
     public double getStatic(long reportId, String xpathMd5) {
         // 获取报告
-        ReportDetailOutput report = reportService.getReportByReportId(reportId);
+        ReportDetailOutput report = cloudReportService.getReportByReportId(reportId);
         // 转换节点MD5为线程组MD5
         String md5 = getThreadGroupMd5ByXpathMd5(report.getSceneId(), xpathMd5);
         // 获取场景
-        SceneManageEntity scene = sceneService.getScene(report.getSceneId());
+        SceneManageEntity scene = cloudSceneService.getScene(report.getSceneId());
         // 获取脚本解析结果
         String scriptAnalysisString = scene.getScriptAnalysisResult();
         List<ScriptNode> scriptAnalysis = JSON.parseArray(scriptAnalysisString, ScriptNode.class);
@@ -136,7 +136,7 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
      */
     private String getThreadGroupMd5ByXpathMd5(long sceneId, String xpathMd5) {
         // 获取场景
-        SceneManageEntity scene = sceneService.getScene(sceneId);
+        SceneManageEntity scene = cloudSceneService.getScene(sceneId);
         // 获取脚本解析结果
         String scriptAnalysisString = scene.getScriptAnalysisResult();
         List<ScriptNode> scriptAnalysis = JSON.parseArray(scriptAnalysisString, ScriptNode.class);

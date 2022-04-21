@@ -3,7 +3,7 @@ package io.shulie.takin.adapter.cloud.impl.scene.mix;
 import javax.annotation.Resource;
 
 import io.shulie.takin.adapter.api.entrypoint.scene.mix.SceneMixApi;
-import io.shulie.takin.cloud.biz.service.scene.SceneService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneService;
 import io.shulie.takin.cloud.biz.service.scene.SceneSynchronizeService;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageQueryReq;
 import io.shulie.takin.adapter.api.model.response.scenemanage.SceneDetailV2Response;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 public class SceneMixApiImpl implements SceneMixApi {
 
     @Resource
-    private SceneService sceneService;
+    private CloudSceneService cloudSceneService;
 
     @Resource
     private SceneSynchronizeService sceneSynchronizeService;
@@ -33,7 +33,7 @@ public class SceneMixApiImpl implements SceneMixApi {
      */
     @Override
     public Long create(SceneRequest request) {
-        return sceneService.create(request);
+        return cloudSceneService.create(request);
     }
 
     /**
@@ -44,7 +44,7 @@ public class SceneMixApiImpl implements SceneMixApi {
      */
     @Override
     public Boolean update(SceneRequest request) {
-        return sceneService.update(request);
+        return cloudSceneService.update(request);
     }
 
     /**
@@ -55,7 +55,7 @@ public class SceneMixApiImpl implements SceneMixApi {
      */
     @Override
     public SceneDetailV2Response detail(SceneManageQueryReq req) {
-        return sceneService.detail(req.getSceneId());
+        return cloudSceneService.detail(req.getSceneId());
     }
 
     /**

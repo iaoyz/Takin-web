@@ -5,10 +5,9 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
+import io.shulie.takin.cloud.biz.service.script.ScriptAnalyzeService;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
-import io.shulie.takin.cloud.common.utils.EnginePluginUtils;
-import io.shulie.takin.cloud.ext.api.EngineExtApi;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.adapter.api.entrypoint.process.ProcessApi;
 import io.shulie.takin.adapter.api.model.request.scenemanage.ScriptAnalyzeRequest;
@@ -25,7 +24,7 @@ import org.springframework.stereotype.Service;
 public class ProcessApiImpl implements ProcessApi {
 
     @Resource
-    private EnginePluginUtils enginePluginUtils;
+    private ScriptAnalyzeService scriptAnalyzeService;
 
     /**
      * 脚本解析
@@ -42,8 +41,7 @@ public class ProcessApiImpl implements ProcessApi {
         if (!file.exists() || !file.isFile()) {
             throw new TakinCloudException(TakinCloudExceptionEnum.SCRIPT_FILE_NOT_EXISTS, "请检测脚本文件是否存在");
         }
-        EngineExtApi engineExtApi = enginePluginUtils.getEngineExtApi();
-        List<ScriptNode> nodes = engineExtApi.buildNodeTree(request.getScriptFile());
+        List<ScriptNode> nodes = scriptAnalyzeService.buildNodeTree(request.getScriptFile());
         if (CollectionUtils.isEmpty(nodes)) {
             throw new TakinCloudException(TakinCloudExceptionEnum.SCRIPT_ANALYZE_FAILED, "请检测脚本内容");
         }

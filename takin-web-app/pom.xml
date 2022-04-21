@@ -48,18 +48,6 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
-                <exclusion>
-                    <artifactId>curator-client</artifactId>
-                    <groupId>com.netflix.curator</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>curator-framework</artifactId>
-                    <groupId>com.netflix.curator</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>curator-recipes</artifactId>
-                    <groupId>com.netflix.curator</groupId>
-                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -142,14 +130,6 @@
                 <exclusion>
                     <artifactId>jsqlparser</artifactId>
                     <groupId>com.github.jsqlparser</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>curator-framework</artifactId>
-                    <groupId>com.netflix.curator</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>curator-recipes</artifactId>
-                    <groupId>com.netflix.curator</groupId>
                 </exclusion>
                 <exclusion>
                     <groupId>org.apache.logging.log4j</groupId>

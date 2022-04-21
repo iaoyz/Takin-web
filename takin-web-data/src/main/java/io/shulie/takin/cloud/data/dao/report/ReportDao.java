@@ -128,4 +128,6 @@ public interface ReportDao {
      * @return 节点信息集合
      */
     List<ReportBusinessActivityDetailEntity> getReportBusinessActivityDetailsByReportId(Long reportId, NodeTypeEnum nodeType);
+
+    void updateResourceAssociation(String resourceId, Long pressureTaskId);
 }

@@ -4,15 +4,18 @@ import com.alibaba.fastjson.TypeReference;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.request.cloud.resources.CloudResourcesRequest;
+import io.shulie.takin.adapter.api.model.request.resource.PhysicalResourceRequest;
+import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
 import io.shulie.takin.adapter.api.model.response.cloud.resources.CloudResource;
 import io.shulie.takin.adapter.api.model.response.cloud.resources.Status;
+import io.shulie.takin.adapter.api.model.response.resource.PhysicalResourceResponse;
+import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 import io.shulie.takin.adapter.api.service.CloudApiSenderService;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,7 +24,7 @@ import java.util.stream.Collectors;
 public class CloudResourceApiImpl implements CloudResourceApi {
 
     @Resource
-    CloudApiSenderService cloudApiSenderService;
+    private CloudApiSenderService cloudApiSenderService;
 
     @Override
     public io.shulie.takin.adapter.api.model.response.cloud.resources.Resource getDetails(int taskId, String resourceId) {
@@ -82,63 +85,16 @@ public class CloudResourceApiImpl implements CloudResourceApi {
         return resource;
     }
 
-    public static void main(String[] args) {
-        io.shulie.takin.adapter.api.model.response.cloud.resources.Resource resource = new io.shulie.takin.adapter.api.model.response.cloud.resources.Resource();
-        ArrayList<CloudResource> resources = new ArrayList<>();
-        CloudResource cloudResource1 = new CloudResource("1", "alive", 1, "1111", "1111", "1111");
-        CloudResource cloudResource2 = new CloudResource("2", "unusual", 2, "2222", "2222", "2222");
-        CloudResource cloudResource3 = new CloudResource("3", "alive", 3, "3333", "3333", "3333");
-        CloudResource cloudResource4 = new CloudResource("4", "inactive", 4, "4444", "4444", "4444");
-        resources.add(cloudResource1);
-        resources.add(cloudResource2);
-        resources.add(cloudResource3);
-        resources.add(cloudResource4);
+    @Override
+    public PhysicalResourceResponse physicalResource(PhysicalResourceRequest request) {
+        return null;
+    }
 
-        resource.setResources(resources);
-        int size = resources.size();
-        resource.setResourcesAmount(size);
-        Map<String, Integer> collect = resources.stream().collect(Collectors.toMap(CloudResource::getStatus, n -> 1, (n1, n2) -> n1 + 1));
-        collect.entrySet().forEach(entry -> {
-            switch (entry.getKey()) {
-                case "initialized":
-                    resource.setInitializedAmount(entry.getValue());
-                    //默认全部初始化完成
-                    break;
-                case "alive":
-                    resource.setAliveAmount(entry.getValue());
-                    break;
-                case "unusual":
-                    resource.setUnusualAmount(entry.getValue());
-                    break;
-                case "inactive":
-                    resource.setInactiveAmount(entry.getValue());
-            }
-        });
-
-        if (resource.getUnusualAmount() != 0) {//存在异常情况
-            //调用停止接口
-            //TODO stop
-            if (resource.getUnusualAmount() + resource.getInactiveAmount() == size) {//异常➕停止等于总数代表结束
-                resource.setStatus(Status.INACTIVE);
-            } else {//存在非异常非停止的情况，停止中
-                resource.setStatus(Status.STOPPING);
-            }
-        } else {//不存在异常情况
-            if (resource.getInactiveAmount() != 0) {//存在停止情况
-                if (resource.getInactiveAmount() == size) {//停止数等于总数代表结束
-                    resource.setStatus(Status.INACTIVE);
-                } else {//部分停止代表停止中
-                    resource.setStatus(Status.STOPPING);
-                }
-            } else {//不存在停止及异常情况
-                if (resource.getAliveAmount() == size) {//压测运行中数量等于总数代表进入压测中
-                    resource.setStatus(Status.PRESSURING);
-                } else {//部分进行中
-                    resource.setStatus(Status.STARTING);
-                }
-            }
-        }
-        System.out.println(resource);
+    @Override
+    public ResourceLockResponse lockResource(ResourceLockRequest request) {
+        return cloudApiSenderService.get(
+            EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.METHOD_RESOURCE_LOCK),
+            request, new TypeReference<ResponseResult<ResourceLockResponse>>() {}).getData();
     }
 
 }

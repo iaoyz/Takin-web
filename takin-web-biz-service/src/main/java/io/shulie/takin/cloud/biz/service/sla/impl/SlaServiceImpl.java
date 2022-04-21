@@ -23,8 +23,8 @@ import io.shulie.takin.cloud.biz.input.report.UpdateReportSlaDataInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneSlaRefInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
-import io.shulie.takin.cloud.biz.service.report.ReportService;
-import io.shulie.takin.cloud.biz.service.scene.SceneManageService;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.sla.SlaService;
 import io.shulie.takin.cloud.biz.utils.SlaUtil;
 import io.shulie.takin.cloud.common.bean.collector.SendMetricsEvent;
@@ -64,11 +64,11 @@ public class SlaServiceImpl implements SlaService {
     @Resource
     private SlaPublish slaPublish;
     @Resource
-    private ReportService reportService;
+    private CloudReportService cloudReportService;
     @Resource
     private TWarnDetailMapper tWarnDetailMapper;
     @Resource
-    private SceneManageService sceneManageService;
+    private CloudSceneManageService cloudSceneManageService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
@@ -191,7 +191,7 @@ public class SlaServiceImpl implements SlaService {
                         slaBean.setRule(warnDetail.getWarnContent());
                         slaDataInput.setReportId(scheduleStopRequest.getTaskId());
                         slaDataInput.setSlaBean(slaBean);
-                        reportService.updateReportSlaData(slaDataInput);
+                        cloudReportService.updateReportSlaData(slaDataInput);
                         // 触发中止方法
                         slaPublish.stop(scheduleStopRequest);
                         log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
@@ -345,7 +345,7 @@ public class SlaServiceImpl implements SlaService {
         SceneManageQueryOpitons options = new SceneManageQueryOpitons();
         options.setIncludeBusinessActivity(true);
         options.setIncludeSLA(true);
-        SceneManageWrapperOutput dto = sceneManageService.getSceneManage(sceneId, options);
+        SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(sceneId, options);
         List<ReportBusinessActivityDetailEntity> testPlan = reportDao
             .getReportBusinessActivityDetailsByReportId(reportId, NodeTypeEnum.TEST_PLAN);
         if (CollectionUtils.isNotEmpty(testPlan) && testPlan.size() == 1) {

@@ -32,21 +32,16 @@ public class RemotingClientConfig {
     @Value("${takin.config.zk.addr}")
     public String zkServers;
 
-    @Value("${surge.deploy.enableStart}")
-    public boolean enableStartSurge;
-
     @Value("${takin.config.zk.timeOut:15000}")
     public int sessionTimeOut;
 
     @PostConstruct
     public void init() {
-        if (!enableStartSurge) {
-            RetryPolicy policy = new ExponentialBackoffRetry(1000, 10);
-            CuratorFramework curator = CuratorFrameworkFactory.builder().
-                connectString(zkServers).sessionTimeoutMs(sessionTimeOut).retryPolicy(policy).build();
-            zkClient = new NetflixCuratorZkClient(curator, zkServers);
-            curator.start();
-        }
+        RetryPolicy policy = new ExponentialBackoffRetry(1000, 10);
+        CuratorFramework curator = CuratorFrameworkFactory.builder().
+            connectString(zkServers).sessionTimeoutMs(sessionTimeOut).retryPolicy(policy).build();
+        zkClient = new NetflixCuratorZkClient(curator, zkServers);
+        curator.start();
         selector = new DefaultProtocolFactorySelector();
     }
 

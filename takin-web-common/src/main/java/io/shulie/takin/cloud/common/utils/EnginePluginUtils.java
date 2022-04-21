@@ -23,21 +23,8 @@ public class EnginePluginUtils {
     @Value("${plugin.engine.call.ext.type:local_engine}")
     private String engineCallExtType;
 
-    @Value("${plugin.engine.ext.type:jmeter_engine}")
-    private String engineExtType;
-
     @Resource
     private PluginManager pluginManager;
-
-    public EngineExtApi getEngineExtApi() {
-        List<EngineExtApi> extensions = pluginManager.getExtensions(EngineExtApi.class);
-        for (EngineExtApi engineExtApi : extensions) {
-            if (engineExtType.equals(engineExtApi.getType())) {
-                return engineExtApi;
-            }
-        }
-        throw new TakinCloudException(TakinCloudExceptionEnum.PLUGIN_NOT_FIND, "引擎拓展插件未找到!");
-    }
 
     public EngineCallExtApi getEngineCallExtApi() {
         List<EngineCallExtApi> extensions = pluginManager.getExtensions(EngineCallExtApi.class);

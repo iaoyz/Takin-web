@@ -1,6 +1,7 @@
 package io.shulie.takin.cloud.biz.service.strategy.impl;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Objects;
 
@@ -23,6 +24,7 @@ import com.pamirs.takin.cloud.entity.domain.vo.strategy.StrategyConfigUpdateVO;
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
 import io.shulie.takin.cloud.common.enums.deployment.DeploymentMethodEnum;
+import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.utils.EnginePluginUtils;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
@@ -43,9 +45,6 @@ public class StrategyConfigServiceImpl implements StrategyConfigService {
 
     @Resource
     private TStrategyConfigMapper tStrategyConfigMapper;
-
-    @Autowired
-    private EnginePluginUtils pluginUtils;
 
     @Autowired
     private AppConfig appConfig;
@@ -89,18 +88,20 @@ public class StrategyConfigServiceImpl implements StrategyConfigService {
 
     @Override
     public StrategyOutputExt getStrategy(Integer expectThroughput, Integer tpsNum) {
-        EngineCallExtApi engineCallExtApi = pluginUtils.getEngineCallExtApi();
         StrategyConfigExt strategyConfigExt = new StrategyConfigExt();
         strategyConfigExt.setThreadNum(expectThroughput);
         strategyConfigExt.setTpsNum(tpsNum);
-        return engineCallExtApi.getPressureNodeNumRange(strategyConfigExt);
+        return getPressureNodeNumRange(strategyConfigExt);
 
     }
 
     @Override
     public StrategyConfigExt getDefaultStrategyConfig() {
-        EngineCallExtApi engineCallExtApi = pluginUtils.getEngineCallExtApi();
-        return engineCallExtApi.getDefaultStrategyConfig();
+        PageInfo<StrategyConfigExt> strategyConfig = queryPageList(new StrategyConfigQueryVO());
+        if (strategyConfig != null && strategyConfig.getSize() > 0) {
+            return strategyConfig.getList().get(0);
+        }
+        return null;
     }
 
     @Override
@@ -171,4 +172,94 @@ public class StrategyConfigServiceImpl implements StrategyConfigService {
                 TakinCloudExceptionEnum.SCHEDULE_START_ERROR, config, e);
         }
     }
+
+    // TODO: 要修改
+    private StrategyOutputExt getPressureNodeNumRange(StrategyConfigExt strategyConfigExt) {
+        StrategyOutputExt result = new StrategyOutputExt();
+        BigDecimal min = BigDecimal.ONE;
+        BigDecimal max = BigDecimal.ONE;
+        Integer tpsNum = strategyConfigExt.getTpsNum();
+        Integer threadNum = strategyConfigExt.getThreadNum();
+        // 获取k8s的机器
+        //List<Node> nodes = microService.getNodeList();
+        // TODO: 等待cloud添加新接口
+        //List<Node> nodes = null;
+        if (DeploymentMethodEnum.PRIVATE == appConfig.getDeploymentMethod()) {
+            // nodes
+            //if (CollectionUtils.isEmpty(nodes)) {
+                throw new TakinCloudException(TakinCloudExceptionEnum.K8S_NODE_EMPTY, "未找到k8s节点");
+            //}
+        }
+        // 获取分配策略
+        StrategyConfigExt config = getCurrentStrategyConfig();
+        if (config != null) {
+            if (tpsNum != null) {
+                min = new BigDecimal(tpsNum).divide(new BigDecimal(config.getTpsNum()), 0, RoundingMode.CEILING);
+                if (appConfig.getDeploymentMethod() == DeploymentMethodEnum.PRIVATE) {
+                    // 私有化部署
+                    //max = getMaxByNode(nodes, config.getMemorySize());
+                } else if (tpsNum > config.getTpsNum()) {
+                    // 公有化计算规则，根据pod的maxTps计算
+                    max = min.add(min.multiply(new BigDecimal("0.8")).setScale(0, RoundingMode.CEILING));
+                }
+            }
+            if (threadNum != null) {
+                min = new BigDecimal(threadNum).divide(new BigDecimal(config.getThreadNum()), 0,
+                    RoundingMode.CEILING);
+                if (appConfig.getDeploymentMethod() == DeploymentMethodEnum.PRIVATE) {
+                    //max = getMaxByNode(nodes, config.getMemorySize());
+                } else if (threadNum > config.getThreadNum()) {
+                    // 公有化计算规则，根据pod并发数计算
+                    BigDecimal rate;
+                    //增加一定的浮动比例
+                    if (min.intValue() < 5) {
+                        rate = new BigDecimal("0.5");
+                    } else if (min.intValue() < 10) {
+                        rate = new BigDecimal("0.7");
+                    } else if (min.intValue() < 20) {
+                        rate = new BigDecimal("0.8");
+                    } else {
+                        rate = new BigDecimal("0.9");
+                    }
+                    max = min.add(min.multiply(rate).setScale(0, RoundingMode.CEILING));
+                }
+            }
+        }
+        // 做一个逻辑判断
+        result.setMax(max.intValue());
+        result.setMin(min.intValue());
+        // 保证最大值不为0
+        if (result.getMax() <= 0) {result.setMax(1);}
+        if (appConfig.getDeploymentMethod() == DeploymentMethodEnum.PRIVATE && min.intValue() > max.intValue()) {
+            result.setMin(max.intValue());
+        }
+        // 保证最小值不为0
+        if (result.getMin() <= 0) {result.setMin(1);}
+        return result;
+    }
+
+    //private BigDecimal getMaxByNode(List<Node> nodes, BigDecimal memorySize) {
+    //    BigDecimal tempMax = BigDecimal.ZERO;
+    //    for (Node node : nodes) {
+    //        Map<String, Quantity> map = node.getStatus().getAllocatable();
+    //        // 通过内存计算pod
+    //        Quantity quantity = map.get("memory");
+    //        tempMax = tempMax.add(BigDecimal.valueOf(getMemory(quantity))
+    //            .divide(memorySize.multiply(BigDecimal.valueOf(1024 * 1024L)), 0, RoundingMode.DOWN));
+    //    }
+    //    // 初始化
+    //    return tempMax;
+    //}
+    //
+    //private long getMemory(Quantity quantity) {
+    //    if ("Ki".equalsIgnoreCase(quantity.getFormat())) {
+    //        return Long.parseLong(quantity.getAmount()) * 1024L;
+    //    } else if ("Mi".equalsIgnoreCase(quantity.getFormat())) {
+    //        return Long.parseLong(quantity.getAmount()) * 1024L * 1024L;
+    //    } else if ("Gi".equalsIgnoreCase(quantity.getFormat())) {
+    //        return Long.parseLong(quantity.getAmount()) * 1024L * 1024L * 1024L;
+    //    } else {
+    //        return Long.parseLong(quantity.getAmount());
+    //    }
+    //}
 }
