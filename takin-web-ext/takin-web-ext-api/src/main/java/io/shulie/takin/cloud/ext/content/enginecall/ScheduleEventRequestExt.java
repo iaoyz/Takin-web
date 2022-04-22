@@ -25,6 +25,11 @@ public class ScheduleEventRequestExt extends ContextExt {
     private Long taskId;
 
     /**
+     * 资源Id
+     */
+    private String resourceId;
+
+    /**
      * 扩展参数
      */
     private Map<String, Object> extend;

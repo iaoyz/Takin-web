@@ -14,12 +14,12 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.TypeReference;
 
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -30,7 +30,11 @@ import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivity
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneFileReadPosition;
 import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
+import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
+import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
+import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
+import io.shulie.takin.cloud.biz.checker.PressureStartConditionChecker;
 import io.shulie.takin.cloud.biz.collector.collector.CollectorService;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
@@ -75,6 +79,7 @@ import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.ThreadGroupTypeEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
@@ -91,7 +96,9 @@ import io.shulie.takin.cloud.common.utils.JsonUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportBusinessActivityDetailDao;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
+import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneBigFileSliceEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
@@ -100,10 +107,10 @@ import io.shulie.takin.cloud.data.result.report.ReportResult;
 import io.shulie.takin.cloud.data.result.scenemanage.SceneManageListResult;
 import io.shulie.takin.cloud.ext.api.AssetExtApi;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
-import io.shulie.takin.cloud.ext.content.asset.AccountInfoExt;
 import io.shulie.takin.cloud.ext.content.asset.AssetBalanceExt;
 import io.shulie.takin.cloud.ext.content.asset.AssetBillExt;
 import io.shulie.takin.cloud.ext.content.asset.AssetInvoiceExt;
+import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.cloud.ext.content.enums.AssetTypeEnum;
 import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.response.Response;
@@ -113,6 +120,7 @@ import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.plugin.framework.core.PluginManager;
 import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.utils.security.MD5Utils;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -164,6 +172,12 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     private SceneTaskEventService sceneTaskEventService;
     @Resource
     private ReportBusinessActivityDetailDao reportBusinessActivityDetailDao;
+    @Resource
+    private PressureTaskDAO pressureTaskDAO;
+    @Resource
+    private List<PressureStartConditionChecker> interceptors;
+    @Resource
+    private CloudResourceApi cloudResourceApi;
 
     /**
      * 初始化报告开始时间偏移时间
@@ -240,7 +254,11 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         preCheckStart(sceneData, input);
 
         //创建临时报表数据
-        ReportEntity report = initReport(sceneData, input);
+        PressureTaskEntity pressureTask = initPressureTask(sceneData, input);
+        // 锁定资源
+        lockResource(sceneData, pressureTask);
+        //创建临时报表数据
+        ReportEntity report = initReport(sceneData, input, pressureTask);
 
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());
@@ -752,63 +770,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
      * 场景启动前置校验
      */
     private void preCheckStart(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
-        // 流量判断
-        if (null == sceneData.getTenantId()) {
-            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "场景没有绑定客户信息");
-        }
-        AssetExtApi assetExtApi = pluginManager.getExtension(AssetExtApi.class);
-        if (assetExtApi != null) {
-            AccountInfoExt account = assetExtApi.queryAccount(sceneData.getTenantId(), input.getOperateId());
-            if (null == account || account.getBalance().compareTo(sceneData.getEstimateFlow()) < 0) {
-                throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "压测流量不足！");
-            }
-        }
-
-        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus())) {
-            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
-        }
-        //检测脚本文件是否有变更
-        SceneScriptRefOutput scriptRefOutput = sceneData.getUploadFile().stream().filter(Objects::nonNull)
-            .filter(fileRef -> fileRef.getFileType() == 0 && fileRef.getFileName().endsWith(SCRIPT_NAME_SUFFIX))
-            .findFirst()
-            .orElse(null);
-
-        boolean jmxCheckResult = checkOutJmx(scriptRefOutput, sceneData.getId());
-        if (!jmxCheckResult) {
-            throw new TakinCloudException(TakinCloudExceptionEnum.SCENE_JMX_FILE_CHECK_ERROR,
-                "启动压测场景--场景ID:" + sceneData.getId() + ",脚本文件校验失败！");
-        }
-
-        // 判断场景是否有job正在执行 一个场景只能保证一个job执行
-        //获取所有job
-        EngineCallExtApi engineCallExtApi = enginePluginUtils.getEngineCallExtApi();
-        List<String> allRunningJobName = engineCallExtApi.getAllRunningJobName();
-        if (CollectionUtils.isNotEmpty(allRunningJobName)) {
-            //获取其中属于我们的压测任务
-            List<Long> sceneTaskJobNames = allRunningJobName.stream().filter(jobName -> jobName.startsWith(ScheduleConstants.SCENE_TASK))
-                .map(jobName -> {
-                    String tempString = jobName.replace(ScheduleConstants.SCENE_TASK, "");
-                    String substring = tempString.substring(0, tempString.indexOf("-"));
-                    return Long.parseLong(substring);
-                }).collect(Collectors.toList());
-
-            log.info("获取到正在运行的job:{}", JsonHelper.bean2Json(sceneTaskJobNames));
-            if (sceneTaskJobNames.contains(sceneData.getId())) {
-                throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "场景【" + sceneData.getId() + "】"
-                    + "存在未删除的job,请等待删除或者人为判断是否可以手工删除~");
-            }
-
-        }
-        // 校验是否与场景同步了
-        {
-            String disabledKey = "DISABLED";
-            String featureString = sceneData.getFeatures();
-            Map<String, Object> feature = JSONObject.parseObject(featureString, new TypeReference<Map<String, Object>>() {});
-            if (feature.containsKey(disabledKey)) {
-                throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR,
-                    "场景【" + sceneData.getId() + "】对应的业务流程发生变更，未能自动匹配，请手动编辑后启动压测");
-            }
-        }
+        interceptors.forEach(interceptor -> interceptor.check(sceneData, input));
     }
 
     /**
@@ -816,9 +778,11 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
      *
      * @return -
      */
-    public ReportEntity initReport(SceneManageWrapperOutput scene, SceneTaskStartInput input) {
+    public ReportEntity initReport(SceneManageWrapperOutput scene, SceneTaskStartInput input, PressureTaskEntity pressureTask) {
         ReportEntity report = new ReportEntity();
         report.setSceneId(scene.getId());
+        report.setTaskId(pressureTask.getId());
+        report.setResourceId(pressureTask.getResourceId());
         report.setConcurrent(scene.getConcurrenceNum());
         report.setStatus(ReportConstants.INIT_STATUS);
         // 初始化
@@ -1318,5 +1282,53 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
                 throw e;
             }
         }
+    }
+
+    private PressureTaskEntity initPressureTask(SceneManageWrapperOutput scene, SceneTaskStartInput input) {
+        PressureTaskEntity entity = new PressureTaskEntity();
+        entity.setSceneId(scene.getId());
+        entity.setResourceId(scene.getResourceId());
+        entity.setSceneName(scene.getPressureTestSceneName());
+        // 解决开始时间 偏移10s
+        entity.setStartTime(new Date(System.currentTimeMillis() + offsetStartTime * 1000));
+        entity.setEndTime(new Date());
+        entity.setStatus(PressureTaskStateEnum.CHECK_SUCCESS.ordinal());
+        entity.setGmtCreate(new Date());
+        entity.setOperateId(input.getOperateId());
+        entity.setUserId(WebPluginUtils.traceUserId());
+        entity.setTenantId(scene.getTenantId());
+        entity.setEnvCode(scene.getEnvCode());
+
+        pressureTaskDAO.save(entity);
+        return entity;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (CollectionUtils.isNotEmpty(interceptors)) {
+            interceptors.sort((it1, it2) -> {
+                int i1 = it1.getOrder();
+                int i2 = it2.getOrder();
+                return Integer.compare(i1, i2);
+            });
+        } else {
+            interceptors = new ArrayList<>(0);
+        }
+    }
+
+    private void lockResource(SceneManageWrapperOutput sceneData, PressureTaskEntity pressureTask) {
+        StrategyConfigExt strategy = sceneData.getStrategy();
+        ResourceLockRequest request = new ResourceLockRequest();
+        request.setCpu(strategy.getCpuNum());
+        request.setMemory(strategy.getMemorySize());
+        request.setPod(sceneData.getIpNum());
+        ResourceLockResponse response = cloudResourceApi.lockResource(request);
+        pressureTask.setResourceId(response.getData().getResourceId());
+        PressureTaskEntity tmp = new PressureTaskEntity();
+        tmp.setId(pressureTask.getId());
+        tmp.setStatus(PressureTaskStateEnum.RESOURCES_LOCKING.ordinal());
+        tmp.setResourceId(pressureTask.getResourceId());
+        tmp.setGmtUpdate(new Date());
+        pressureTaskDAO.updateById(tmp);
     }
 }
