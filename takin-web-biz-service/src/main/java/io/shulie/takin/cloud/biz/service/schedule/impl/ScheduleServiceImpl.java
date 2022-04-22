@@ -353,7 +353,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private void updateReportAssociation(ScheduleStartRequestExt startRequest, PressureActionResp actionResp) {
-        Long pressureTaskId = actionResp.getData().getTaskId();
+        Long pressureTaskId = actionResp.getTaskId();
         String resourceId = startRequest.getResourceId();
         cloudReportService.updateResourceAssociation(resourceId, pressureTaskId);
         pressureTaskDAO.updateResourceAssociation(resourceId, pressureTaskId);

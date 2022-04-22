@@ -1323,7 +1323,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         request.setMemory(strategy.getMemorySize());
         request.setPod(sceneData.getIpNum());
         ResourceLockResponse response = cloudResourceApi.lockResource(request);
-        pressureTask.setResourceId(response.getData().getResourceId());
+        pressureTask.setResourceId(response.getResourceId());
+
         PressureTaskEntity tmp = new PressureTaskEntity();
         tmp.setId(pressureTask.getId());
         tmp.setStatus(PressureTaskStateEnum.RESOURCES_LOCKING.ordinal());
