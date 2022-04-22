@@ -16,6 +16,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,8 +34,9 @@ public class CloudResourceApiImpl implements CloudResourceApi {
         CloudResourcesRequest crr = new CloudResourcesRequest();
         crr.setTaskId(taskId);
         crr.setResourceId(resourceId);
-        List<CloudResource> resources = cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.METHOD_RESOURCE_MACHINE), crr, new TypeReference<ResponseResult<List<CloudResource>>>() {
-        }).getData();
+//        List<CloudResource> resources = cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.METHOD_RESOURCE_MACHINE), crr, new TypeReference<ResponseResult<List<CloudResource>>>() {
+//        }).getData();
+        List<CloudResource> resources = getResources();
         //2.更新状态
         if (CollectionUtils.isNotEmpty(resources)) {
             resource.setResources(resources);
@@ -84,6 +86,20 @@ public class CloudResourceApiImpl implements CloudResourceApi {
         }
         return resource;
     }
+
+    private List<CloudResource> getResources() {
+        ArrayList<CloudResource> resources = new ArrayList<>();
+        CloudResource cloudResource1 = new CloudResource("1", "Running", 1, "1111", "1111", "1111");
+        CloudResource cloudResource2 = new CloudResource("2", "Failed", 2, "2222", "2222", "2222");
+        CloudResource cloudResource3 = new CloudResource("3", "Running", 3, "3333", "3333", "3333");
+        CloudResource cloudResource4 = new CloudResource("4", "Running", 4, "4444", "4444", "4444");
+        resources.add(cloudResource1);
+        resources.add(cloudResource2);
+        resources.add(cloudResource3);
+        resources.add(cloudResource4);
+        return resources;
+    }
+
 
     @Override
     public PhysicalResourceResponse physicalResource(PhysicalResourceRequest request) {
