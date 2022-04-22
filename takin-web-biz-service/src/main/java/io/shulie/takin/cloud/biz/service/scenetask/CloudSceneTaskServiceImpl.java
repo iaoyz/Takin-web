@@ -190,8 +190,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     private static final Long GB = MB * 1024;
     private static final Long TB = GB * 1024;
 
-    private static final String SCRIPT_NAME_SUFFIX = "jmx";
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SceneActionOutput start(SceneTaskStartInput input) {
@@ -272,23 +270,9 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         //流量冻结
         frozenAccountFlow(input, report, sceneData);
 
-        // 清除SLA条件缓存
-        stringRedisTemplate.opsForHash().delete(SlaServiceImpl.SLA_SCENE_KEY, String.valueOf(input.getSceneId()));
         //设置缓存，用以检查压测场景启动状态
         taskStatusCache.cacheStatus(input.getSceneId(), report.getId(), SceneRunTaskStatusEnum.STARTING);
-        //缓存pod数量，上传jmeter日志时判断是否所有文件都上传完成
-        taskStatusCache.cachePodNum(input.getSceneId(), sceneData.getIpNum());
 
-        String engineInstanceRedisKey = PressureInstanceRedisKey.getEngineInstanceRedisKey(input.getSceneId(),
-            report.getId(), report.getTenantId());
-        List<String> activityRefs = sceneData.getBusinessActivityConfig().stream().map(
-                SceneBusinessActivityRefOutput::getBindRef)
-            .collect(Collectors.toList());
-
-        stringRedisTemplate.opsForHash().put(
-            engineInstanceRedisKey,
-            PressureInstanceRedisKey.SecondRedisKey.ACTIVITY_REFS,
-            JsonHelper.bean2Json(activityRefs));
         //广播事件
         sceneTaskEventService.callStartEvent(sceneData, report.getId());
 

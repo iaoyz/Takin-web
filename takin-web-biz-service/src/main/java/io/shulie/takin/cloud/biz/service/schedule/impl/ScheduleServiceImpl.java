@@ -200,11 +200,11 @@ public class ScheduleServiceImpl implements ScheduleService {
             PressureActionResp actionResp = pressureTaskApi.start(req);
             // 是空的
             log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
+            updateReportAssociation(startRequest, actionResp);
             // 创建job 开始监控 压力节点 启动情况 起一个线程监控  。
             // 启动检查压力节点启动线程，在允许时间内压力节点未启动完成，主动停止任务
             // TODO:是否需要校验状态
             cloudAsyncService.checkStartedTask(request.getRequest());
-            updateReportAssociation(startRequest, actionResp);
         } catch (Exception e) {
             // 创建失败
             log.info("场景{},任务{},顾客{}开始启动压测，压测启动失败", sceneId, taskId, customerId);
