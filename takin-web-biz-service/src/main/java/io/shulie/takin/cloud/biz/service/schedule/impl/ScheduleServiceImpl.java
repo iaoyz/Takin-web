@@ -24,7 +24,6 @@ import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.P
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadGroupConfig;
 import io.shulie.takin.adapter.api.model.response.pressure.PressureActionResp;
 import io.shulie.takin.cloud.biz.config.AppConfig;
-import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
@@ -32,7 +31,6 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleEventService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.PressureInstanceRedisKey;
@@ -149,7 +147,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             memSetting = CommonUtil.getValue(appConfig.getK8sJvmSettings(), config, StrategyConfigExt::getK8sJvmSettings);
         }
         eventRequest.setMemSetting(memSetting);
-
+        // TODO：设置采样率
         //把数据放入缓存，初始化回调调度需要
         stringRedisTemplate.opsForValue().set(scheduleName, JSON.toJSONString(eventRequest));
         // 需要将 本次调度 pod数量存入redis,报告中用到
@@ -171,10 +169,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             stringRedisTemplate.opsForValue().set(
                 ScheduleConstants.INTERRUPT_POD + scheduleName,
                 Boolean.TRUE.toString(), 1, TimeUnit.DAYS);
-            if (!Boolean.parseBoolean(stringRedisTemplate.opsForValue().get(ScheduleConstants.FORCE_STOP_POD + scheduleName))) {
-                // 3分钟没有停止成功 ，将强制停止
-                stopExecutor.execute(new SceneStopThread(request));
-            }
+            // TODO: 调用cloud压测停止接口
         }
 
     }
@@ -262,56 +257,13 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     }
 
-    /**
-     * 场景强制停止
-     */
-    public class SceneStopThread implements Runnable {
-
-        private final ScheduleStopRequestExt request;
-
-        public SceneStopThread(ScheduleStopRequestExt request) {
-            this.request = request;
-        }
-
-        @Override
-        public void run() {
-            String scheduleName = ScheduleConstants.getScheduleName(request.getSceneId(), request.getTaskId(), request.getTenantId());
-            stringRedisTemplate.opsForValue().set(
-                ScheduleConstants.FORCE_STOP_POD + scheduleName,
-                Boolean.TRUE.toString(), 1, TimeUnit.DAYS);
-            {
-                try {
-                    Thread.sleep(3 * 60 * 1000L);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    log.info("stop wait error :{}", e.getMessage());
-                }
-                // 查看场景状态
-                SceneManageQueryOpitons options = new SceneManageQueryOpitons();
-                options.setIncludeBusinessActivity(true);
-                SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(request.getSceneId(), options);
-                if (!SceneManageStatusEnum.WAIT.getValue().equals(dto.getStatus())) {
-                    // 触发强制停止
-                    cloudReportService.forceFinishReport(request.getTaskId());
-                    Event event = new Event();
-                    event.setEventName("删除job");
-                    TaskResult taskResult = new TaskResult();
-                    taskResult.setSceneId(request.getSceneId());
-                    taskResult.setTaskId(request.getTaskId());
-                    taskResult.setTenantId(request.getTenantId());
-                    event.setExt(taskResult);
-                    doDeleteJob(event);
-                }
-            }
-        }
-    }
-
     private PressureTaskStartReq buildStartReq(ScheduleRunRequest runRequest) {
         ScheduleStartRequestExt request = runRequest.getRequest();
         PressureTaskStartReq req = new PressureTaskStartReq();
         req.setJvmParams(runRequest.getMemSetting());
         req.setResourceId(request.getResourceId());
         req.setPressureType(request.getPressureScene());
+        req.setSampling(runRequest.getTraceSampling());
 
         Map<String, ThreadGroupConfigExt> configMap = request.getThreadGroupConfigMap();
         Map<String, ThreadGroupConfig> testMap = new HashMap<>(configMap.size());

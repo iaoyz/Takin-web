@@ -55,4 +55,6 @@ public class EntrypointUrl {
     public final static String MODULE_RRESSURE = "pressure";
     public final static String METHOD_RRESSURE_START = "task/start";
     public final static String METHOD_RRESSURE_STOP = "task/stop";
+    public final static String METHOD_RRESSURE_MODIFY = "task/modify";
+    public final static String METHOD_RRESSURE_PARAMS = "task/params";
 }

@@ -11,10 +11,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
-import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleEventConstant;
@@ -186,7 +185,7 @@ public class SceneTaskEventService {
                 event.setEventName("started");
                 // 扩展配置
                 Map<String, Object> extendMap = Maps.newHashMap();
-                SceneManageQueryOpitons options = new SceneManageQueryOpitons();
+                SceneManageQueryOptions options = new SceneManageQueryOptions();
                 options.setIncludeBusinessActivity(true);
                 SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(param.getSceneId(), options);
                 if (dto != null && CollectionUtils.isNotEmpty(dto.getBusinessActivityConfig())) {

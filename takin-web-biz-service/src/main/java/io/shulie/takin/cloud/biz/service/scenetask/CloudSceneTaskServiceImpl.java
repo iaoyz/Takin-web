@@ -1,6 +1,5 @@
 package io.shulie.takin.cloud.biz.service.scenetask;
 
-import java.io.File;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,7 +13,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.alibaba.fastjson.JSON;
@@ -34,7 +32,7 @@ import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
 import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
-import io.shulie.takin.cloud.biz.checker.PressureStartConditionChecker;
+import io.shulie.takin.cloud.biz.checker.CompositeCloudStartConditionChecker;
 import io.shulie.takin.cloud.biz.collector.collector.CollectorService;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
@@ -66,9 +64,8 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.SceneTaskEventService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.biz.service.schedule.FileSliceService;
-import io.shulie.takin.cloud.biz.service.sla.impl.SlaServiceImpl;
 import io.shulie.takin.cloud.biz.utils.DataUtils;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.PressureInstanceRedisKey;
@@ -118,8 +115,6 @@ import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.plugin.framework.core.PluginManager;
-import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.utils.security.MD5Utils;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -175,7 +170,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     @Resource
     private PressureTaskDAO pressureTaskDAO;
     @Resource
-    private List<PressureStartConditionChecker> interceptors;
+    private CompositeCloudStartConditionChecker compositeChecker;
     @Resource
     private CloudResourceApi cloudResourceApi;
 
@@ -200,7 +195,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
 
     private SceneActionOutput startTask(SceneTaskStartInput input) {
         log.info("启动任务接收到入参：{}", JsonUtil.toJson(input));
-        SceneManageQueryOpitons options = new SceneManageQueryOpitons();
+        SceneManageQueryOptions options = new SceneManageQueryOptions();
         options.setIncludeBusinessActivity(true);
         options.setIncludeScript(true);
         SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(input.getSceneId(), options);
@@ -253,7 +248,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
 
         //创建临时报表数据
         PressureTaskEntity pressureTask = initPressureTask(sceneData, input);
-        // 锁定资源
+        // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
         lockResource(sceneData, pressureTask);
         //创建临时报表数据
         ReportEntity report = initReport(sceneData, input, pressureTask);
@@ -416,8 +411,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     public void updateSceneTaskTps(SceneTaskUpdateTpsInput input) {
         // 补充租户信息
         CloudPluginUtils.fillUserData(input);
-        // 设置动态值
-        dynamicTpsService.set(input.getSceneId(), input.getReportId(), input.getTenantId(), input.getXpathMd5(), input.getTpsNum());
+        dynamicTpsService.set(input);
     }
 
     @Override
@@ -427,7 +421,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         // 声明返回值字段
         double result;
         // 获取动态值
-        Double dynamicValue = dynamicTpsService.get(input.getSceneId(), input.getReportId(), input.getTenantId(), input.getXpathMd5());
+        Double dynamicValue = dynamicTpsService.get(input);
         // 如果动态值为空,则获取静态值
         if (dynamicValue != null) {result = dynamicValue;}
         // 获取静态值
@@ -754,7 +748,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
      * 场景启动前置校验
      */
     private void preCheckStart(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
-        interceptors.forEach(interceptor -> interceptor.check(sceneData, input));
+        compositeChecker.runningCheck(sceneData, input);
     }
 
     /**
@@ -983,7 +977,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         SceneTaskStartCheckOutput output = new SceneTaskStartCheckOutput();
         try {
             SceneManageWrapperOutput sceneManage = cloudSceneManageService.getSceneManage(input.getSceneId(),
-                new SceneManageQueryOpitons() {{
+                new SceneManageQueryOptions() {{
                     setIncludeBusinessActivity(false);
                     setIncludeScript(true);
                     setIncludeSLA(false);
@@ -1175,18 +1169,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         return position + "B";
     }
 
-    private boolean checkOutJmx(SceneScriptRefOutput uploadFile, Long sceneId) {
-        if (Objects.nonNull(uploadFile) && StringUtils.isNotBlank(uploadFile.getUploadPath())) {
-            String fileMd5 = MD5Utils.getInstance().getMD5(new File(uploadFile.getUploadPath()));
-            if (StringUtils.isNotBlank(uploadFile.getFileMd5())) {
-                return uploadFile.getFileMd5().equals(fileMd5);
-            } else {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /**
      * 冻结流量
      *
@@ -1285,19 +1267,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
 
         pressureTaskDAO.save(entity);
         return entity;
-    }
-
-    @PostConstruct
-    public void init() {
-        if (CollectionUtils.isNotEmpty(interceptors)) {
-            interceptors.sort((it1, it2) -> {
-                int i1 = it1.getOrder();
-                int i2 = it2.getOrder();
-                return Integer.compare(i1, i2);
-            });
-        } else {
-            interceptors = new ArrayList<>(0);
-        }
     }
 
     private void lockResource(SceneManageWrapperOutput sceneData, PressureTaskEntity pressureTask) {

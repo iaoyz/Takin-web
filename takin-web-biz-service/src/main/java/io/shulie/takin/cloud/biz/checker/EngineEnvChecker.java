@@ -10,18 +10,28 @@ import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import org.springframework.stereotype.Component;
 
 @Component
-public class EngineEnvChecker implements PressureStartConditionChecker {
+public class EngineEnvChecker implements CloudStartConditionChecker {
 
     @Resource
     private CloudCheckApi cloudCheckApi;
 
     @Override
-    public void check(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) throws TakinCloudException {
+    public void preCheck(Long sceneId) throws TakinCloudException {
+        cloudCheckApi.checkEnv(new EnvCheckRequest());
+    }
+
+    @Override
+    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
         cloudCheckApi.checkEnv(new EnvCheckRequest());
     }
 
     @Override
     public int getOrder() {
         return 3;
+    }
+
+    @Override
+    public String type() {
+        return "env";
     }
 }

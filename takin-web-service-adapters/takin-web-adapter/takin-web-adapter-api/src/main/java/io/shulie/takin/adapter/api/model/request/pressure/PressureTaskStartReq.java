@@ -29,6 +29,16 @@ public class PressureTaskStartReq extends ContextExt {
      */
     private Integer pressureType;
 
+    /**
+     * 采样率
+     */
+    private Integer sampling;
+
+    /**
+     * 调试模式下脚本调试配置
+     */
+    private DebugConfig debugInfo;
+
     private Map<String, ThreadGroupConfig> test;
 
     private List<PressureDataFile> files;
@@ -128,5 +138,17 @@ public class PressureTaskStartReq extends ContextExt {
          * pod读取文件结束位置
          */
         private String end = "-1";
+    }
+
+    @Data
+    public static class DebugConfig {
+        /**
+         * 调试请求条数
+         */
+        private Integer number;
+        /**
+         * 并发数
+         */
+        private Integer thread;
     }
 }

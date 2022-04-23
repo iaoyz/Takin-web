@@ -1,4 +1,4 @@
-package io.shulie.takin.adapter.cloud.impl.resource;
+package io.shulie.takin.adapter.cloud.impl.remote.resource;
 
 import com.alibaba.fastjson.TypeReference;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;

@@ -1,5 +1,8 @@
 package io.shulie.takin.cloud.biz.service.scenetask;
 
+import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskQueryTpsInput;
+import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskUpdateTpsInput;
+
 /**
  * 动态TPS服务
  *
@@ -15,7 +18,7 @@ public interface DynamicTpsService {
      * @param md5      线程组md5
      * @return 值-可能为空
      */
-    Double get(long sceneId, long reportId, long tenantId, String md5);
+    Double get(SceneTaskQueryTpsInput input);
 
     /**
      * 通过报告获取静态TPS目标
@@ -36,5 +39,5 @@ public interface DynamicTpsService {
      * @param value    目标值
      */
 
-    void set(long sceneId, long reportId, long tenantId, String md5, double value);
+    void set(SceneTaskUpdateTpsInput input);
 }

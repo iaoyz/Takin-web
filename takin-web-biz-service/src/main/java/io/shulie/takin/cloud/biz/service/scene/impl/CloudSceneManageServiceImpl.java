@@ -62,7 +62,7 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.script.ScriptAnalyzeService;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryBean;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
@@ -941,10 +941,10 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
     }
 
     @Override
-    public SceneManageWrapperOutput getSceneManage(Long id, SceneManageQueryOpitons options) {
+    public SceneManageWrapperOutput getSceneManage(Long id, SceneManageQueryOptions options) {
         SceneManageEntity sceneManageResult = getSceneManage(id);
         if (options == null) {
-            options = new SceneManageQueryOpitons();
+            options = new SceneManageQueryOptions();
         }
         SceneManageWrapperOutput wrapperDTO = new SceneManageWrapperOutput();
         fillBase(wrapperDTO, sceneManageResult);

@@ -92,8 +92,8 @@ public class ReportDaoImpl implements ReportDao {
 
     @Override
     public ReportResult selectById(Long id) {
-        String envCode = CloudPluginUtils.getContext() == null ? null : CloudPluginUtils.getEnvCode();
-        Long tenantId = CloudPluginUtils.getContext() == null ? null : CloudPluginUtils.getTenantId();
+        String envCode = CloudPluginUtils.getEnvCode();
+        Long tenantId = CloudPluginUtils.getTenantId();
         List<ReportEntity> entityList = reportMapper.selectList(
             Wrappers.lambdaQuery(ReportEntity.class)
                 .eq(ReportEntity::getId, id)
