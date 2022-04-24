@@ -12,7 +12,6 @@ import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 import io.shulie.takin.adapter.api.service.CloudApiSenderService;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.data.dao.cloud.resouces.CloudResourcesDao;
-import io.shulie.takin.web.data.dao.cloud.resouces.impl.CloudResourcesDaoImpl;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
@@ -32,10 +31,12 @@ public class CloudResourceApiImpl implements CloudResourceApi {
     private CloudResourcesDao cloudResourcesDao;
 
     @Override
-    public io.shulie.takin.adapter.api.model.response.cloud.resources.Resource getDetails(int taskId, String resourceId) {
+    public io.shulie.takin.adapter.api.model.response.cloud.resources.Resource getDetails(int taskId, String resourceId, String sortField, String sortType, Integer currentPage, Integer pageSize) {
         io.shulie.takin.adapter.api.model.response.cloud.resources.Resource resource = new io.shulie.takin.adapter.api.model.response.cloud.resources.Resource();
         resource.setTaskId(taskId);
         resource.setResourceId(resourceId);
+        resource.setCurrentPage(currentPage);
+        resource.setPageSize(pageSize);
         //1.查询压力机明细
         CloudResourcesRequest crr = new CloudResourcesRequest();
         crr.setTaskId(taskId);
@@ -44,7 +45,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
 //        }).getData();
         List<CloudResource> resources = getResources();
         if (CollectionUtils.isNotEmpty(resources)) {
-            resource.setResources(resources);
+            resource.setResources(doTurnPage(resources,sortField,sortType,currentPage,pageSize));
             int size = resources.size();
             resource.setResourcesAmount(size);
             Map<String, Integer> collect = resources.stream().collect(Collectors.toMap(CloudResource::getStatus, n -> 1, (n1, n2) -> n1 + 1));
@@ -70,19 +71,24 @@ public class CloudResourceApiImpl implements CloudResourceApi {
         return resource;
     }
 
+    private List doTurnPage(List<CloudResource> resources, String sortField, String sortType, Integer currentPage, Integer pageSize) {
+        return resources.stream().sorted((r1,r2)->{
+            return 0;
+        }).skip((currentPage-1) * pageSize).limit(pageSize).collect(Collectors.toList());
+    }
+
     private List<CloudResource> getResources() {
         ArrayList<CloudResource> resources = new ArrayList<>();
-        CloudResource cloudResource1 = new CloudResource("1", "Running", 1, "1111", "1111", "1111");
-        CloudResource cloudResource2 = new CloudResource("2", "Failed", 2, "2222", "2222", "2222");
-        CloudResource cloudResource3 = new CloudResource("3", "Running", 3, "3333", "3333", "3333");
-        CloudResource cloudResource4 = new CloudResource("4", "Running", 4, "4444", "4444", "4444");
+        CloudResource cloudResource1 = new CloudResource("1", "Running", 1, "1111","1111", "1111", "1111");
+        CloudResource cloudResource2 = new CloudResource("2", "Failed", 2, "2222", "2222","2222", "2222");
+        CloudResource cloudResource3 = new CloudResource("3", "Running", 3, "3333", "3333","3333", "3333");
+        CloudResource cloudResource4 = new CloudResource("4", "Running", 4, "4444", "4444","4444", "4444");
         resources.add(cloudResource1);
         resources.add(cloudResource2);
         resources.add(cloudResource3);
         resources.add(cloudResource4);
         return resources;
     }
-
 
     @Override
     public PhysicalResourceResponse physicalResource(PhysicalResourceRequest request) {

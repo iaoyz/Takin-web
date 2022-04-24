@@ -17,6 +17,8 @@ public class CloudResource {
     private Integer restart;
     @ApiModelProperty(value = "启动时间")
     private String startTime;
+    @ApiModelProperty(value = "停止时间")
+    private String stopTime;
     @ApiModelProperty(value = "压力机ip")
     private String podIp;
     @ApiModelProperty(value = "宿主机ip")
