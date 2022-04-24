@@ -96,4 +96,10 @@ public class PressureTaskEntity {
      */
     @TableField(value = "operate_id")
     private Long operateId;
+
+    /**
+     * 异常信息
+     */
+    @TableField(value = "exception_msg")
+    private String exceptionMsg;
 }
