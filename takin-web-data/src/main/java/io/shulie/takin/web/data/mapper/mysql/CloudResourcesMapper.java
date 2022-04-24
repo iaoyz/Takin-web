@@ -8,5 +8,5 @@ import org.apache.ibatis.annotations.Param;
 import java.util.Map;
 
 public interface CloudResourcesMapper extends BaseMapper<Resource> {
-    Map<String, Object> getResourceStatus();
+    Resource getResourceStatus(Resource resource);
 }

@@ -5,8 +5,7 @@
         <result column="status" jdbcType="INTEGER" javaType="java.lang.Integer" property="status"/>
         <result column="exception_msg" jdbcType="VARCHAR" javaType="java.lang.String" property="errorMessage"/>
     </resultMap>
-    <select id="getResourceStatus" resultType="map">
-<!--        SELECT `status`,exception_msg FROM t_pressure_task WHERE resource_id = #{resourceId} AND pressure_task_id = #{taskId}-->
-        SELECT * FROM t_pressure_task
+    <select id="getResourceStatus" parameterType="io.shulie.takin.adapter.api.model.response.cloud.resources.Resource" resultMap="BaseResultMap">
+        SELECT `status`,exception_msg FROM t_pressure_task WHERE resource_id = #{resourceId} AND pressure_task_id = #{taskId}
     </select>
 </mapper>
