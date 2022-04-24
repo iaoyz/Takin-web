@@ -1,8 +1,11 @@
 package io.shulie.takin.web.biz.checker;
 
+import java.util.Objects;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.Ordered;
 
 public interface WebStartConditionChecker extends Ordered {
@@ -36,11 +39,29 @@ public interface WebStartConditionChecker extends Ordered {
             return result;
         }
 
-        public static CheckResult pending(String type) {
-            CheckResult result = new CheckResult();
-            result.setType(type);
-            result.setStatus(CheckStatus.PENDING.ordinal());
-            return result;
+        // 合并两个相同类型的result
+        public CheckResult merge(CheckResult other) {
+            if (getType().equals(other.getType())) {
+                if (Objects.equals(getStatus(), other.getStatus())) {
+                    if (StringUtils.isNotBlank(other.getMessage())) {
+                        this.setMessage(this.getMessage() + "|" + other.getMessage());
+                    }
+                    return this;
+                }
+                if (getStatus() == CheckStatus.FAIL.ordinal()) {
+                    return this;
+                }
+                if (other.getStatus() == CheckStatus.FAIL.ordinal()) {
+                    return other;
+                }
+                if (getStatus() == CheckStatus.SUCCESS.ordinal()) {
+                    return this;
+                }
+                if (other.getStatus() == CheckStatus.SUCCESS.ordinal()) {
+                    return other;
+                }
+            }
+            throw new IllegalArgumentException("参数不合法");
         }
     }
 

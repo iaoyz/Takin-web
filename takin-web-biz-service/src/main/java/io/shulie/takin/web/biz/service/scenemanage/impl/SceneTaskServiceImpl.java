@@ -1,6 +1,7 @@
 package io.shulie.takin.web.biz.service.scenemanage.impl;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -36,6 +38,8 @@ import com.pamirs.takin.entity.domain.vo.report.SceneActionParamNew;
 import com.pamirs.takin.entity.domain.vo.report.ScenePluginParam;
 import io.shulie.takin.adapter.api.entrypoint.report.CloudReportApi;
 import io.shulie.takin.adapter.api.entrypoint.scenetask.CloudTaskApi;
+import io.shulie.takin.cloud.biz.checker.CloudConditionCheckerContext;
+import io.shulie.takin.cloud.biz.checker.CompositeCloudStartConditionChecker;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.adapter.api.model.request.report.ReportDetailByIdReq;
@@ -52,6 +56,9 @@ import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneTaskAdjustTpsResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.biz.checker.CompositeWebStartConditionChecker;
+import io.shulie.takin.web.biz.checker.WebConditionCheckerContext;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.pojo.request.datasource.DataSourceTestRequest;
 import io.shulie.takin.web.biz.pojo.request.leakcheck.LeakSqlBatchRefsRequest;
@@ -159,6 +166,12 @@ public class SceneTaskServiceImpl implements SceneTaskService {
 
     @Resource
     private CloudReportApi cloudReportApi;
+
+    @Resource
+    private CompositeWebStartConditionChecker webStartConditionChecker;
+
+    @Resource
+    private CompositeCloudStartConditionChecker cloudStartConditionChecker;
 
     /**
      * 是否是预发环境
@@ -735,7 +748,19 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     }
 
     @Override
-    public Map<String, Object> preCheck(Long sceneId) {
-        return null;
+    public List<CheckResult> preCheck(Long sceneId, String resourceId) {
+        WebConditionCheckerContext webContext = new WebConditionCheckerContext();
+        webContext.setSceneId(sceneId);
+        webContext.setResourceId(resourceId);
+        List<CheckResult> webResultList = webStartConditionChecker.doCheck(webContext);
+
+        CloudConditionCheckerContext cloudContext = new CloudConditionCheckerContext();
+        cloudContext.setSceneId(sceneId);
+        cloudContext.setResourceId(resourceId);
+        List<CheckResult> cloudResultList = cloudStartConditionChecker.doCheck(cloudContext);
+        webResultList.addAll(cloudResultList);
+        Collection<CheckResult> results = webResultList.stream().collect(
+            Collectors.toMap(CheckResult::getType, Function.identity(), CheckResult::merge)).values();
+        return new ArrayList<>(results);
     }
 }

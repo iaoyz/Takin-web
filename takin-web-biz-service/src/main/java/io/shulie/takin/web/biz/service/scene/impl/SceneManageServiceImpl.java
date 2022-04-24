@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -685,10 +686,7 @@ public class SceneManageServiceImpl implements SceneManageService {
         }
 
         if (scriptCheckResp.getData() != null && CollectionUtils.isNotEmpty(scriptCheckResp.getData().getErrorMsg())) {
-            StringBuilder stringBuilder = new StringBuilder();
-            scriptCheckResp.getData().getErrorMsg().forEach(errorMsg -> stringBuilder.append(errorMsg).append("|"));
-            stringBuilder.substring(0, stringBuilder.length() - 1);
-            dto.setErrmsg(stringBuilder.toString());
+            dto.setErrmsg(StringUtils.join(scriptCheckResp.getData().getErrorMsg(), "|"));
         }
 
         return dto;

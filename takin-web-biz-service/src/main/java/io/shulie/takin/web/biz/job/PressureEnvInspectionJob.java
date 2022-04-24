@@ -1,10 +1,12 @@
 package io.shulie.takin.web.biz.job;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
@@ -12,6 +14,7 @@ import com.dangdang.ddframe.job.api.ShardingContext;
 import com.dangdang.ddframe.job.api.simple.SimpleJob;
 import io.shulie.takin.cloud.biz.checker.EngineEnvChecker;
 import io.shulie.takin.job.annotation.ElasticSchedulerJob;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -20,7 +23,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@ElasticSchedulerJob(jobName = "pressureEnvInspectionJob", cron = "0 0 0 * * ?", description = "检测压力机环境是否正常")
+@ElasticSchedulerJob(jobName = "pressureEnvInspectionJob", cron = "0 * * * * ?", description = "检测压力机环境是否正常")
 @Slf4j
 public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
 
@@ -67,21 +70,60 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
     }
 
     // 检测nfs空间是否足够
-    private void nfsSpaceCheck() {
+    private void nfsSpaceCheck() throws Exception {
         if (!StringUtils.isBlank(nfsMountPoint)) {
             File file = new File(nfsMountPoint);
             if (file.exists()) {
-                long totalSpace = file.getTotalSpace();
-                long usableSpace = file.getUsableSpace();
-                BigDecimal percent = new BigDecimal(String.valueOf(usableSpace)).divide(
-                    new BigDecimal(String.valueOf(totalSpace)), 2, RoundingMode.HALF_EVEN);
-                if (percent.compareTo(warningPercent) >= 0) {
-                    long free = file.getFreeSpace() / 1024;
-                    throw new RuntimeException(
-                        String.format("NFS磁盘资源已占用%s%%, 剩余%sMB, 请及时清理", percent.toPlainString(), free));
+                Integer useRate = queryDiskInfo().getUseRate();
+                if (new BigDecimal(String.valueOf(useRate)).compareTo(warningPercent) >= 0) {
+                    throw new RuntimeException(String.format("NFS磁盘资源已占用%s%%, 请及时清理", useRate));
                 }
             }
         }
+    }
+
+    private DiskInfo queryDiskInfo() throws Exception {
+        Process pro = Runtime.getRuntime().exec("df -h " + nfsMountPoint);
+        pro.waitFor();
+        List<String> lines = new BufferedReader(new InputStreamReader(pro.getInputStream())).lines().collect(
+            Collectors.toList());
+        List<String> titles = getTitles(lines.get(0));
+        String[] values = lines.get(1).split("\\s+");
+        DiskInfo df = new DiskInfo();
+        for (int i = 0; i < titles.size(); i++) {
+            String title = titles.get(i);
+            switch (title.toLowerCase()) {
+                case "filesystem":
+                    df.setFilesystem(values[i]);
+                    break;
+                case "used":
+                    df.setUsed(Long.parseLong(values[i]));
+                    break;
+                case "available":
+                    df.setAvailable(Long.parseLong(values[i]));
+                    break;
+                case "use%":
+                    df.setUseRate(Integer.parseInt(values[i].replace("%", "")));
+                    break;
+            }
+        }
+        return df;
+    }
+
+    private static List<String> getTitles(String titlesLine) {
+        List<String> titles = new ArrayList<>();
+        String[] titleArray = titlesLine.split("\\s+");
+        for (String title : titleArray) {
+            if (title.equalsIgnoreCase("on")) {
+                if (!titles.isEmpty()) {
+                    int lastIdx = titles.size() - 1;
+                    titles.set(lastIdx, titles.get(lastIdx) + "On");
+                }
+            } else {
+                titles.add(title);
+            }
+        }
+        return titles;
     }
 
     @Override
@@ -89,5 +131,13 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
         if (warningPercent.compareTo(WARNING_PERCENT_MIN) < 0 || warningPercent.compareTo(WARNING_PERCENT_MAX) > 0) {
             warningPercent = new BigDecimal(WARNING_PERCENT_DEFAULT);
         }
+    }
+
+    @Data
+    private static class DiskInfo {
+        private String filesystem;
+        private Long used;
+        private Long available;
+        private Integer useRate;
     }
 }

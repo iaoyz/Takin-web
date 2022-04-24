@@ -30,7 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ScriptChecker implements CloudStartConditionChecker {
+public class CloudScriptChecker implements CloudStartConditionChecker {
 
     private static final String SCRIPT_NAME_SUFFIX = "jmx";
 
@@ -153,7 +153,7 @@ public class ScriptChecker implements CloudStartConditionChecker {
 
     @Override
     public String type() {
-        return "script";
+        return "file";
     }
 
     @Override

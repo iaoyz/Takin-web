@@ -7,5 +7,6 @@ import lombok.Data;
 public class WebConditionCheckerContext {
 
     private Long sceneId;
+    private String resourceId;
     private SceneManageWrapperDTO sceneData;
 }
