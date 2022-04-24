@@ -17,11 +17,17 @@ public class CloudResourcesDaoImpl implements CloudResourcesDao {
 
     @Override
     public void getResourceStatus(Resource resource) {
-        Resource statusAndErrorMessage = cloudResourcesMapper.getResourceStatus(resource.getResourceId(),resource.getTaskId());
+        Map statusAndErrorMessage = cloudResourcesMapper.getResourceStatus(resource.getResourceId(), resource.getTaskId());
         //TODO convert status and error message
         if (null != statusAndErrorMessage) {
-            resource.setStatus(statusAndErrorMessage.getStatus());
-            resource.setTaskId(statusAndErrorMessage.getTaskId());
+            Object status = statusAndErrorMessage.get("status");
+            if (null != status) {
+                resource.setStatus(Integer.valueOf(status.toString()));
+            }
+            Object errorMessage = statusAndErrorMessage.get("exception_msg");
+            if (null != errorMessage) {
+                resource.setErrorMessage(errorMessage.toString());
+            }
         }
     }
 }
