@@ -5,32 +5,23 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
-import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
-import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CompositeCloudStartConditionChecker implements CloudStartConditionChecker, InitializingBean {
+public class CompositeCloudStartConditionChecker implements InitializingBean {
 
     @Resource
     private List<CloudStartConditionChecker> checkerList;
 
-    @Override
-    public void preCheck(Long sceneId) throws TakinCloudException {
+    public List<CheckResult> doCheck(CloudConditionCheckerContext context) throws TakinCloudException {
+        List<CheckResult> resultList = new ArrayList<>(checkerList.size());
         checkerList.forEach(checker -> {
-            try {
-                checker.preCheck(sceneId);
-            } catch (TakinCloudException e) {
-                e.printStackTrace();
-            }
+            resultList.add(checker.check(context));
         });
-    }
-
-    @Override
-    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
-        checkerList.forEach(checker -> checker.runningCheck(sceneData, input));
+        return resultList;
     }
 
     @Override
@@ -43,15 +34,5 @@ public class CompositeCloudStartConditionChecker implements CloudStartConditionC
             int i2 = it2.getOrder();
             return Integer.compare(i1, i2);
         });
-    }
-
-    @Override
-    public String type() {
-        return "composite-cloud";
-    }
-
-    @Override
-    public int getOrder() {
-        return 0;
     }
 }

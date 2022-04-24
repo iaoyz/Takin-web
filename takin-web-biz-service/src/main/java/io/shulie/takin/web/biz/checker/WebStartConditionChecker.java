@@ -1,13 +1,73 @@
 package io.shulie.takin.web.biz.checker;
 
-import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
+import java.util.Objects;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.Ordered;
 
 public interface WebStartConditionChecker extends Ordered {
 
-    default void preCheck(Long sceneId) {}
-
-    default void runningCheck(SceneManageWrapperDTO sceneData) {}
+    default CheckResult check(WebConditionCheckerContext context) {
+        return CheckResult.success(type());
+    }
 
     String type();
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    class CheckResult {
+        private String type;
+        private Integer status;
+        private String message;
+
+        public static CheckResult success(String type) {
+            CheckResult result = new CheckResult();
+            result.setType(type);
+            result.setStatus(CheckStatus.SUCCESS.ordinal());
+            return result;
+        }
+
+        public static CheckResult fail(String type, String message) {
+            CheckResult result = new CheckResult();
+            result.setType(type);
+            result.setStatus(CheckStatus.FAIL.ordinal());
+            result.setMessage(message);
+            return result;
+        }
+
+        // 合并两个相同类型的result
+        public CheckResult merge(CheckResult other) {
+            if (getType().equals(other.getType())) {
+                if (Objects.equals(getStatus(), other.getStatus())) {
+                    if (StringUtils.isNotBlank(other.getMessage())) {
+                        this.setMessage(this.getMessage() + "|" + other.getMessage());
+                    }
+                    return this;
+                }
+                if (getStatus() == CheckStatus.FAIL.ordinal()) {
+                    return this;
+                }
+                if (other.getStatus() == CheckStatus.FAIL.ordinal()) {
+                    return other;
+                }
+                if (getStatus() == CheckStatus.SUCCESS.ordinal()) {
+                    return this;
+                }
+                if (other.getStatus() == CheckStatus.SUCCESS.ordinal()) {
+                    return other;
+                }
+            }
+            throw new IllegalArgumentException("参数不合法");
+        }
+    }
+
+    enum CheckStatus {
+        FAIL,
+        SUCCESS,
+        PENDING
+    }
 }

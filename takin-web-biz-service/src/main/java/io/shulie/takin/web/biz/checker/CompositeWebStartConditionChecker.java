@@ -6,30 +6,23 @@ import java.util.List;
 import javax.annotation.Resource;
 
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
-import io.shulie.takin.cloud.common.exception.TakinCloudException;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CompositeWebStartConditionChecker implements WebStartConditionChecker, InitializingBean {
+public class CompositeWebStartConditionChecker implements InitializingBean {
 
     @Resource
     private List<WebStartConditionChecker> checkerList;
 
-    @Override
-    public void preCheck(Long sceneId) {
+    // 此处特殊使用
+    public List<CheckResult> doCheck(WebConditionCheckerContext context) {
+        List<CheckResult> resultList = new ArrayList<>(checkerList.size());
         checkerList.forEach(checker -> {
-            try {
-                checker.preCheck(sceneId);
-            } catch (TakinCloudException e) {
-                e.printStackTrace();
-            }
+            resultList.add(checker.check(context));
         });
-    }
-
-    @Override
-    public void runningCheck(SceneManageWrapperDTO sceneData) {
-        checkerList.forEach(checker -> checker.runningCheck(sceneData));
+        return resultList;
     }
 
     @Override
@@ -42,15 +35,5 @@ public class CompositeWebStartConditionChecker implements WebStartConditionCheck
             int i2 = it2.getOrder();
             return Integer.compare(i1, i2);
         });
-    }
-
-    @Override
-    public String type() {
-        return "composite-web";
-    }
-
-    @Override
-    public int getOrder() {
-        return 0;
     }
 }

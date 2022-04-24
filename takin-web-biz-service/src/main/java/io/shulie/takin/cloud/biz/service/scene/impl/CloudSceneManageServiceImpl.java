@@ -79,7 +79,9 @@ import io.shulie.takin.cloud.common.utils.LinuxUtil;
 import io.shulie.takin.cloud.common.utils.UrlUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
+import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.scenemanage.SceneManageCreateOrUpdateParam;
@@ -149,6 +151,9 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
     public static final String SCENE_BUSINESS_ACTIVITY = "sceneBusinessActivity";
     public static final String SCENE_SCRIPT = "sceneScript";
     public static final String SCENE_SLA = "sceneSla";
+
+    @Resource
+    private PressureTaskDAO pressureTaskDAO;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -641,6 +646,11 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
                     setId(statusVO.getResultId());
                     setStartTime(startTime);
                 }});
+
+                PressureTaskEntity entity = new PressureTaskEntity();
+                entity.setReportId(statusVO.getResultId());
+                entity.setStartTime(startTime);
+                pressureTaskDAO.updateByReportId(entity);
             }
 
             ReportResult recentlyReport = reportDao.getRecentlyReport(statusVO.getSceneId());

@@ -13,17 +13,15 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 
 import io.shulie.takin.adapter.api.model.request.check.ScriptCheckRequest.FileInfo;
-import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.utils.security.MD5Utils;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDetailResponse;
 import io.shulie.takin.web.biz.service.scriptmanage.ScriptManageService;
@@ -32,7 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ScriptChecker implements CloudStartConditionChecker {
+public class CloudScriptChecker implements CloudStartConditionChecker {
 
     private static final String SCRIPT_NAME_SUFFIX = "jmx";
 
@@ -40,18 +38,18 @@ public class ScriptChecker implements CloudStartConditionChecker {
     private EnginePluginFilesService enginePluginFilesService;
 
     @Resource
-    private CloudSceneManageService cloudSceneManageService;
-
-    @Resource
     private ScriptManageService scriptManageService;
 
     @Override
-    public void preCheck(Long sceneId) throws TakinCloudException {
-        SceneManageQueryOptions options = new SceneManageQueryOptions();
-        options.setIncludeScript(true);
-        SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
-        filePlugins(sceneData);
-        runningCheck(sceneData, null);
+    public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
+        try {
+            filePlugins(sceneData);
+            doCheck(context);
+            return CheckResult.success(type());
+        } catch (Exception e) {
+            return CheckResult.fail(type(), e.getMessage());
+        }
     }
 
     private void filePlugins(SceneManageWrapperOutput sceneData) {
@@ -66,8 +64,8 @@ public class ScriptChecker implements CloudStartConditionChecker {
         }
     }
 
-    @Override
-    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
+    private void doCheck(CloudConditionCheckerContext context) {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
         //检测脚本文件是否有变更
         checkModify(sceneData);
         // 校验是否与场景同步了
@@ -125,7 +123,8 @@ public class ScriptChecker implements CloudStartConditionChecker {
     private void checkSync(SceneManageWrapperOutput sceneData) {
         String disabledKey = "DISABLED";
         String featureString = sceneData.getFeatures();
-        Map<String, Object> feature = JSONObject.parseObject(featureString, new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> feature = JSONObject.parseObject(featureString,
+            new TypeReference<Map<String, Object>>() {});
         if (feature.containsKey(disabledKey)) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR,
                 "场景【" + sceneData.getId() + "】对应的业务流程发生变更，未能自动匹配，请手动编辑后启动压测");
@@ -154,12 +153,12 @@ public class ScriptChecker implements CloudStartConditionChecker {
 
     @Override
     public String type() {
-        return "script";
+        return "file";
     }
 
     @Override
     public int getOrder() {
-        return 2;
+        return 1;
     }
 
     public enum FileTypeEnum {

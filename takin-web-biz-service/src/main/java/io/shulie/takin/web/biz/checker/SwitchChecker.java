@@ -3,7 +3,6 @@ package io.shulie.takin.web.biz.checker;
 import javax.annotation.Resource;
 
 import com.pamirs.takin.common.constant.AppSwitchEnum;
-import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
@@ -16,12 +15,16 @@ public class SwitchChecker implements WebStartConditionChecker {
     private ApplicationService applicationService;
 
     @Override
-    public void preCheck(Long sceneId) {
-        runningCheck(null);
+    public CheckResult check(WebConditionCheckerContext context) {
+        try {
+            doCheck(context);
+            return CheckResult.success(type());
+        } catch (Exception e) {
+            return CheckResult.fail(type(), e.getMessage());
+        }
     }
 
-    @Override
-    public void runningCheck(SceneManageWrapperDTO sceneData) {
+    private void doCheck(WebConditionCheckerContext context) {
         //检查压测开关，压测开关处于关闭状态时禁止压测
         String switchStatus = applicationService.getUserSwitchStatusForVo();
         if (!AppSwitchEnum.OPENED.getCode().equals(switchStatus)) {
