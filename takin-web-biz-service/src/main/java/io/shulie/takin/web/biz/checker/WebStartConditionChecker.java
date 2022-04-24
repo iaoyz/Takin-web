@@ -1,6 +1,5 @@
 package io.shulie.takin.web.biz.checker;
 
-import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,11 +7,9 @@ import org.springframework.core.Ordered;
 
 public interface WebStartConditionChecker extends Ordered {
 
-    default CheckResult preCheck(Long sceneId) {
+    default CheckResult check(WebConditionCheckerContext context) {
         return CheckResult.success(type());
     }
-
-    default void runningCheck(SceneManageWrapperDTO sceneData) {}
 
     String type();
 

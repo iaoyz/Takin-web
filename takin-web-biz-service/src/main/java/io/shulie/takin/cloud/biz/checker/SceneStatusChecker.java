@@ -5,9 +5,12 @@ import javax.annotation.Resource;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
+import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import org.springframework.stereotype.Component;
 
@@ -17,22 +20,43 @@ public class SceneStatusChecker implements CloudStartConditionChecker {
     @Resource
     private CloudSceneManageService cloudSceneManageService;
 
+    @Resource
+    private RedisClientUtils redisClientUtils;
+
     @Override
-    public CheckResult preCheck(Long sceneId, String resourceId) throws TakinCloudException {
+    public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
         try {
-            SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
-            runningCheck(sceneData, null);
+            fillContext(context);
+            doCheck(context);
+            // 创建
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
         }
     }
 
-    @Override
-    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
-        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus())) {
+    private void fillContext(CloudConditionCheckerContext context) {
+        SceneManageQueryOptions options = new SceneManageQueryOptions();
+        options.setIncludeBusinessActivity(true);
+        options.setIncludeScript(true);
+        SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(context.getSceneId(), options);
+        context.setSceneData(sceneData);
+
+        SceneTaskStartInput input = new SceneTaskStartInput();
+        input.setOperateId(CloudPluginUtils.getUserId());
+        context.setInput(input);
+    }
+
+    private void doCheck(CloudConditionCheckerContext context) {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
+        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus()) || pressureRunning(sceneData.getId())) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
         }
+    }
+
+    private boolean pressureRunning(Long sceneId) {
+        return redisClientUtils.hmget(EngineResourceChecker.getResourceMappingCacheKey(), String.valueOf(sceneId))
+            != null;
     }
 
     @Override

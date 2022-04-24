@@ -17,16 +17,12 @@ public class CompositeWebStartConditionChecker implements InitializingBean {
     private List<WebStartConditionChecker> checkerList;
 
     // 此处特殊使用
-    public List<CheckResult> preCheck(Long sceneId) {
+    public List<CheckResult> doCheck(WebConditionCheckerContext context) {
         List<CheckResult> resultList = new ArrayList<>(checkerList.size());
         checkerList.forEach(checker -> {
-            resultList.add(checker.preCheck(sceneId));
+            resultList.add(checker.check(context));
         });
         return resultList;
-    }
-
-    public void runningCheck(SceneManageWrapperDTO sceneData) {
-        checkerList.forEach(checker -> checker.runningCheck(sceneData));
     }
 
     @Override

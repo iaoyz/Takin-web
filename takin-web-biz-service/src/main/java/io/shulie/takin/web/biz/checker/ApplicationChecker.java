@@ -3,7 +3,6 @@ package io.shulie.takin.web.biz.checker;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -15,9 +14,6 @@ import com.pamirs.takin.common.constant.Constants;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneBusinessActivityRefDTO;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import com.pamirs.takin.entity.domain.entity.TBaseConfig;
-import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
-import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
-import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.web.biz.service.BaseConfigService;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
@@ -29,7 +25,6 @@ import io.shulie.takin.web.data.dao.SceneExcludedApplicationDAO;
 import io.shulie.takin.web.data.dao.application.ApplicationDAO;
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.shulie.takin.web.data.util.ConfigServerHelper;
-import io.shulie.takin.web.diff.api.scenemanage.SceneManageApi;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -51,40 +46,18 @@ public class ApplicationChecker implements WebStartConditionChecker {
     @Resource
     private SceneTaskService sceneTaskService;
 
-    @Resource
-    private SceneManageApi sceneManageApi;
-
     @Override
-    public CheckResult preCheck(Long sceneId) {
-        SceneManageIdReq req = new SceneManageIdReq();
-        req.setId(sceneId);
+    public CheckResult check(WebConditionCheckerContext context) {
         try {
-            ResponseResult<SceneManageWrapperResp> resp = sceneManageApi.getSceneDetail(req);
-            if (!resp.getSuccess()) {
-                ResponseResult.ErrorInfo errorInfo = resp.getError();
-                String errorMsg = Objects.isNull(errorInfo) ? "" : errorInfo.getMsg();
-                log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId, errorMsg);
-                throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
-                    getCloudMessage(errorInfo.getCode(), errorInfo.getMsg()));
-            }
-            String jsonString = JsonHelper.bean2Json(resp.getData());
-            SceneManageWrapperDTO sceneData = JsonHelper.json2Bean(jsonString, SceneManageWrapperDTO.class);
-            if (null == sceneData) {
-                log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId,
-                    "sceneData is null! jsonString=" + jsonString);
-                throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
-                    "场景，id=" + sceneId + " 信息为空");
-            }
-            runningCheck(sceneData);
+            doCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
         }
     }
 
-    @Override
-    public void runningCheck(SceneManageWrapperDTO sceneData) {
-        this.checkBusinessActivity(sceneData);
+    private void doCheck(WebConditionCheckerContext context) {
+        this.checkBusinessActivity(context);
     }
 
     /**
@@ -92,7 +65,8 @@ public class ApplicationChecker implements WebStartConditionChecker {
      *
      * @param sceneData 场景信息
      */
-    private void checkBusinessActivity(SceneManageWrapperDTO sceneData) {
+    private void checkBusinessActivity(WebConditionCheckerContext context) {
+        SceneManageWrapperDTO sceneData = context.getSceneData();
         List<SceneBusinessActivityRefDTO> activityConfig = sceneData.getBusinessActivityConfig();
         //需求要求，业务验证异常需要详细输出
         StringBuilder errorMsg = new StringBuilder();

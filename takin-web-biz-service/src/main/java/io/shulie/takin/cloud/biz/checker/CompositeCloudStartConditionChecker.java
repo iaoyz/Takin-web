@@ -5,8 +5,6 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
-import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
-import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import org.springframework.beans.factory.InitializingBean;
@@ -18,16 +16,12 @@ public class CompositeCloudStartConditionChecker implements InitializingBean {
     @Resource
     private List<CloudStartConditionChecker> checkerList;
 
-    public List<CheckResult> preCheck(Long sceneId, String resourceId) throws TakinCloudException {
+    public List<CheckResult> doCheck(CloudConditionCheckerContext context) throws TakinCloudException {
         List<CheckResult> resultList = new ArrayList<>(checkerList.size());
         checkerList.forEach(checker -> {
-            resultList.add(checker.preCheck(sceneId, resourceId));
+            resultList.add(checker.check(context));
         });
         return resultList;
-    }
-
-    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
-        checkerList.forEach(checker -> checker.runningCheck(sceneData, input));
     }
 
     @Override

@@ -11,8 +11,6 @@ import javax.annotation.Resource;
 import com.dangdang.ddframe.job.api.ShardingContext;
 import com.dangdang.ddframe.job.api.simple.SimpleJob;
 import io.shulie.takin.cloud.biz.checker.EngineEnvChecker;
-import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
-import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.job.annotation.ElasticSchedulerJob;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -52,7 +50,7 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
     public void execute(ShardingContext shardingContext) {
         List<String> errorMessage = new ArrayList<>(2);
         try {
-            engineEnvChecker.preCheck(null);
+            engineEnvChecker.check(null);
         } catch (Exception e) {
             errorMessage.add(e.getMessage());
         }

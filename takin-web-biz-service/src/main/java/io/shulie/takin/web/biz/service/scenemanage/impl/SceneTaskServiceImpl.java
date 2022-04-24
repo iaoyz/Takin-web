@@ -52,7 +52,6 @@ import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneTaskAdjustTpsResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.web.biz.checker.CompositeWebStartConditionChecker;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.pojo.request.datasource.DataSourceTestRequest;
 import io.shulie.takin.web.biz.pojo.request.leakcheck.LeakSqlBatchRefsRequest;
@@ -166,9 +165,6 @@ public class SceneTaskServiceImpl implements SceneTaskService {
      */
     @Value("${takin.inner.pre:0}")
     private int isInnerPre;
-
-    @Resource
-    private CompositeWebStartConditionChecker compositeChecker;
 
     @Override
     public void preStop(Long sceneId) {
@@ -536,7 +532,6 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     }
 
     private void preCheckStart(SceneManageWrapperDTO sceneData) {
-        compositeChecker.runningCheck(sceneData);
     }
 
     /**

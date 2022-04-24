@@ -29,4 +29,10 @@ public class PressureTaskDAOImpl implements PressureTaskDAO {
     public void updateById(PressureTaskEntity entity) {
         pressureTaskMapper.updateById(entity);
     }
+
+    @Override
+    public void updateByReportId(PressureTaskEntity entity) {
+        pressureTaskMapper.update(entity,
+            Wrappers.lambdaQuery(PressureTaskEntity.class).eq(PressureTaskEntity::getResourceId, entity.getResourceId()));
+    }
 }

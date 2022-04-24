@@ -24,13 +24,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.google.common.collect.Lists;
 import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
-import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivityDetail;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneFileReadPosition;
 import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
-import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
+import io.shulie.takin.adapter.api.model.common.RuleBean;
+import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
-import io.shulie.takin.cloud.biz.checker.CompositeCloudStartConditionChecker;
 import io.shulie.takin.cloud.biz.collector.collector.CollectorService;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
@@ -46,7 +45,6 @@ import io.shulie.takin.cloud.biz.input.scenemanage.SceneTryRunInput;
 import io.shulie.takin.cloud.biz.output.report.SceneInspectTaskStartOutput;
 import io.shulie.takin.cloud.biz.output.report.SceneInspectTaskStopOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
-import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneActionOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneJobStateOutput;
@@ -59,10 +57,9 @@ import io.shulie.takin.cloud.biz.output.scenetask.SceneTryRunTaskStatusOutput;
 import io.shulie.takin.cloud.biz.service.engine.EngineService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
-import io.shulie.takin.cloud.biz.service.scene.SceneTaskEventService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
+import io.shulie.takin.cloud.biz.service.scene.SceneTaskEventService;
 import io.shulie.takin.cloud.biz.service.schedule.FileSliceService;
-import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
@@ -74,26 +71,18 @@ import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
-import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
-import io.shulie.takin.cloud.common.enums.ThreadGroupTypeEnum;
-import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneStopReasonEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
-import io.shulie.takin.cloud.common.utils.CommonUtil;
 import io.shulie.takin.cloud.common.utils.EnginePluginUtils;
 import io.shulie.takin.cloud.common.utils.FileSliceByPodNum.StartEndPair;
-import io.shulie.takin.cloud.common.utils.JsonPathUtil;
 import io.shulie.takin.cloud.common.utils.JsonUtil;
-import io.shulie.takin.cloud.data.dao.report.ReportBusinessActivityDetailDao;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
-import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneBigFileSliceEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
@@ -103,21 +92,12 @@ import io.shulie.takin.cloud.data.result.scenemanage.SceneManageListResult;
 import io.shulie.takin.cloud.ext.api.AssetExtApi;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
 import io.shulie.takin.cloud.ext.content.asset.AssetBalanceExt;
-import io.shulie.takin.cloud.ext.content.asset.AssetBillExt;
-import io.shulie.takin.cloud.ext.content.asset.AssetInvoiceExt;
 import io.shulie.takin.cloud.ext.content.enums.AssetTypeEnum;
-import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
-import io.shulie.takin.cloud.ext.content.response.Response;
-import io.shulie.takin.cloud.ext.content.script.ScriptNode;
-import io.shulie.takin.adapter.api.model.common.RuleBean;
-import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.plugin.framework.core.PluginManager;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -162,20 +142,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     private RedisTemplate<String, String> redisTemplate;
     @Resource
     private SceneTaskEventService sceneTaskEventService;
-    @Resource
-    private ReportBusinessActivityDetailDao reportBusinessActivityDetailDao;
-    @Resource
-    private PressureTaskDAO pressureTaskDAO;
-    @Resource
-    private CompositeCloudStartConditionChecker compositeChecker;
-    @Resource
-    private CloudResourceApi cloudResourceApi;
-
-    /**
-     * 初始化报告开始时间偏移时间
-     */
-    @Value("${init.report.startTime.Offset:10}")
-    private Long offsetStartTime;
 
     private static final Long KB = 1024L;
     private static final Long MB = KB * 1024;
@@ -202,7 +168,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
             sceneData.setEnginePlugins(input.getEnginePlugins()
                 .stream()
                 .filter(Objects::nonNull)
-                .map(plugin -> SceneManageWrapperOutput.EnginePluginRefOutput.create(plugin.getPluginId(), plugin.getPluginVersion()))
+                .map(plugin -> SceneManageWrapperOutput.EnginePluginRefOutput.create(plugin.getPluginId(),
+                    plugin.getPluginVersion()))
                 .collect(Collectors.toList()));
         } else {
             sceneData.setEnginePlugins(null);
@@ -232,7 +199,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
                 JSONObject features = JsonUtil.parse(sceneManageEntity.getFeatures());
                 if (null != features) {
                     Long scriptId = features.getLong("scriptId");
-                    stringRedisTemplate.opsForHash().put(String.format(SceneStartCheckConstants.SCENE_KEY, input.getSceneId()),
+                    stringRedisTemplate.opsForHash().put(
+                        String.format(SceneStartCheckConstants.SCENE_KEY, input.getSceneId()),
                         SceneStartCheckConstants.SCRIPT_ID_KEY, String.valueOf(scriptId));
                 }
             }
@@ -243,10 +211,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         //启动前置校验
         preCheckStart(sceneData, input);
 
-        //创建临时报表数据
-        PressureTaskEntity pressureTask = initPressureTask(sceneData, input);
-        //创建临时报表数据
-        ReportEntity report = initReport(sceneData, input, pressureTask);
+        ReportResult report = cloudReportService.getReportBaseInfo(input.getCloudResourceId());
 
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());
@@ -257,9 +222,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
             sceneAction.setMsg(Arrays.asList(jb.getString(ReportConstants.PRESSURE_MSG).split(",")));
             return sceneAction;
         }
-        //流量冻结
-        frozenAccountFlow(input, report, sceneData);
-
         //设置缓存，用以检查压测场景启动状态
         taskStatusCache.cacheStatus(input.getSceneId(), report.getId(), SceneRunTaskStatusEnum.STARTING);
 
@@ -436,7 +398,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         Long sceneManageId;
         CloudPluginUtils.fillUserData(input);
         //首先根据脚本实例id构建压测场景名称
-        String pressureTestSceneName = SceneManageConstant.SCENE_MANAGER_FLOW_DEBUG + input.getTenantId() + "_" + input.getScriptDeployId();
+        String pressureTestSceneName = SceneManageConstant.SCENE_MANAGER_FLOW_DEBUG + input.getTenantId() + "_"
+            + input.getScriptDeployId();
 
         //根据场景名称查询是否已经存在场景
         SceneManageListResult sceneManageResult = sceneManageDAO.queryBySceneName(pressureTestSceneName);
@@ -494,7 +457,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         SceneInspectTaskStartOutput startOutput = new SceneInspectTaskStartOutput();
         Long sceneManageId = null;
         //首先根据脚本实例id构建压测场景名称
-        String pressureTestSceneName = SceneManageConstant.SCENE_MANAGER_INSPECT + input.getTenantId() + "_" + input.getScriptId();
+        String pressureTestSceneName = SceneManageConstant.SCENE_MANAGER_INSPECT + input.getTenantId() + "_"
+            + input.getScriptId();
 
         //根据场景名称查询是否已经存在场景
         SceneManageListResult sceneManageResult = sceneManageDAO.queryBySceneName(pressureTestSceneName);
@@ -568,11 +532,13 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
             }
 
             String jobName = ScheduleConstants.getScheduleName(report.getSceneId(), reportId, report.getTenantId());
-            String engineInstanceRedisKey = PressureInstanceRedisKey.getEngineInstanceRedisKey(report.getSceneId(), reportId, report.getTenantId());
+            String engineInstanceRedisKey = PressureInstanceRedisKey.getEngineInstanceRedisKey(report.getSceneId(),
+                reportId, report.getTenantId());
             engineService.deleteJob(jobName, engineInstanceRedisKey);
 
             // 触发强制停止
-            if (isNeedFinishReport && ReportConstants.INIT_STATUS == (report.getStatus()) && null != report.getStartTime()) {
+            if (isNeedFinishReport && ReportConstants.INIT_STATUS == (report.getStatus())
+                && null != report.getStartTime()) {
                 ReportUpdateParam param = new ReportUpdateParam();
                 param.setId(reportId);
                 param.setStatus(ReportConstants.RUN_STATUS);
@@ -687,7 +653,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
             }
             output.setTaskStatus(statusEnum.getCode());
             if (statusEnum.equals(SceneRunTaskStatusEnum.FAILED)) {
-                Object errorObj = stringRedisTemplate.opsForHash().get(key, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR);
+                Object errorObj = stringRedisTemplate.opsForHash().get(key,
+                    SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR);
                 if (Objects.nonNull(errorObj)) {
                     output.setErrorMsg(errorObj.toString());
                 }
@@ -724,7 +691,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
             state.setMsg("未获取到相应压测报告");
             return state;
         }
-        String jobName = ScheduleConstants.getScheduleName(sceneId, Long.parseLong(reportId), sceneManage.getTenantId());
+        String jobName = ScheduleConstants.getScheduleName(sceneId, Long.parseLong(reportId),
+            sceneManage.getTenantId());
         EngineCallExtApi engineCallExtApi = enginePluginUtils.getEngineCallExtApi();
         String status = engineCallExtApi.getJobStatus(jobName);
         state.setState(status);
@@ -743,146 +711,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
      * 场景启动前置校验
      */
     private void preCheckStart(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
-        compositeChecker.runningCheck(sceneData, input);
-    }
-
-    /**
-     * 初始化报表
-     *
-     * @return -
-     */
-    public ReportEntity initReport(SceneManageWrapperOutput scene, SceneTaskStartInput input, PressureTaskEntity pressureTask) {
-        ReportEntity report = new ReportEntity();
-        report.setSceneId(scene.getId());
-        report.setTaskId(pressureTask.getId());
-        report.setResourceId(pressureTask.getResourceId());
-        report.setConcurrent(scene.getConcurrenceNum());
-        report.setStatus(ReportConstants.INIT_STATUS);
-        // 初始化
-        report.setEnvCode(scene.getEnvCode());
-        report.setTenantId(scene.getTenantId());
-        report.setEnvCode(scene.getEnvCode());
-        report.setOperateId(input.getOperateId());
-        // 解决开始时间 偏移10s
-        report.setStartTime(new Date(System.currentTimeMillis() + offsetStartTime * 1000));
-        //负责人默认启动人
-        report.setUserId(CloudPluginUtils.getUserId());
-        report.setSceneName(scene.getPressureTestSceneName());
-
-        if (StringUtils.isNotBlank(scene.getFeatures())) {
-            JSONObject features = JsonUtil.parse(scene.getFeatures());
-            if (null != features && features.containsKey(SceneManageConstant.FEATURES_SCRIPT_ID)) {
-                report.setScriptId(features.getLong(SceneManageConstant.FEATURES_SCRIPT_ID));
-            }
-        }
-        Integer sumTps = CommonUtil.sum(scene.getBusinessActivityConfig(), SceneBusinessActivityRefOutput::getTargetTPS);
-
-        report.setTps(sumTps);
-        report.setPressureType(scene.getPressureType());
-        report.setType(scene.getType());
-        if (StringUtils.isNotBlank(scene.getScriptAnalysisResult())) {
-            report.setScriptNodeTree(JsonPathUtil.deleteNodes(scene.getScriptAnalysisResult()).jsonString());
-        }
-        reportMapper.insert(report);
-
-        //标记场景
-        // 待启动,压测失败，停止压测（压测工作已停止） 强制停止 ---> 启动中
-        Boolean updateFlag = cloudSceneManageService.updateSceneLifeCycle(
-            UpdateStatusBean.build(scene.getId(), report.getId(), scene.getTenantId())
-                .checkEnum(SceneManageStatusEnum.WAIT, SceneManageStatusEnum.FAILED, SceneManageStatusEnum.STOP, SceneManageStatusEnum.FORCE_STOP)
-                .updateEnum(SceneManageStatusEnum.STARTING).build());
-        if (!updateFlag) {
-            //失败状态 获取最新的报告
-            return reportMapper.selectById(report.getId());
-        }
-        Long reportId = report.getId();
-        //初始化业务活动
-        scene.getBusinessActivityConfig().forEach(activity -> {
-            ReportBusinessActivityDetail reportBusinessActivityDetail = new ReportBusinessActivityDetail();
-            reportBusinessActivityDetail.setReportId(reportId);
-            reportBusinessActivityDetail.setSceneId(scene.getId());
-            reportBusinessActivityDetail.setBusinessActivityId(activity.getBusinessActivityId());
-            reportBusinessActivityDetail.setBusinessActivityName(activity.getBusinessActivityName());
-            reportBusinessActivityDetail.setApplicationIds(activity.getApplicationIds());
-            reportBusinessActivityDetail.setBindRef(activity.getBindRef());
-            if (null != activity.getTargetTPS()) {
-                reportBusinessActivityDetail.setTargetTps(new BigDecimal(activity.getTargetTPS()));
-            }
-            if (null != activity.getTargetRT()) {
-                reportBusinessActivityDetail.setTargetRt(new BigDecimal(activity.getTargetRT()));
-            }
-            reportBusinessActivityDetail.setTargetSuccessRate(activity.getTargetSuccessRate());
-            reportBusinessActivityDetail.setTargetSa(activity.getTargetSA());
-            reportBusinessActivityDetailDao.insert(reportBusinessActivityDetail);
-        });
-        saveNonTargetNode(scene.getId(), reportId, report.getScriptNodeTree(), scene.getBusinessActivityConfig());
-        log.info("启动[{}]场景测试，初始化报表数据,报表ID: {}", scene.getId(), report.getId());
-        return report;
-    }
-
-    /**
-     * 把节点树中的测试计划、线程组、控制器当作业务活动插入到报告关联的业务活动中
-     *
-     * @param sceneId                场景ID
-     * @param reportId               报告ID
-     * @param scriptNodeTree         节点树
-     * @param businessActivityConfig 场景业务活动信息
-     */
-    private void saveNonTargetNode(Long sceneId, Long reportId, String scriptNodeTree,
-        List<SceneBusinessActivityRefOutput> businessActivityConfig) {
-        if (StringUtils.isBlank(scriptNodeTree) || CollectionUtils.isEmpty(businessActivityConfig)) {
-            return;
-        }
-        List<String> bindRefList = businessActivityConfig.stream().filter(Objects::nonNull)
-            .map(SceneBusinessActivityRefOutput::getBindRef)
-            .collect(Collectors.toList());
-        List<ReportBusinessActivityDetail> resultList = new ArrayList<>();
-        List<ScriptNode> testPlanNodeList = JsonPathUtil.getCurrentNodeByType(scriptNodeTree,
-            NodeTypeEnum.TEST_PLAN.name());
-        if (CollectionUtils.isNotEmpty(testPlanNodeList) && testPlanNodeList.size() == 1) {
-            ScriptNode scriptNode = testPlanNodeList.get(0);
-            fillNonTargetActivityDetail(sceneId, reportId, scriptNode, resultList);
-        }
-        List<ScriptNode> threadGroupNodes = JsonPathUtil.getCurrentNodeByType(scriptNodeTree,
-            NodeTypeEnum.THREAD_GROUP.name());
-        if (CollectionUtils.isNotEmpty(threadGroupNodes)) {
-            threadGroupNodes.stream().filter(Objects::nonNull)
-                .forEach(node -> fillNonTargetActivityDetail(sceneId, reportId, node, resultList));
-        }
-        List<ScriptNode> controllerNodes = JsonPathUtil.getCurrentNodeByType(scriptNodeTree,
-            NodeTypeEnum.CONTROLLER.name());
-        if (CollectionUtils.isNotEmpty(controllerNodes)) {
-            controllerNodes.stream().filter(Objects::nonNull)
-                .filter(node -> !bindRefList.contains(node.getXpathMd5()))
-                .forEach(node -> fillNonTargetActivityDetail(sceneId, reportId, node, resultList));
-        }
-        if (CollectionUtils.isNotEmpty(resultList)) {
-            resultList.stream().filter(Objects::nonNull)
-                .forEach(detail -> reportBusinessActivityDetailDao.insert(detail));
-        }
-
-    }
-
-    /**
-     * 计算子节点的目标值
-     *
-     * @param sceneId    场景ID
-     * @param reportId   报告ID
-     * @param scriptNode 目标节点
-     * @param detailList 结果
-     */
-    private void fillNonTargetActivityDetail(Long sceneId, Long reportId, ScriptNode scriptNode, List<ReportBusinessActivityDetail> detailList) {
-        ReportBusinessActivityDetail detail = new ReportBusinessActivityDetail();
-        detail.setTargetTps(new BigDecimal(-1));
-        detail.setTargetRt(new BigDecimal(-1));
-        detail.setTargetSa(new BigDecimal(-1));
-        detail.setTargetSuccessRate(new BigDecimal(-1));
-        detail.setSceneId(sceneId);
-        detail.setReportId(reportId);
-        detail.setBusinessActivityId(-1L);
-        detail.setBusinessActivityName(scriptNode.getTestName());
-        detail.setBindRef(scriptNode.getXpathMd5());
-        detailList.add(detail);
     }
 
     /**
@@ -1050,12 +878,14 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     }
 
     private Boolean compareScript(long sceneId, String scriptId) {
-        Object scriptIdObj = stringRedisTemplate.opsForHash().get(String.format(SceneStartCheckConstants.SCENE_KEY, sceneId), SceneStartCheckConstants.SCRIPT_ID_KEY);
+        Object scriptIdObj = stringRedisTemplate.opsForHash().get(
+            String.format(SceneStartCheckConstants.SCENE_KEY, sceneId), SceneStartCheckConstants.SCRIPT_ID_KEY);
         return scriptIdObj != null && scriptId.equals(scriptIdObj.toString());
     }
 
     private boolean comparePod(long sceneId, int podNum) {
-        Object podObj = stringRedisTemplate.opsForHash().get(ScheduleConstants.SCHEDULE_POD_NUM, String.valueOf(sceneId));
+        Object podObj = stringRedisTemplate.opsForHash().get(ScheduleConstants.SCHEDULE_POD_NUM,
+            String.valueOf(sceneId));
         if (Objects.nonNull(podObj)) {
             int cachedPodNum = Integer.parseInt(podObj.toString());
             return cachedPodNum == podNum;
@@ -1063,7 +893,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         return false;
     }
 
-    private void comparePosition(SceneTaskStartCheckOutput output, long sceneId, String fileName, int podNum, boolean isSplit,
+    private void comparePosition(SceneTaskStartCheckOutput output, long sceneId, String fileName, int podNum,
+        boolean isSplit,
         Map<Object, Object> positionMap) {
         SceneBigFileSliceEntity sliceEntity = fileSliceService.getOneByParam(new FileSliceRequest() {{
             setSceneId(sceneId);
@@ -1164,103 +995,4 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         return position + "B";
     }
 
-    /**
-     * 冻结流量
-     *
-     * @param input     {@link SceneTaskStartInput}
-     * @param report    {@link Report}
-     * @param sceneData {@link SceneManageWrapperOutput}
-     */
-    private void frozenAccountFlow(SceneTaskStartInput input, ReportEntity report, SceneManageWrapperOutput sceneData) {
-        AssetExtApi assetExtApi = pluginManager.getExtension(AssetExtApi.class);
-        if (assetExtApi != null) {
-            //得到数据来源ID
-            Long resourceId = input.getResourceId();
-            if (AssetTypeEnum.PRESS_REPORT.getCode().equals(input.getAssetType())) {
-                resourceId = report.getId();
-            }
-            AssetInvoiceExt<List<AssetBillExt>> invoice = new AssetInvoiceExt<>();
-            invoice.setSceneId(sceneData.getId());
-            invoice.setTaskId(report.getId());
-            invoice.setResourceId(resourceId);
-            invoice.setResourceType(input.getAssetType());
-            invoice.setResourceName(input.getResourceName());
-            invoice.setOperateId(input.getOperateId());
-            invoice.setOperateName(input.getOperateName());
-            invoice.setCustomerId(report.getTenantId());
-            AssetBillExt.TimeBean pressureTestTime = new AssetBillExt.TimeBean(sceneData.getTotalTestTime(),
-                TimeUnitEnum.SECOND.getValue());
-            String testTimeCost = DataUtils.formatTime(sceneData.getTotalTestTime());
-            if (MapUtils.isNotEmpty(sceneData.getThreadGroupConfigMap())) {
-                List<AssetBillExt> bills = sceneData.getThreadGroupConfigMap().values().stream()
-                    .filter(Objects::nonNull)
-                    .map(config -> {
-                        AssetBillExt bill = new AssetBillExt();
-                        bill.setIpNum(sceneData.getIpNum());
-                        bill.setConcurrenceNum(config.getThreadNum());
-                        bill.setPressureTestTime(pressureTestTime);
-                        bill.setPressureMode(config.getMode());
-                        bill.setPressureScene(sceneData.getPressureType());
-                        bill.setPressureType(config.getType());
-                        if (null != config.getRampUp()) {
-                            AssetBillExt.TimeBean rampUp = new AssetBillExt.TimeBean(config.getRampUp().longValue(),
-                                config.getRampUpUnit());
-                            bill.setIncreasingTime(rampUp);
-                        }
-                        bill.setStep(config.getSteps());
-                        bill.setPressureTestTimeCost(testTimeCost);
-                        return bill;
-                    })
-                    .collect(Collectors.toList());
-                invoice.setData(bills);
-            } else if (null != sceneData.getConcurrenceNum()) {
-                AssetBillExt bill = new AssetBillExt();
-                bill.setIpNum(sceneData.getIpNum());
-                bill.setConcurrenceNum(sceneData.getConcurrenceNum());
-                bill.setPressureTestTime(pressureTestTime);
-                bill.setPressureMode(PressureModeEnum.FIXED.getCode());
-                bill.setPressureScene(sceneData.getPressureType());
-                bill.setPressureType(ThreadGroupTypeEnum.CONCURRENCY.getCode());
-                bill.setPressureTestTimeCost(DataUtils.formatTime(sceneData.getTotalTestTime()));
-                invoice.setData(Lists.newArrayList(bill));
-            }
-            try {
-                Response<String> res = assetExtApi.lock(invoice);
-                if (null != res && res.isSuccess() && StringUtils.isNotBlank(res.getData())) {
-                    ReportUpdateParam rp = new ReportUpdateParam();
-                    rp.setId(report.getId());
-                    JSONObject features = JsonUtil.parse(report.getFeatures());
-                    if (null == features) {
-                        features = new JSONObject();
-                    }
-                    features.put("lockId", res.getData());
-                    reportDao.updateReport(rp);
-                } else {
-                    log.error("流量冻结失败");
-                }
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                throw e;
-            }
-        }
-    }
-
-    private PressureTaskEntity initPressureTask(SceneManageWrapperOutput scene, SceneTaskStartInput input) {
-        PressureTaskEntity entity = new PressureTaskEntity();
-        entity.setSceneId(scene.getId());
-        entity.setResourceId(scene.getResourceId());
-        entity.setSceneName(scene.getPressureTestSceneName());
-        // 解决开始时间 偏移10s
-        entity.setStartTime(new Date(System.currentTimeMillis() + offsetStartTime * 1000));
-        entity.setEndTime(new Date());
-        entity.setStatus(PressureTaskStateEnum.CHECK_SUCCESS.ordinal());
-        entity.setGmtCreate(new Date());
-        entity.setOperateId(input.getOperateId());
-        entity.setUserId(WebPluginUtils.traceUserId());
-        entity.setTenantId(scene.getTenantId());
-        entity.setEnvCode(scene.getEnvCode());
-
-        pressureTaskDAO.save(entity);
-        return entity;
-    }
 }

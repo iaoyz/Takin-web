@@ -26,8 +26,9 @@ public class SceneActivityChecker implements WebStartConditionChecker {
     private SceneManageApi sceneManageApi;
 
     @Override
-    public CheckResult preCheck(Long sceneId) {
+    public CheckResult check(WebConditionCheckerContext context) {
         SceneManageIdReq req = new SceneManageIdReq();
+        Long sceneId = context.getSceneId();
         req.setId(sceneId);
         try {
             ResponseResult<SceneManageWrapperResp> resp = sceneManageApi.getSceneDetail(req);
@@ -46,15 +47,16 @@ public class SceneActivityChecker implements WebStartConditionChecker {
                 throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
                     "场景，id=" + sceneId + " 信息为空");
             }
-            runningCheck(sceneData);
+            context.setSceneData(sceneData);
+            doCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
         }
     }
 
-    @Override
-    public void runningCheck(SceneManageWrapperDTO sceneData) {
+    private void doCheck(WebConditionCheckerContext context) {
+        SceneManageWrapperDTO sceneData = context.getSceneData();
         //检查场景是否存可以开启启压测
         List<SceneBusinessActivityRefDTO> sceneBusinessActivityList = sceneData.getBusinessActivityConfig();
         if (CollectionUtils.isEmpty(sceneBusinessActivityList)) {

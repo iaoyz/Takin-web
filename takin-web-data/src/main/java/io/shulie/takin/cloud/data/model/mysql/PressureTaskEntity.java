@@ -28,6 +28,9 @@ public class PressureTaskEntity {
     @TableField("pressure_task_id")
     private Long pressureTaskId;
 
+    @TableField("report_id")
+    private Long reportId;
+
     /**
      * 流量消耗
      */

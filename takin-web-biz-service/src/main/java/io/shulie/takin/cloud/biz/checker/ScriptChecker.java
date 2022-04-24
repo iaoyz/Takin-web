@@ -13,14 +13,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 
 import io.shulie.takin.adapter.api.model.request.check.ScriptCheckRequest.FileInfo;
-import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.utils.security.MD5Utils;
@@ -41,19 +38,14 @@ public class ScriptChecker implements CloudStartConditionChecker {
     private EnginePluginFilesService enginePluginFilesService;
 
     @Resource
-    private CloudSceneManageService cloudSceneManageService;
-
-    @Resource
     private ScriptManageService scriptManageService;
 
     @Override
-    public CheckResult preCheck(Long sceneId, String resourceId) throws TakinCloudException {
+    public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
         try {
-            SceneManageQueryOptions options = new SceneManageQueryOptions();
-            options.setIncludeScript(true);
-            SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
             filePlugins(sceneData);
-            runningCheck(sceneData, null);
+            doCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
@@ -72,8 +64,8 @@ public class ScriptChecker implements CloudStartConditionChecker {
         }
     }
 
-    @Override
-    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
+    private void doCheck(CloudConditionCheckerContext context) {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
         //检测脚本文件是否有变更
         checkModify(sceneData);
         // 校验是否与场景同步了
@@ -166,7 +158,7 @@ public class ScriptChecker implements CloudStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 2;
+        return 1;
     }
 
     public enum FileTypeEnum {
