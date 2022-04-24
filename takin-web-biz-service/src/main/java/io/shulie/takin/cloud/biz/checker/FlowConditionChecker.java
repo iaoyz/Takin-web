@@ -11,6 +11,7 @@ import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.cloud.ext.api.AssetExtApi;
 import io.shulie.takin.cloud.ext.content.asset.AccountInfoExt;
 import io.shulie.takin.plugin.framework.core.PluginManager;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -23,11 +24,16 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
     private CloudSceneManageService cloudSceneManageService;
 
     @Override
-    public void preCheck(Long sceneId) throws TakinCloudException {
-        SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
-        SceneTaskStartInput input = new SceneTaskStartInput();
-        input.setOperateId(CloudPluginUtils.getUserId());
-        runningCheck(sceneData, input);
+    public CheckResult preCheck(Long sceneId, String resourceId) throws TakinCloudException {
+        try {
+            SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
+            SceneTaskStartInput input = new SceneTaskStartInput();
+            input.setOperateId(CloudPluginUtils.getUserId());
+            runningCheck(sceneData, input);
+            return CheckResult.success(type());
+        } catch (Exception e) {
+            return CheckResult.fail(type(), e.getMessage());
+        }
     }
 
     @Override

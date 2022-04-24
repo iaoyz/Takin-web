@@ -6,10 +6,6 @@ public enum PressureTaskStateEnum {
      */
     CHECK_SUCCESS,
     /**
-     * 资源锁定中
-     */
-    RESOURCES_LOCKING,
-    /**
      * 启动中
      */
     STARTING,

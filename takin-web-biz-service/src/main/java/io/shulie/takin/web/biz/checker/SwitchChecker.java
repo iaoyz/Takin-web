@@ -16,8 +16,13 @@ public class SwitchChecker implements WebStartConditionChecker {
     private ApplicationService applicationService;
 
     @Override
-    public void preCheck(Long sceneId) {
-        runningCheck(null);
+    public CheckResult preCheck(Long sceneId) {
+        try {
+            runningCheck(null);
+            return CheckResult.success(type());
+        } catch (Exception e) {
+            return CheckResult.fail(type(), e.getMessage());
+        }
     }
 
     @Override

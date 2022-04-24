@@ -24,6 +24,7 @@ import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.utils.security.MD5Utils;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDetailResponse;
 import io.shulie.takin.web.biz.service.scriptmanage.ScriptManageService;
@@ -46,12 +47,17 @@ public class ScriptChecker implements CloudStartConditionChecker {
     private ScriptManageService scriptManageService;
 
     @Override
-    public void preCheck(Long sceneId) throws TakinCloudException {
-        SceneManageQueryOptions options = new SceneManageQueryOptions();
-        options.setIncludeScript(true);
-        SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
-        filePlugins(sceneData);
-        runningCheck(sceneData, null);
+    public CheckResult preCheck(Long sceneId, String resourceId) throws TakinCloudException {
+        try {
+            SceneManageQueryOptions options = new SceneManageQueryOptions();
+            options.setIncludeScript(true);
+            SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
+            filePlugins(sceneData);
+            runningCheck(sceneData, null);
+            return CheckResult.success(type());
+        } catch (Exception e) {
+            return CheckResult.fail(type(), e.getMessage());
+        }
     }
 
     private void filePlugins(SceneManageWrapperOutput sceneData) {
@@ -125,7 +131,8 @@ public class ScriptChecker implements CloudStartConditionChecker {
     private void checkSync(SceneManageWrapperOutput sceneData) {
         String disabledKey = "DISABLED";
         String featureString = sceneData.getFeatures();
-        Map<String, Object> feature = JSONObject.parseObject(featureString, new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> feature = JSONObject.parseObject(featureString,
+            new TypeReference<Map<String, Object>>() {});
         if (feature.containsKey(disabledKey)) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR,
                 "场景【" + sceneData.getId() + "】对应的业务流程发生变更，未能自动匹配，请手动编辑后启动压测");

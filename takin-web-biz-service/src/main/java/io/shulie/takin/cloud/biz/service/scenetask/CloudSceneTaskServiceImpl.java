@@ -29,8 +29,6 @@ import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneFileReadPos
 import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
-import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
-import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.checker.CompositeCloudStartConditionChecker;
 import io.shulie.takin.cloud.biz.collector.collector.CollectorService;
@@ -107,7 +105,6 @@ import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
 import io.shulie.takin.cloud.ext.content.asset.AssetBalanceExt;
 import io.shulie.takin.cloud.ext.content.asset.AssetBillExt;
 import io.shulie.takin.cloud.ext.content.asset.AssetInvoiceExt;
-import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.cloud.ext.content.enums.AssetTypeEnum;
 import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.response.Response;
@@ -248,8 +245,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
 
         //创建临时报表数据
         PressureTaskEntity pressureTask = initPressureTask(sceneData, input);
-        // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
-        lockResource(sceneData, pressureTask);
         //创建临时报表数据
         ReportEntity report = initReport(sceneData, input, pressureTask);
 
@@ -1267,22 +1262,5 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
 
         pressureTaskDAO.save(entity);
         return entity;
-    }
-
-    private void lockResource(SceneManageWrapperOutput sceneData, PressureTaskEntity pressureTask) {
-        StrategyConfigExt strategy = sceneData.getStrategy();
-        ResourceLockRequest request = new ResourceLockRequest();
-        request.setCpu(strategy.getCpuNum());
-        request.setMemory(strategy.getMemorySize());
-        request.setPod(sceneData.getIpNum());
-        ResourceLockResponse response = cloudResourceApi.lockResource(request);
-        pressureTask.setResourceId(response.getResourceId());
-
-        PressureTaskEntity tmp = new PressureTaskEntity();
-        tmp.setId(pressureTask.getId());
-        tmp.setStatus(PressureTaskStateEnum.RESOURCES_LOCKING.ordinal());
-        tmp.setResourceId(pressureTask.getResourceId());
-        tmp.setGmtUpdate(new Date());
-        pressureTaskDAO.updateById(tmp);
     }
 }

@@ -7,6 +7,7 @@ import io.shulie.takin.adapter.api.model.request.check.EnvCheckRequest;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,8 +17,13 @@ public class EngineEnvChecker implements CloudStartConditionChecker {
     private CloudCheckApi cloudCheckApi;
 
     @Override
-    public void preCheck(Long sceneId) throws TakinCloudException {
-        cloudCheckApi.checkEnv(new EnvCheckRequest());
+    public CheckResult preCheck(Long sceneId, String resourceId) throws TakinCloudException {
+        try {
+            cloudCheckApi.checkEnv(new EnvCheckRequest());
+            return CheckResult.success(type());
+        } catch (Exception e) {
+            return CheckResult.fail(type(), e.getMessage());
+        }
     }
 
     @Override
