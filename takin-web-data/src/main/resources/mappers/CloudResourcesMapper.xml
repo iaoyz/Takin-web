@@ -5,13 +5,7 @@
         <result column="status" jdbcType="INTEGER" javaType="java.lang.Integer" property="status"/>
         <result column="exception_msg" jdbcType="VARCHAR" javaType="java.lang.String" property="errorMessage"/>
     </resultMap>
-    <select id="getResourceStatus" resultMap="BaseResultMap">
+    <select id="getResourceStatus" resultType="map">
         SELECT `status`,exception_msg FROM t_pressure_task WHERE resource_id = #{resourceId} AND pressure_task_id = #{taskId}
-    </select>
-    <select id="getResourceStatus_" resultType="map">
-        SELECT `status`,exception_msg FROM t_pressure_task WHERE resource_id = #{resourceId} AND pressure_task_id = #{taskId}
-    </select>
-    <select id="getResourceStatus__" resultType="map">
-        SELECT `status`,exception_msg FROM t_pressure_task WHERE resource_id = '1' AND pressure_task_id = 1
     </select>
 </mapper>
