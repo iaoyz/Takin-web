@@ -22,7 +22,7 @@ import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.collector.EventMetrics;
 import io.shulie.takin.cloud.common.bean.collector.ResponseMetrics;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.constants.CollectorConstants;
 import io.shulie.takin.cloud.common.constants.NoLengthBlockingQueue;
@@ -188,7 +188,7 @@ public class CollectorService extends AbstractIndicators {
                         // 获取压测时长
                         log.info("本次压测{}-{}-{}:记录超时自动检修时间-{}", sceneId, reportId, tenantId, metric.getTimestamp());
                         SceneManageWrapperOutput wrapperDTO = cloudSceneManageService.getSceneManage(sceneId,
-                            new SceneManageQueryOpitons());
+                            new SceneManageQueryOptions());
                         setForceCloseTime(forceCloseTime(taskKey), metric.getTimestamp(),
                             wrapperDTO.getPressureTestSecond());
                     }

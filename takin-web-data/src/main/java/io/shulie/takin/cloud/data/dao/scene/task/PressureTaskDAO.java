@@ -8,5 +8,5 @@ public interface PressureTaskDAO {
 
     void updateResourceAssociation(String resourceId, Long pressureTaskId);
 
-    void updateLockStatusAndResourceId(Long id, String resourceId);
+    void updateById(PressureTaskEntity entity);
 }

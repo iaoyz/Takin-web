@@ -237,4 +237,10 @@ public class SceneTaskController {
 
         return null;
     }
+
+    @GetMapping("preCheck")
+    @ApiOperation("前置校验")
+    public ResponseResult<Object> preCheck(@RequestParam("sceneId") Long sceneId) {
+        return ResponseResult.success(sceneTaskService.preCheck(sceneId));
+    }
 }

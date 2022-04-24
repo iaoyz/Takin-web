@@ -28,7 +28,7 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.sla.SlaService;
 import io.shulie.takin.cloud.biz.utils.SlaUtil;
 import io.shulie.takin.cloud.common.bean.collector.SendMetricsEvent;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.sla.AchieveModel;
 import io.shulie.takin.cloud.common.constants.Constants;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
@@ -342,7 +342,7 @@ public class SlaServiceImpl implements SlaService {
         if (object != null) {
             return JSON.parseObject(object, SceneManageWrapperOutput.class);
         }
-        SceneManageQueryOpitons options = new SceneManageQueryOpitons();
+        SceneManageQueryOptions options = new SceneManageQueryOptions();
         options.setIncludeBusinessActivity(true);
         options.setIncludeSLA(true);
         SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(sceneId, options);

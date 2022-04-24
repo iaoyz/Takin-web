@@ -18,22 +18,12 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class CloudApiAspect {
 
-    @Pointcut("execution(public * io.shulie.takin.web.diff.cloud.impl..*.*(..))")
-    private void cloudDiff() {
+    @Pointcut("execution(public * io.shulie.takin.adapter.cloud.impl.remote..*.*(..))")
+    private void cloudSdk() {
 
     }
 
-    @Pointcut("execution(public * io.shulie.takin.adapter.cloud.impl.common.*.*(..))")
-    private void sdkCommon() {
-
-    }
-
-    @Pointcut("execution(public * io.shulie.takin.adapter.cloud.impl.scene.task.*.*(..))")
-    private void sdkTask() {
-
-    }
-
-    @Before("cloudDiff() || sdkCommon() || sdkTask()")
+    @Before("cloudSdk()")
     public void doBefore(JoinPoint joinPoint) {
         Object[] params = joinPoint.getArgs();
         if (params != null && params.length == 1) {

@@ -52,7 +52,7 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
     public void execute(ShardingContext shardingContext) {
         List<String> errorMessage = new ArrayList<>(2);
         try {
-            engineEnvChecker.check(new SceneManageWrapperOutput(), new SceneTaskStartInput());
+            engineEnvChecker.preCheck(null);
         } catch (Exception e) {
             errorMessage.add(e.getMessage());
         }

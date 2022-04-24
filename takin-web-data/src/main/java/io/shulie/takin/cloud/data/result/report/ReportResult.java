@@ -124,4 +124,19 @@ public class ReportResult extends ContextExt {
     private Long operateId;
 
     private String operateName;
+
+    /**
+     * 任务Id
+     */
+    private Long taskId;
+
+    /**
+     * 资源Id
+     */
+    private String resourceId;
+
+    /**
+     * 压测引擎任务Id
+     */
+    private Long pressureTaskId;
 }

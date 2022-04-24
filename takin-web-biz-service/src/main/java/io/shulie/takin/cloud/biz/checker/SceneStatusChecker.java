@@ -8,13 +8,18 @@ import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SceneStatusChecker implements PressureStartConditionChecker {
+public class SceneStatusChecker implements CloudStartConditionChecker {
 
     @Override
-    public void check(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) throws TakinCloudException {
+    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
         if (!SceneManageStatusEnum.ifFree(sceneData.getStatus())) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
         }
+    }
+
+    @Override
+    public String type() {
+        return "status";
     }
 
     @Override
