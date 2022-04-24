@@ -6,5 +6,5 @@ import io.shulie.takin.web.data.model.mysql.ActivityNodeState;
 import org.apache.ibatis.annotations.Param;
 
 public interface CloudResourcesMapper extends BaseMapper<Resource> {
-    Resource getResourceStatus(@Param("resource") Resource resource);
+    Resource getResourceStatus(Resource resource);
 }
