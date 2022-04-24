@@ -17,7 +17,7 @@ public class CloudResourcesDaoImpl implements CloudResourcesDao {
 
     @Override
     public void getResourceStatus(Resource resource) {
-        Resource statusAndErrorMessage = cloudResourcesMapper.getResourceStatus(resource);
+        Resource statusAndErrorMessage = cloudResourcesMapper.getResourceStatus(resource.getResourceId(),resource.getTaskId());
         //TODO convert status and error message
         if (null != statusAndErrorMessage) {
             resource.setStatus(statusAndErrorMessage.getStatus());
