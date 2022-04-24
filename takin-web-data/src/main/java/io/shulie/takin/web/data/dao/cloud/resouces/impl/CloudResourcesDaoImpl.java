@@ -6,6 +6,8 @@ import io.shulie.takin.web.data.mapper.mysql.CloudResourcesMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Component
 @Slf4j
 public class CloudResourcesDaoImpl implements CloudResourcesDao {
@@ -15,11 +17,17 @@ public class CloudResourcesDaoImpl implements CloudResourcesDao {
 
     @Override
     public void getResourceStatus(Resource resource) {
-        Resource statusAndErrorMessage = cloudResourcesMapper.getResourceStatus(resource);
+        Map<String, Object> statusAndErrorMessage = cloudResourcesMapper.getResourceStatus(resource);
         //TODO convert status and error message
         if (null != statusAndErrorMessage) {
-            resource.setStatus(statusAndErrorMessage.getStatus());
-            resource.setErrorMessage(statusAndErrorMessage.getErrorMessage());
+            Object status = statusAndErrorMessage.get("status");
+            if (null != status) {
+                resource.setStatus(Integer.valueOf(status.toString()));
+            }
+            Object errorMessage = statusAndErrorMessage.get("exception_msg");
+            if (null != errorMessage) {
+                resource.setErrorMessage(errorMessage.toString());
+            }
         }
     }
 }
