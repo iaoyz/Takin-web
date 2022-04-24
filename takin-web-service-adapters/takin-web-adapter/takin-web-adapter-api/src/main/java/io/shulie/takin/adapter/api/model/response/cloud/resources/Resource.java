@@ -8,7 +8,7 @@ import java.util.List;
 @Data
 public class Resource {
     @ApiModelProperty(value = "状态")
-    private Status status;
+    private Integer status;
     @ApiModelProperty(value = "压力机数")
     private int resourcesAmount;
     @ApiModelProperty(value = "初始化压力机数")
@@ -23,4 +23,8 @@ public class Resource {
     private List<CloudResource> resources;
     @ApiModelProperty(value = "异常信息")
     private String errorMessage;
+    @ApiModelProperty(value = "任务Id")
+    private int taskId;
+    @ApiModelProperty(value = "资源Id")
+    private String resourceId;
 }
