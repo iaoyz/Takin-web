@@ -1,7 +1,9 @@
 package io.shulie.takin.cloud.biz.service.schedule.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -15,18 +17,20 @@ import cn.hutool.core.bean.BeanUtil;
 import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
+import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFile;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFilePosition;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadGroupConfig;
+import io.shulie.takin.adapter.api.model.response.pressure.PressureActionResp;
 import io.shulie.takin.cloud.biz.config.AppConfig;
-import io.shulie.takin.cloud.biz.output.engine.EngineLogPtlConfigOutput;
-import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
-import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleEventService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.PressureInstanceRedisKey;
@@ -36,23 +40,24 @@ import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.utils.CommonUtil;
 import io.shulie.takin.cloud.common.utils.EnginePluginUtils;
-import io.shulie.takin.cloud.common.utils.NumberUtil;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
-import io.shulie.takin.cloud.ext.content.enginecall.PtlLogConfigExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleInitParamExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleRunRequest;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt;
+import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt.StartEndPosition;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStopRequestExt;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
+import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 /**
  * @author 莫问
@@ -87,7 +92,9 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Resource
     private AppConfig appConfig;
     @Resource
-    private EngineConfigService engineConfigService;
+    private PressureTaskApi pressureTaskApi;
+    @Resource
+    private PressureTaskDAO pressureTaskDAO;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -140,7 +147,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             memSetting = CommonUtil.getValue(appConfig.getK8sJvmSettings(), config, StrategyConfigExt::getK8sJvmSettings);
         }
         eventRequest.setMemSetting(memSetting);
-
+        // TODO：设置采样率
         //把数据放入缓存，初始化回调调度需要
         stringRedisTemplate.opsForValue().set(scheduleName, JSON.toJSONString(eventRequest));
         // 需要将 本次调度 pod数量存入redis,报告中用到
@@ -162,10 +169,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             stringRedisTemplate.opsForValue().set(
                 ScheduleConstants.INTERRUPT_POD + scheduleName,
                 Boolean.TRUE.toString(), 1, TimeUnit.DAYS);
-            if (!Boolean.parseBoolean(stringRedisTemplate.opsForValue().get(ScheduleConstants.FORCE_STOP_POD + scheduleName))) {
-                // 3分钟没有停止成功 ，将强制停止
-                stopExecutor.execute(new SceneStopThread(request));
-            }
+            // TODO: 调用cloud压测停止接口
         }
 
     }
@@ -186,20 +190,21 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .checkEnum(SceneManageStatusEnum.STARTING, SceneManageStatusEnum.FILE_SPLIT_END)
                 .updateEnum(SceneManageStatusEnum.JOB_CREATING)
                 .build());
-        EngineCallExtApi engineCallExtApi = pluginUtils.getEngineCallExtApi();
-        String msg = engineCallExtApi.buildJob(request);
-
-        if (StringUtils.isEmpty(msg)) {
+        PressureTaskStartReq req = buildStartReq(request);
+        try {
+            PressureActionResp actionResp = pressureTaskApi.start(req);
             // 是空的
-            log.info("场景{},任务{},顾客{}开始创建压测引擎Job，压测引擎job创建成功", sceneId, taskId, customerId);
+            log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
+            updateReportAssociation(startRequest, actionResp);
             // 创建job 开始监控 压力节点 启动情况 起一个线程监控  。
             // 启动检查压力节点启动线程，在允许时间内压力节点未启动完成，主动停止任务
+            // TODO:是否需要校验状态
             cloudAsyncService.checkStartedTask(request.getRequest());
-        } else {
+        } catch (Exception e) {
             // 创建失败
-            log.info("场景{},任务{},顾客{}开始创建压测引擎Job，压测引擎job创建失败", sceneId, taskId, customerId);
+            log.info("场景{},任务{},顾客{}开始启动压测，压测启动失败", sceneId, taskId, customerId);
             cloudSceneManageService.reportRecord(SceneManageStartRecordVO.build(sceneId, taskId, customerId).success(false)
-                .errorMsg("压测引擎job创建失败，失败原因：" + msg).build());
+                .errorMsg("压测启动创建失败，失败原因：" + e.getMessage()).build());
         }
     }
 
@@ -252,47 +257,57 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     }
 
-    /**
-     * 场景强制停止
-     */
-    public class SceneStopThread implements Runnable {
+    private PressureTaskStartReq buildStartReq(ScheduleRunRequest runRequest) {
+        ScheduleStartRequestExt request = runRequest.getRequest();
+        PressureTaskStartReq req = new PressureTaskStartReq();
+        req.setJvmParams(runRequest.getMemSetting());
+        req.setResourceId(request.getResourceId());
+        req.setPressureType(request.getPressureScene());
+        req.setSampling(runRequest.getTraceSampling());
 
-        private final ScheduleStopRequestExt request;
+        Map<String, ThreadGroupConfigExt> configMap = request.getThreadGroupConfigMap();
+        Map<String, ThreadGroupConfig> testMap = new HashMap<>(configMap.size());
+        configMap.forEach((key, value) -> {
+            ThreadGroupConfig config = new ThreadGroupConfig();
+            config.setType(value.getType());
+            config.setModel(value.getMode());
+            config.setThreadNum(value.getThreadNum());
+            config.setRampUp(value.getRampUp());
+            config.setRampUnit(value.getRampUpUnit());
+            config.setSteps(value.getSteps());
+            testMap.putIfAbsent(key, config);
+        });
+        req.setTest(testMap);
+        List<PressureDataFile> dataFiles = request.getDataFile().stream().map(file -> {
+            PressureDataFile dataFile = new PressureDataFile();
+            dataFile.setPath(file.getPath());
+            dataFile.setType(file.getFileType());
+            dataFile.setSplit(file.isSplit());
+            dataFile.setOrdered(file.isOrdered());
+            dataFile.setBigFile(file.isBigFile());
+            dataFile.setMd5(file.getFileMd5());
 
-        public SceneStopThread(ScheduleStopRequestExt request) {
-            this.request = request;
-        }
-
-        @Override
-        public void run() {
-            String scheduleName = ScheduleConstants.getScheduleName(request.getSceneId(), request.getTaskId(), request.getTenantId());
-            stringRedisTemplate.opsForValue().set(
-                ScheduleConstants.FORCE_STOP_POD + scheduleName,
-                Boolean.TRUE.toString(), 1, TimeUnit.DAYS);
-            {
-                try {
-                    Thread.sleep(3 * 60 * 1000L);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    log.info("stop wait error :{}", e.getMessage());
-                }
-                // 查看场景状态
-                SceneManageQueryOpitons options = new SceneManageQueryOpitons();
-                options.setIncludeBusinessActivity(true);
-                SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(request.getSceneId(), options);
-                if (!SceneManageStatusEnum.WAIT.getValue().equals(dto.getStatus())) {
-                    // 触发强制停止
-                    cloudReportService.forceFinishReport(request.getTaskId());
-                    Event event = new Event();
-                    event.setEventName("删除job");
-                    TaskResult taskResult = new TaskResult();
-                    taskResult.setSceneId(request.getSceneId());
-                    taskResult.setTaskId(request.getTaskId());
-                    taskResult.setTenantId(request.getTenantId());
-                    event.setExt(taskResult);
-                    doDeleteJob(event);
-                }
+            Map<Integer, List<StartEndPosition>> positions = file.getStartEndPositions();
+            if (!CollectionUtils.isEmpty(positions)) {
+                Map<Integer, List<PressureDataFilePosition>> dataFilePositions = new HashMap<>(positions.size());
+                positions.forEach((key, value) -> {
+                    List<PressureDataFilePosition> filePositions = value.stream()
+                        .map(val -> BeanUtil.copyProperties(val, PressureDataFilePosition.class))
+                        .collect(Collectors.toList());
+                    dataFilePositions.putIfAbsent(key, filePositions);
+                });
+                dataFile.setSplitPositions(dataFilePositions);
             }
-        }
+            return dataFile;
+        }).collect(Collectors.toList());
+        req.setFiles(dataFiles);
+        return req;
+    }
+
+    private void updateReportAssociation(ScheduleStartRequestExt startRequest, PressureActionResp actionResp) {
+        Long pressureTaskId = actionResp.getTaskId();
+        String resourceId = startRequest.getResourceId();
+        cloudReportService.updateResourceAssociation(resourceId, pressureTaskId);
+        pressureTaskDAO.updateResourceAssociation(resourceId, pressureTaskId);
     }
 }

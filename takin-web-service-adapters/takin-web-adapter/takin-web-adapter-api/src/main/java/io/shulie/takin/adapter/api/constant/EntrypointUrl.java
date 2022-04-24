@@ -23,30 +23,16 @@ public class EntrypointUrl {
     public final static String MODULE_COMMON = "common";
     public final static String METHOD_COMMON_CONFIG = "getCloudConfigurationInfos";
 
-    /**
-     * 模块 - 场景
-     */
-    private final static String MODULE_SCENE = "scene";
 
     /**
-     * 模块 - 场景任务
+     * 模块 - 引擎
      */
-    public final static String MODULE_SCENE_TASK = MODULE_SCENE + "/task";
-    public final static String METHOD_SCENE_TASK_START = "start";
-    public final static String METHOD_SCENE_TASK_STOP = "stop";
-    public final static String METHOD_SCENE_TASK_BOLT_STOP = "bolt/stop";
-    public final static String METHOD_SCENE_TASK_CHECK_TASK = "checkStartStatus";
-    public final static String METHOD_SCENE_TASK_UPDATE_TPS = "updateSceneTaskTps";
-    public final static String METHOD_SCENE_TASK_ADJUST_TPS = "queryAdjustTaskTps";
-    public final static String METHOD_SCENE_TASK_START_FLOW_DEBUG = "startFlowDebugTask";
-    public final static String METHOD_SCENE_TASK_START_INSPECT = "startInspectTask";
-    public final static String METHOD_SCENE_TASK_STOP_INSPECT = "stopInspectTask";
-    public final static String METHOD_SCENE_TASK_FORCE_STOP_INSPECT = "forceStopTask";
-    public final static String METHOD_SCENE_TASK_START_TRY_RUN = "startTryRunTask";
-    public final static String METHOD_SCENE_TASK_CHECK_STATUS = "checkTaskStatus";
-    public final static String METHOD_SCENE_TASK_CHECK_JOB_STATUS = "checkJobStatus";
-    public final static String METHOD_SCENE_TASK_START_PRE_CHECK = "preCheck";
-    public final static String METHOD_SCENE_TASK_CALL_BACK_TO_WRITE_BALANCE = "writeBalance";
+    private final static String MODULE_ENGINE = "engine";
+    /**
+     * 模块 - 引擎回调
+     */
+    public final static String MODULE_ENGINE_CALLBACK = MODULE_ENGINE + "/callback";
+    public final static String METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY = "";
 
     /**
      * 模块 - 资源
@@ -55,13 +41,11 @@ public class EntrypointUrl {
     public final static String METHOD_RESOURCE_PHYSICAL = "physical/all";
     public final static String METHOD_RESOURCE_MACHINE = "machine/task";
     public final static String METHOD_RESOURCE_LOCK = "lock";
-    public final static String METHOD_RESOURCE_UNLOCK = "unlock";
 
     /**
      * 模块 - 校验
      */
     public final static String MODULE_CHECK = "check";
-    public final static String METHOD_CHECK_FILE = "files";
     public final static String METHOD_CHECK_RESOURCES = "resources";
     public final static String METHOD_CHECK_ENV = "env";
 
@@ -72,4 +56,5 @@ public class EntrypointUrl {
     public final static String METHOD_RRESSURE_START = "task/start";
     public final static String METHOD_RRESSURE_STOP = "task/stop";
     public final static String METHOD_RRESSURE_MODIFY = "task/modify";
+    public final static String METHOD_RRESSURE_PARAMS = "task/params";
 }

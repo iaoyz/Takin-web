@@ -52,6 +52,7 @@ import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneTaskAdjustTpsResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.biz.checker.CompositeWebStartConditionChecker;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.pojo.request.datasource.DataSourceTestRequest;
 import io.shulie.takin.web.biz.pojo.request.leakcheck.LeakSqlBatchRefsRequest;
@@ -166,6 +167,9 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     @Value("${takin.inner.pre:0}")
     private int isInnerPre;
 
+    @Resource
+    private CompositeWebStartConditionChecker compositeChecker;
+
     @Override
     public void preStop(Long sceneId) {
         SceneManageIdReq request = new SceneManageIdReq();
@@ -253,7 +257,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
 
         preCheckStart(sceneData);
 
-        if (sceneData != null && sceneData.getScriptId() != null) {
+        if (sceneData.getScriptId() != null) {
             ScriptManageDeployDetailResponse scriptManageDeployDetail = scriptManageService.getScriptManageDeployDetail(
                 sceneData.getScriptId());
             List<PluginConfigDetailResponse> pluginConfigDetailResponseList = scriptManageDeployDetail
@@ -532,23 +536,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     }
 
     private void preCheckStart(SceneManageWrapperDTO sceneData) {
-        //检查压测开关，压测开关处于关闭状态时禁止压测
-        String userSwitchStatusForVo = applicationService.getUserSwitchStatusForVo();
-        if (StringUtils.isBlank(userSwitchStatusForVo) || !userSwitchStatusForVo.equals(
-            AppSwitchEnum.OPENED.getCode())) {
-            throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR, "压测开关处于关闭状态，禁止压测");
-        }
-
-        //检查场景是否存可以开启启压测
-        List<SceneBusinessActivityRefDTO> sceneBusinessActivityRefList = sceneData.getBusinessActivityConfig();
-        if (CollectionUtils.isEmpty(sceneBusinessActivityRefList)) {
-            log.error("[{}]场景没有配置业务活动", sceneData.getId());
-            throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_VALIDATE_ERROR,
-                "启动压测失败，没有配置业务活动，场景ID为" + sceneData.getId());
-        }
-
-        // 业务活动相关检查
-        this.checkBusinessActivity(sceneData, sceneBusinessActivityRefList);
+        compositeChecker.runningCheck(sceneData);
     }
 
     /**
@@ -751,4 +739,8 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         return applicationIds;
     }
 
+    @Override
+    public Map<String, Object> preCheck(Long sceneId) {
+        return null;
+    }
 }

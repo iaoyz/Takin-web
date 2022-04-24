@@ -23,7 +23,7 @@ import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
@@ -199,7 +199,7 @@ public class SceneManageApiImpl implements SceneManageApi {
                 throw new TakinCloudException(TakinCloudExceptionEnum.REPORT_GET_ERROR, "报告不存在:" + reportId);
             }
         }
-        SceneManageQueryOpitons options = new SceneManageQueryOpitons();
+        SceneManageQueryOptions options = new SceneManageQueryOptions();
         options.setIncludeBusinessActivity(true);
         options.setIncludeScript(true);
         options.setIncludeSLA(true);

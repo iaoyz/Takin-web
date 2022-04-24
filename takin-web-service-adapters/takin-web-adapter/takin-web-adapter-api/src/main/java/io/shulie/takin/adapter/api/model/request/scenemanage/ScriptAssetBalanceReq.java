@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class ScriptAssetBalanceReq extends ContextExt {
+    private Long sceneId;
     /**
      * 脚本调试主键
      */

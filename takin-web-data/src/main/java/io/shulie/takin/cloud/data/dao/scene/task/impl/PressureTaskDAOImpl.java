@@ -1,11 +1,8 @@
 package io.shulie.takin.cloud.data.dao.scene.task.impl;
 
-import java.util.Date;
-
 import javax.annotation.Resource;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.mapper.mysql.PressureTaskMapper;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
@@ -29,12 +26,7 @@ public class PressureTaskDAOImpl implements PressureTaskDAO {
     }
 
     @Override
-    public void updateLockStatusAndResourceId(Long id, String resourceId) {
-        PressureTaskEntity entity = new PressureTaskEntity();
-        entity.setId(id);
-        entity.setResourceId(resourceId);
-        entity.setStatus(PressureTaskStateEnum.RESOURCES_LOCKING.ordinal());
-        entity.setGmtUpdate(new Date());
+    public void updateById(PressureTaskEntity entity) {
         pressureTaskMapper.updateById(entity);
     }
 }

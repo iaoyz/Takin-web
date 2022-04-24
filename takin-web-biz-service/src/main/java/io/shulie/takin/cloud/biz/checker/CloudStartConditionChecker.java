@@ -5,7 +5,13 @@ import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import org.springframework.core.Ordered;
 
-public interface PressureStartConditionChecker extends Ordered {
+public interface CloudStartConditionChecker extends Ordered {
 
-    void check(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) throws TakinCloudException;
+    String type();
+
+    default void preCheck(Long sceneId) throws TakinCloudException {
+    }
+
+    default void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
+    }
 }

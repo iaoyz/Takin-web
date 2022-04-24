@@ -7,7 +7,7 @@ import lombok.Data;
  * @date 2020/4/18 上午11:13
  */
 @Data
-public class SceneManageQueryOpitons {
+public class SceneManageQueryOptions {
 
     /**
      * 业务活动

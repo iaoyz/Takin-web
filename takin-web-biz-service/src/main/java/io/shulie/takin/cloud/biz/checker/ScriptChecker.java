@@ -15,26 +15,59 @@ import com.alibaba.fastjson.TypeReference;
 import io.shulie.takin.adapter.api.model.request.check.ScriptCheckRequest.FileInfo;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
+import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.utils.security.MD5Utils;
+import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResponse;
+import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDetailResponse;
+import io.shulie.takin.web.biz.service.scriptmanage.ScriptManageService;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 
 @Component
-public class ScriptChecker implements PressureStartConditionChecker {
+public class ScriptChecker implements CloudStartConditionChecker {
 
     private static final String SCRIPT_NAME_SUFFIX = "jmx";
 
     @Resource
     private EnginePluginFilesService enginePluginFilesService;
 
+    @Resource
+    private CloudSceneManageService cloudSceneManageService;
+
+    @Resource
+    private ScriptManageService scriptManageService;
+
     @Override
-    public void check(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) throws TakinCloudException {
+    public void preCheck(Long sceneId) throws TakinCloudException {
+        SceneManageQueryOptions options = new SceneManageQueryOptions();
+        options.setIncludeScript(true);
+        SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(sceneId, null);
+        filePlugins(sceneData);
+        runningCheck(sceneData, null);
+    }
+
+    private void filePlugins(SceneManageWrapperOutput sceneData) {
+        Long scriptId = sceneData.getScriptId();
+        ScriptManageDeployDetailResponse deployDetail = scriptManageService.getScriptManageDeployDetail(scriptId);
+        List<PluginConfigDetailResponse> pluginDetails = deployDetail.getPluginConfigDetailResponseList();
+        if (CollectionUtils.isNotEmpty(pluginDetails)) {
+            List<EnginePluginRefOutput> plugins = pluginDetails.stream()
+                .map(detail -> EnginePluginRefOutput.create(Long.parseLong(detail.getName()), detail.getVersion()))
+                .collect(Collectors.toList());
+            sceneData.setEnginePlugins(plugins);
+        }
+    }
+
+    @Override
+    public void runningCheck(SceneManageWrapperOutput sceneData, SceneTaskStartInput input) {
         //检测脚本文件是否有变更
         checkModify(sceneData);
         // 校验是否与场景同步了
@@ -47,11 +80,10 @@ public class ScriptChecker implements PressureStartConditionChecker {
         List<FileInfo> fileInfos = sceneData.getUploadFile().stream()
             .filter(file -> FileTypeBusinessUtil.isScriptOrData(file.getFileType()))
             .map(file -> new FileInfo(deduceFileType(file), file.getUploadPath())).collect(Collectors.toList());
-        List<String> pluginsPath = enginePluginFilesService
-            .findPluginFilesPathByPluginIdAndVersion(sceneData.getEnginePlugins());
+        List<EnginePluginRefOutput> enginePlugins = sceneData.getEnginePlugins();
+        List<String> pluginsPath = enginePluginFilesService.findPluginFilesPathByPluginIdAndVersion(enginePlugins);
         List<FileInfo> plugins = pluginsPath.stream().filter(Objects::nonNull)
-            .map(path -> new FileInfo(FileTypeEnum.JAR.ordinal(), path))
-            .collect(Collectors.toList());
+            .map(path -> new FileInfo(FileTypeEnum.JAR.ordinal(), path)).collect(Collectors.toList());
         if (!CollectionUtils.isEmpty(plugins)) {
             fileInfos.addAll(plugins);
         }
@@ -93,8 +125,7 @@ public class ScriptChecker implements PressureStartConditionChecker {
     private void checkSync(SceneManageWrapperOutput sceneData) {
         String disabledKey = "DISABLED";
         String featureString = sceneData.getFeatures();
-        Map<String, Object> feature = JSONObject.parseObject(featureString,
-            new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> feature = JSONObject.parseObject(featureString, new TypeReference<Map<String, Object>>() {});
         if (feature.containsKey(disabledKey)) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR,
                 "场景【" + sceneData.getId() + "】对应的业务流程发生变更，未能自动匹配，请手动编辑后启动压测");
@@ -106,24 +137,24 @@ public class ScriptChecker implements PressureStartConditionChecker {
             .filter(fileRef -> fileRef.getFileType() == 0 && fileRef.getFileName().endsWith(SCRIPT_NAME_SUFFIX))
             .findFirst()
             .orElse(null);
-
-        boolean jmxCheckResult = checkOutJmx(scriptRefOutput, sceneData.getId());
+        boolean jmxCheckResult = checkOutJmx(scriptRefOutput);
         if (!jmxCheckResult) {
             throw new TakinCloudException(TakinCloudExceptionEnum.SCENE_JMX_FILE_CHECK_ERROR,
                 "启动压测场景--场景ID:" + sceneData.getId() + ",脚本文件校验失败！");
         }
     }
 
-    private boolean checkOutJmx(SceneScriptRefOutput uploadFile, Long sceneId) {
+    private boolean checkOutJmx(SceneScriptRefOutput uploadFile) {
         if (Objects.nonNull(uploadFile) && StringUtils.isNotBlank(uploadFile.getUploadPath())) {
             String fileMd5 = MD5Utils.getInstance().getMD5(new File(uploadFile.getUploadPath()));
-            if (StringUtils.isNotBlank(uploadFile.getFileMd5())) {
-                return uploadFile.getFileMd5().equals(fileMd5);
-            } else {
-                return true;
-            }
+            return StringUtils.isBlank(uploadFile.getFileMd5()) || uploadFile.getFileMd5().equals(fileMd5);
         }
         return false;
+    }
+
+    @Override
+    public String type() {
+        return "script";
     }
 
     @Override

@@ -46,8 +46,4 @@ public class EngineNotifyParam {
      * pod序号
      */
     private String podNum;
-
-    public EngineNotifyParam() {
-
-    }
 }

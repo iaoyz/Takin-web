@@ -1,4 +1,4 @@
-package io.shulie.takin.adapter.cloud.impl.check;
+package io.shulie.takin.adapter.cloud.impl.remote.check;
 
 import javax.annotation.Resource;
 

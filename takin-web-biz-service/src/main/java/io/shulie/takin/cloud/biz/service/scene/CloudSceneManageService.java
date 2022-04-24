@@ -10,7 +10,7 @@ import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageWrapperInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageListOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.ext.content.asset.AssetBillExt;
 import io.shulie.takin.cloud.ext.content.script.ScriptVerityRespExt;
@@ -66,7 +66,7 @@ public interface CloudSceneManageService {
      * @param options 查询选项
      * @return 场景信息
      */
-    SceneManageWrapperOutput getSceneManage(Long id, SceneManageQueryOpitons options);
+    SceneManageWrapperOutput getSceneManage(Long id, SceneManageQueryOptions options);
 
     /**
      * 根据场景ID获取业务活动配置

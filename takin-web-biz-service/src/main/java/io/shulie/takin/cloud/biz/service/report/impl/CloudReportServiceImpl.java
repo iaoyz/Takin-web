@@ -58,7 +58,7 @@ import io.shulie.takin.cloud.biz.service.scene.ReportEventService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.SceneTaskEventService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOpitons;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.scenemanage.WarnBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
@@ -305,7 +305,7 @@ public class CloudReportServiceImpl implements CloudReportService {
             reportDetail.setTaskStatus(ReportConstants.FINISH_STATUS);
             return reportDetail;
         }
-        SceneManageQueryOpitons options = new SceneManageQueryOpitons();
+        SceneManageQueryOptions options = new SceneManageQueryOptions();
         options.setIncludeBusinessActivity(false);
         SceneManageWrapperOutput wrapper = cloudSceneManageService.getSceneManage(sceneId, options);
         reportDetail = ReportConverter.INSTANCE.ofReportDetail(reportResult);
