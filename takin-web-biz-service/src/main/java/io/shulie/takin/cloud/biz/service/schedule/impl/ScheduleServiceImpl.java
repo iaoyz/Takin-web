@@ -14,15 +14,19 @@ import javax.annotation.Resource;
 import com.alibaba.fastjson.JSON;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.alibaba.fastjson.TypeReference;
 import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
+import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFile;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFilePosition;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadGroupConfig;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
 import io.shulie.takin.adapter.api.model.response.pressure.PressureActionResp;
+import io.shulie.takin.adapter.api.service.CloudApiSenderService;
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
@@ -49,6 +53,7 @@ import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt.Star
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStopRequestExt;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
+import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import lombok.extern.slf4j.Slf4j;
@@ -95,6 +100,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     private PressureTaskApi pressureTaskApi;
     @Resource
     private PressureTaskDAO pressureTaskDAO;
+    @Resource
+    CloudApiSenderService cloudApiSenderService;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -170,6 +177,11 @@ public class ScheduleServiceImpl implements ScheduleService {
                 ScheduleConstants.INTERRUPT_POD + scheduleName,
                 Boolean.TRUE.toString(), 1, TimeUnit.DAYS);
             // TODO: 调用cloud压测停止接口
+            PressureTaskStopReq req = new PressureTaskStopReq();
+            req.setTaskId(request.getTaskId());
+            cloudApiSenderService.post(
+                    EntrypointUrl.join(EntrypointUrl.MODULE_RRESSURE, EntrypointUrl.METHOD_RRESSURE_STOP),
+                    req, new TypeReference<ResponseResult<PressureActionResp>>() {});
         }
 
     }

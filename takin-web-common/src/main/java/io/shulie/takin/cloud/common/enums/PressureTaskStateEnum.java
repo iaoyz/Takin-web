@@ -1,21 +1,11 @@
 package io.shulie.takin.cloud.common.enums;
 
 public enum PressureTaskStateEnum {
-    RESOURCE_LOCKING,
-    /**
-     * 检测完成
-     */
-    CHECK_SUCCESS,
-    /**
-     * 启动中
-     */
-    STARTING,
-    /**
-     * 压测中
-     */
-    PRESSURE_TESTING,
-    /**
-     * 压测停止
-     */
-    PRESSURE_TEST_STOPPED
+    INITIALIZED,//初始化
+    STARTING,//启动中
+    ALIVE,//启动完成
+    PRESSURING,//压测中
+    UNUSUAL,//异常
+    STOPPING,//停止中
+    INACTIVE;//停止
 }
