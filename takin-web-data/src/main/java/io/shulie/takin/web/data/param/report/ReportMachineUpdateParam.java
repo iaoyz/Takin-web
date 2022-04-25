@@ -2,17 +2,17 @@ package io.shulie.takin.web.data.param.report;
 
 import java.math.BigDecimal;
 
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import lombok.Data;
 
 /**
- * @author by: hezhongqi
- * @Package io.shulie.takin.web.data.param.report
- * @ClassName: ReportMachineUpdateParam
- * @Description: TODO
- * @Date: 2021/11/23 10:19
+ * TODO
+ *
+ * @author hezhongqi
+ * @date 2021/11/23 10:19
  */
 @Data
-public class ReportMachineUpdateParam {
+public class ReportMachineUpdateParam extends TenantCommonExt {
 
     private Long id;
 
