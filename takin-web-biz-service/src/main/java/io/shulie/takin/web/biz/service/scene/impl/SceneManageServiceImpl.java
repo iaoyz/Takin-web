@@ -499,7 +499,7 @@ public class SceneManageServiceImpl implements SceneManageService {
     public ResponseResult<SceneManageWrapperResp> detailScene(Long id) {
         SceneManageIdReq req = new SceneManageIdReq();
         req.setId(id);
-        // cloud 获得场景详情
+        //TODO 调用cloud转为web
         ResponseResult<SceneManageWrapperResp> sceneDetail = sceneManageApi.getSceneDetail(req);
 
         if (Objects.isNull(sceneDetail) || Objects.isNull(sceneDetail.getData())) {

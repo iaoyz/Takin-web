@@ -384,6 +384,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         SceneManageIdReq req = new SceneManageIdReq();
         req.setId(param.getSceneId());
         WebPluginUtils.fillCloudUserData(req);
+        //TODO 调用cloud转为web
         ResponseResult<SceneActionResp> response = sceneTaskApi.checkTask(req);
         if (!response.getSuccess()) {
             throw new TakinWebException(ExceptionCode.SCENE_STOP_ERROR, response.getError());
@@ -393,7 +394,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
             WebPluginUtils.traceTenantAppKey(), WebPluginUtils.traceEnvCode(),
             String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY, resp.getReportId()));
         redisClientUtils.del(redisKey);
-        // 最后删除
+        //TODO 调用cloud转为web
         return sceneTaskApi.stopTask(req);
     }
 
