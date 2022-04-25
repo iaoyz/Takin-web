@@ -8,62 +8,6 @@ package io.shulie.takin.cloud.common.constants;
 public class ScheduleConstants {
 
     /**
-     *
-     */
-    public static final String IMAGE_PULL_POLICY = "IfNotPresent";
-
-    /**
-     *
-     */
-    public static final String RESTART_POLICY_NEVER = "Never";
-    public static final String RESTART_POLICY_ONFAILURE = "OnFailure";
-
-    /**
-     * 引擎脚本文件名称
-     */
-    public static final String ENGINE_SCRIPT_FILE_NAME = "script-file";
-
-    /**
-     * 引擎脚本文件路径
-     */
-    public static final String ENGINE_SCRIPT_FILE_PATH = "/etc/engine/script/";
-
-    /**
-     * 引擎日志文件路径
-     */
-    public static final String ENGINE_LOG_FILE_PATH = "/etc/engine/script/logs";
-
-    /**
-     * 引擎插件文件夹路径 add by lipeng
-     */
-    public static final String ENGINE_PLUGINS_FOLDER_PATH = "/etc/engine/plugins/";
-
-    /**
-     * 引擎配置文件名称
-     */
-    public static final String ENGINE_CONFIG_FILE_NAME = "engine-conf";
-
-    /**
-     * 引擎配置文件路径
-     */
-    public static final String ENGINE_CONFIG_FILE_PATH = "/etc/engine/config";
-
-    /**
-     * 引擎时区配置名称
-     */
-    public static final String ENGINE_TIMEZONE_CONFIG_NAME = "host-time";
-
-    /**
-     * 引擎时区配置文件路径
-     */
-    public static final String ENGINE_TIMEZONE_FILE_PATH = "/etc/localtime";
-
-    /**
-     * 调度状态: 失败
-     */
-    public static final int SCHEDULE_STATUS_0 = 0;
-
-    /**
      * 调度状态：成功
      */
     public static final int SCHEDULE_STATUS_1 = 1;
@@ -86,18 +30,6 @@ public class ScheduleConstants {
      * 调度任务job
      */
     public static String SCENE_TASK = "scene-task-";
-
-    /**
-     * 文件分割调度名称
-     */
-
-    public static String getFileSplitScheduleName(Long sceneId, Long reportId, Long tenantId) {
-        // 兼容原始redis key
-        if (null == tenantId) {
-            return String.format("file-split-%s-%s", sceneId, reportId);
-        }
-        return String.format("file-split-%s-%s-%s", sceneId, reportId, tenantId);
-    }
 
     /**
      * 文件分割存储的队列
@@ -124,33 +56,6 @@ public class ScheduleConstants {
     }
 
     /**
-     * ConfigMap名称
-     *
-     * @return -
-     */
-    public static String getConfigMapName(Long sceneId, Long taskId, Long tenantId) {
-        // 兼容原始redis key
-        if (null == tenantId) {
-            return String.format("engine-config-%s-%s.json", sceneId, taskId);
-        }
-        return String.format("engine-config-%s-%s-%s.json", sceneId, taskId, tenantId);
-    }
-
-    /**
-     * 获取url
-     *
-     * @return -
-     */
-    public static String getConsoleUrl(Long sceneId, Long taskId, Long tenantId) {
-        // 兼容原始redis key
-        if (null == tenantId) {
-            return String.format("/api/collector/receive?sceneId=%s&reportId=%s", sceneId, taskId);
-        }
-        return String.format("/api/collector/receive?sceneId=%s&reportId=%s&tenantId=%s", sceneId, taskId,
-            tenantId);
-    }
-
-    /**
      * 压力节点 引擎名
      *
      * @return -
@@ -161,24 +66,6 @@ public class ScheduleConstants {
             return String.format("pressure-node-engine-%s-%s", sceneId, reportId);
         }
         return String.format("pressure-node-engine-%s-%s-%s", sceneId, reportId, tenantId);
-    }
-
-    /**
-     * pod启动结束事件去重key
-     *
-     * @param sceneId
-     * @param reportId
-     * @param customerId
-     * @param podNo
-     * @param eventName
-     * @return
-     */
-    public static String getEnginePodNoStartKey(Long sceneId, Long reportId, Long customerId, String podNo, String eventName) {
-        // 兼容原始redis key
-        if (null == customerId) {
-            return String.format("pod-engine-%s-%s-%s-%s", sceneId, reportId, podNo, eventName);
-        }
-        return String.format("pod-engine-%s-%s-%s-%s-%s", sceneId, reportId, customerId, podNo, eventName);
     }
 
     /**

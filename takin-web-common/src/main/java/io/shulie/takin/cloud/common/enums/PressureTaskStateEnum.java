@@ -7,5 +7,6 @@ public enum PressureTaskStateEnum {
     PRESSURING,//压测中
     UNUSUAL,//异常
     STOPPING,//停止中
-    INACTIVE;//停止
+    INACTIVE,//停止
+    RESOURCE_LOCKING
 }

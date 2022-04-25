@@ -1,5 +1,7 @@
 package io.shulie.takin.cloud.biz.notify;
 
+import java.util.Date;
+
 import lombok.Data;
 
 @Data
@@ -11,5 +13,10 @@ public class NotifyContext {
      */
     private Integer status;
     private String message;
+
+    // 公共参数
+    private Date time;
+    private Date callbackTime;
+    private String sign;
 
 }

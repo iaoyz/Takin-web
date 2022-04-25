@@ -30,6 +30,11 @@ public class ScheduleEventRequestExt extends ContextExt {
     private String resourceId;
 
     /**
+     * 压测任务Id
+     */
+    private Long pressureTaskId;
+
+    /**
      * 扩展参数
      */
     private Map<String, Object> extend;

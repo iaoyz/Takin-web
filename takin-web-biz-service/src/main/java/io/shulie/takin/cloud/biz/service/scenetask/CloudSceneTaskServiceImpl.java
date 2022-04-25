@@ -30,7 +30,8 @@ import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
-import io.shulie.takin.cloud.biz.collector.collector.CollectorService;
+import io.shulie.takin.cloud.biz.checker.CloudConditionCheckerContext;
+import io.shulie.takin.cloud.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneInspectInput;
@@ -94,6 +95,8 @@ import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
 import io.shulie.takin.cloud.ext.content.asset.AssetBalanceExt;
 import io.shulie.takin.cloud.ext.content.enums.AssetTypeEnum;
 import io.shulie.takin.plugin.framework.core.PluginManager;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -142,6 +145,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     private RedisTemplate<String, String> redisTemplate;
     @Resource
     private SceneTaskEventService sceneTaskEventService;
+    @Resource
+    private EngineResourceChecker engineResourceChecker;
 
     private static final Long KB = 1024L;
     private static final Long MB = KB * 1024;
@@ -620,6 +625,12 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         } else {
             sceneManageId = sceneManageResult.getId();
         }
+        CloudConditionCheckerContext context = new CloudConditionCheckerContext();
+        context.setSceneId(sceneManageId);
+        CheckResult checkResult = engineResourceChecker.check(context);
+        if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
+            throw new RuntimeException(checkResult.getMessage());
+        }
         sceneTryRunTaskStartOutput.setSceneId(sceneManageId);
         //启动该压测场景
         SceneTaskStartInput sceneTaskStartInput = new SceneTaskStartInput();
@@ -717,7 +728,6 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
      * 压测任务正常开启 这里实际是 压力节点 启动成功
      * 20200923 报告 开始时间 记录在redis 中
      *
-     * @see CollectorService
      **/
     @Transactional(rollbackFor = Exception.class)
     public synchronized void testStarted(TaskResult taskResult) {

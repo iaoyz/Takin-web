@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Map;
 
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -141,6 +143,8 @@ public class PressureTaskStartReq extends ContextExt {
     }
 
     @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class DebugConfig {
         /**
          * 调试请求条数

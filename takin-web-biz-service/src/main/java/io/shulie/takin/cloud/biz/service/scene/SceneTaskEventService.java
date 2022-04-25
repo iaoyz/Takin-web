@@ -115,6 +115,7 @@ public class SceneTaskEventService {
 
         //添加巡检参数
         scheduleStartRequest.setLoopsNum(scene.getLoopsNum());
+        scheduleStartRequest.setConcurrenceNum(scene.getConcurrenceNum());
         scheduleStartRequest.setFixedTimer(scene.getFixedTimer());
         scheduleStartRequest.setInspect(scene.isInspect());
         scheduleStartRequest.setTryRun(scene.isTryRun());
@@ -155,6 +156,7 @@ public class SceneTaskEventService {
         scheduleStopRequest.setSceneId(reportResult.getSceneId());
         scheduleStopRequest.setTaskId(reportResult.getId());
         scheduleStopRequest.setTenantId(reportResult.getTenantId());
+        scheduleStopRequest.setPressureTaskId(reportResult.getPressureTaskId());
         Event event = new Event();
         event.setEventName(ScheduleEventConstant.STOP_SCHEDULE_EVENT);
         event.setExt(scheduleStopRequest);

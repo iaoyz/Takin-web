@@ -75,7 +75,6 @@ public interface CloudSceneTaskService {
      *
      * @param param 入参
      * @return -
-     * @see io.shulie.takin.cloud.biz.collector.collector.CollectorService
      */
     String taskResultNotify(SceneTaskNotifyParam param);
 

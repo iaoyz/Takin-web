@@ -89,6 +89,12 @@ public class ScheduleStartRequestExt extends ScheduleEventRequestExt {
     private Integer loopsNum;
 
     /**
+     * 并发数
+     */
+    private Integer concurrenceNum;
+
+
+    /**
      * 固定定时器配置的周期
      */
     private Long fixedTimer;

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -14,21 +13,18 @@ import javax.annotation.Resource;
 import com.alibaba.fastjson.JSON;
 
 import cn.hutool.core.bean.BeanUtil;
-import com.alibaba.fastjson.TypeReference;
 import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
-import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.DebugConfig;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFile;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFilePosition;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadGroupConfig;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
 import io.shulie.takin.adapter.api.model.response.pressure.PressureActionResp;
-import io.shulie.takin.adapter.api.service.CloudApiSenderService;
 import io.shulie.takin.cloud.biz.config.AppConfig;
-import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
@@ -53,11 +49,9 @@ import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt.Star
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStopRequestExt;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
-import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -82,14 +76,9 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Resource
     private ScheduleRecordEnginePluginService scheduleRecordEnginePluginService;
     @Resource
-    private CloudAsyncService cloudAsyncService;
-    @Resource
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
-    @Resource
-    @Qualifier("stopThreadPool")
-    protected ThreadPoolExecutor stopExecutor;
     @Resource
     private CloudReportService cloudReportService;
     @Resource
@@ -100,8 +89,6 @@ public class ScheduleServiceImpl implements ScheduleService {
     private PressureTaskApi pressureTaskApi;
     @Resource
     private PressureTaskDAO pressureTaskDAO;
-    @Resource
-    CloudApiSenderService cloudApiSenderService;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -176,12 +163,9 @@ public class ScheduleServiceImpl implements ScheduleService {
             stringRedisTemplate.opsForValue().set(
                 ScheduleConstants.INTERRUPT_POD + scheduleName,
                 Boolean.TRUE.toString(), 1, TimeUnit.DAYS);
-            // TODO: 调用cloud压测停止接口
             PressureTaskStopReq req = new PressureTaskStopReq();
-            req.setTaskId(request.getTaskId());
-            cloudApiSenderService.post(
-                    EntrypointUrl.join(EntrypointUrl.MODULE_RRESSURE, EntrypointUrl.METHOD_RRESSURE_STOP),
-                    req, new TypeReference<ResponseResult<PressureActionResp>>() {});
+            req.setTaskId(request.getPressureTaskId());
+            pressureTaskApi.stop(req);
         }
 
     }
@@ -208,10 +192,6 @@ public class ScheduleServiceImpl implements ScheduleService {
             // 是空的
             log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
             updateReportAssociation(startRequest, actionResp);
-            // 创建job 开始监控 压力节点 启动情况 起一个线程监控  。
-            // 启动检查压力节点启动线程，在允许时间内压力节点未启动完成，主动停止任务
-            // TODO:是否需要校验状态
-            cloudAsyncService.checkStartedTask(request.getRequest());
         } catch (Exception e) {
             // 创建失败
             log.info("场景{},任务{},顾客{}开始启动压测，压测启动失败", sceneId, taskId, customerId);
@@ -313,6 +293,9 @@ public class ScheduleServiceImpl implements ScheduleService {
             return dataFile;
         }).collect(Collectors.toList());
         req.setFiles(dataFiles);
+        if (request.isTryRun()) {
+            req.setDebugInfo(new DebugConfig(request.getLoopsNum(), request.getConcurrenceNum()));
+        }
         return req;
     }
 

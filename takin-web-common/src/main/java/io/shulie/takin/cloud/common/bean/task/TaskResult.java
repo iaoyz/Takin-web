@@ -42,6 +42,7 @@ public class TaskResult extends ContextExt {
      * 拓展配置
      */
     private Map<String, Object> extendMap;
+    private String resourceId;
 
     public TaskResult(Long sceneId, Long taskId, Long tenantId) {
         this.sceneId = sceneId;

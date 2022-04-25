@@ -26,7 +26,9 @@ import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
+import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
@@ -45,6 +47,8 @@ import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
+import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckStatus;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
@@ -68,6 +72,8 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     public static final String SCENE_ID = "scene_id";
     public static final String REPORT_ID = "report_id";
     public static final String PRESSURE_TASK_ID = "pressure_task_id";
+    public static final String JMETER_STARTED = "jmeter_started";
+    public static final String JMETER_STOP = "jmeter_stopped";
 
     @Resource
     private CloudCheckApi cloudCheckApi;
@@ -112,8 +118,13 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     }
 
     private CheckResult firstCheck(CloudConditionCheckerContext context) {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
+        if (sceneData == null) {
+            SceneManageQueryOptions options = new SceneManageQueryOptions();
+            sceneData = cloudSceneManageService.getSceneManage(context.getSceneId(), options);
+            context.setSceneData(sceneData);
+        }
         try {
-            SceneManageWrapperOutput sceneData = context.getSceneData();
             StrategyConfigExt config = getStrategy();
             sceneData.setStrategy(config);
             ResourceCheckRequest request = new ResourceCheckRequest();
@@ -148,7 +159,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         String message = String.valueOf(redisClientUtils.hmget(statusKey, RESOURCE_MESSAGE));
         if (status == PodStatus.FAIL.ordinal()) {
             // 失败时，删除对应缓存
-            redisClientUtils.del(clearCacheKey(resourceId).toArray(new String[0]));
+            clearCache(resourceId);
         }
         return new CheckResult(type(), status, resourceId, message);
     }
@@ -176,6 +187,8 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         param.put(TENANT_ID, sceneData.getTenantId());
         param.put(ENV_CODE, sceneData.getEnvCode());
         param.put(SCENE_ID, String.valueOf(sceneData.getId()));
+        param.put(JMETER_STARTED, 0);
+        param.put(JMETER_STOP, 0);
         redisClientUtils.hmset(getResourceKey(resourceId), param);
     }
 
@@ -224,7 +237,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
      * 初始化报表
      *
      */
-    public ReportEntity initReport(SceneManageWrapperOutput scene, SceneTaskStartInput input, PressureTaskEntity pressureTask) {
+    private ReportEntity initReport(SceneManageWrapperOutput scene, SceneTaskStartInput input, PressureTaskEntity pressureTask) {
         ReportEntity report = new ReportEntity();
         report.setSceneId(scene.getId());
         report.setTaskId(pressureTask.getId());
@@ -363,6 +376,21 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         detail.setBusinessActivityName(scriptNode.getTestName());
         detail.setBindRef(scriptNode.getXpathMd5());
         detailList.add(detail);
+    }
+
+    @IntrestFor(event = "finished")
+    public void clearResourceCache(Event event) {
+        try {
+            log.info("删除resource缓存");
+            TaskResult taskResult = (TaskResult)event.getExt();
+            clearCache(taskResult.getResourceId());
+        } catch (Exception e) {
+            log.error("删除resource缓存={}", e.getMessage(), e);
+        }
+    }
+
+    private void clearCache(String resourceId) {
+        redisClientUtils.del(clearCacheKey(resourceId).toArray(new String[0]));
     }
 
     @Override
