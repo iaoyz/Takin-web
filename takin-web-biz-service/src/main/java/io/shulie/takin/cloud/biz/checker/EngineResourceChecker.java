@@ -26,7 +26,6 @@ import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
@@ -136,13 +135,17 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
 
     private CheckResult getResourceStatus(String resourceId) {
         String statusKey = getResourceStatusKey(resourceId);
-        int status = Integer.parseInt(String.valueOf(redisClientUtils.hmget(statusKey, RESOURCE_STATUS)));
-        String message = String.valueOf(redisClientUtils.hmget(statusKey, RESOURCE_STATUS));
+        Object redisStatus = redisClientUtils.hmget(statusKey, RESOURCE_STATUS);
+        if (redisStatus == null) {
+            return new CheckResult(type(), CheckStatus.FAIL.ordinal(), resourceId, "未找到启动中的任务");
+        }
+        int status = Integer.parseInt(String.valueOf(redisStatus));
+        String message = String.valueOf(redisClientUtils.hmget(statusKey, RESOURCE_MESSAGE));
         if (status == PodStatus.FAIL.ordinal()) {
             // 失败时，删除对应缓存
             redisClientUtils.del(clearCacheKey(resourceId).toArray(new String[0]));
         }
-        return new CheckResult(type(), status, message);
+        return new CheckResult(type(), status, resourceId, message);
     }
 
     private String lockResource(SceneManageWrapperOutput sceneData) {

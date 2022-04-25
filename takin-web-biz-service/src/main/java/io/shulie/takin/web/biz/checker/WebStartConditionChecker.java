@@ -22,7 +22,14 @@ public interface WebStartConditionChecker extends Ordered {
     class CheckResult {
         private String type;
         private Integer status;
+        private String resourceId;
         private String message;
+
+        public CheckResult(String type, Integer status, String message) {
+            this.type = type;
+            this.status = status;
+            this.message = message;
+        }
 
         public static CheckResult success(String type) {
             CheckResult result = new CheckResult();

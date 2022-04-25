@@ -12,6 +12,7 @@ import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -49,14 +50,14 @@ public class SceneStatusChecker implements CloudStartConditionChecker {
 
     private void doCheck(CloudConditionCheckerContext context) {
         SceneManageWrapperOutput sceneData = context.getSceneData();
-        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus()) || pressureRunning(sceneData.getId())) {
+        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus()) || pressureRunning(context)) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
         }
     }
 
-    private boolean pressureRunning(Long sceneId) {
-        return redisClientUtils.hmget(EngineResourceChecker.getResourceMappingCacheKey(), String.valueOf(sceneId))
-            != null;
+    private boolean pressureRunning(CloudConditionCheckerContext context) {
+        return StringUtils.isBlank(context.getResourceId()) &&
+            redisClientUtils.hmget(EngineResourceChecker.getResourceMappingCacheKey(), String.valueOf(context.getSceneId())) != null;
     }
 
     @Override
