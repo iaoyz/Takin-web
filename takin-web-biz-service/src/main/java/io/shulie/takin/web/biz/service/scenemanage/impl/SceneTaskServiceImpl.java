@@ -253,7 +253,6 @@ public class SceneTaskServiceImpl implements SceneTaskService {
 
         // 校验该场景是否正在压测中
         if (!SceneManageStatusEnum.ifFinished(sceneData.getStatus())) {
-            //        if (redisClientUtils.hasKey(SceneTaskUtils.getSceneTaskKey(param.getSceneId()))) {
             // 正在压测中
             throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR,
                 "场景，id=" + param.getSceneId() + "已启动压测，请刷新页面！");
@@ -545,6 +544,11 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     }
 
     private void preCheckStart(SceneManageWrapperDTO sceneData) {
+        //检查压测开关，压测开关处于关闭状态时禁止压测
+        String switchStatus = applicationService.getUserSwitchStatusForVo();
+        if (!AppSwitchEnum.OPENED.getCode().equals(switchStatus)) {
+            throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR, "压测开关处于关闭状态，禁止压测");
+        }
     }
 
     /**

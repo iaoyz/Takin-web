@@ -33,4 +33,9 @@ public class SceneTaskStartReq extends ContextExt {
 
     private Boolean continueRead = false;
 
+    /**
+     * 资源Id
+     */
+    private String pressureResourceId;
+
 }

@@ -56,8 +56,9 @@ public class SceneStatusChecker implements CloudStartConditionChecker {
     }
 
     private boolean pressureRunning(CloudConditionCheckerContext context) {
-        return StringUtils.isBlank(context.getResourceId()) &&
-            redisClientUtils.hmget(EngineResourceChecker.getResourceMappingCacheKey(), String.valueOf(context.getSceneId())) != null;
+        String resourceId = context.getResourceId();
+        return StringUtils.isBlank(resourceId) &&
+            redisClientUtils.hmget(EngineResourceChecker.getResourceKey(resourceId)) != null;
     }
 
     @Override

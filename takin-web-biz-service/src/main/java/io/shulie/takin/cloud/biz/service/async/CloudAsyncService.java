@@ -1,7 +1,5 @@
 package io.shulie.takin.cloud.biz.service.async;
 
-import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt;
-
 /**
  * 异步服务
  *
@@ -9,13 +7,6 @@ import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt;
  * @date 2020/10/30 下午7:13
  */
 public interface CloudAsyncService {
-
-    /**
-     * 检查已启动的任务
-     *
-     * @param startRequest 入参
-     */
-    void checkStartedTask(ScheduleStartRequestExt startRequest);
 
     /**
      * 更新场景运行状态

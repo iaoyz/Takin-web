@@ -211,7 +211,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         //启动前置校验
         preCheckStart(sceneData, input);
 
-        ReportResult report = cloudReportService.getReportBaseInfo(input.getCloudResourceId());
+        ReportResult report = cloudReportService.getReportBaseInfo(input.getPressureResourceId());
 
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());

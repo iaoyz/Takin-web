@@ -2,7 +2,7 @@ package io.shulie.takin.cloud.biz.checker;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +45,6 @@ import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
-import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckStatus;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
@@ -64,6 +63,11 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     public static final String RESOURCE_SUCCESS_NUM = "successNum";
     public static final String RESOURCE_MESSAGE = "message";
     public static final String RESOURCE_END_TIME = "endTime";
+    public static final String TENANT_ID = "tenant_id";
+    public static final String ENV_CODE = "env_code";
+    public static final String SCENE_ID = "scene_id";
+    public static final String REPORT_ID = "report_id";
+    public static final String PRESSURE_TASK_ID = "pressure_task_id";
 
     @Resource
     private CloudCheckApi cloudCheckApi;
@@ -124,6 +128,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
             SceneTaskStartInput input = context.getInput();
             PressureTaskEntity entity = initPressureTask(sceneData, input);
             ReportEntity report = initReport(sceneData, input, entity);
+            cache(report);
 
             context.setTaskId(entity.getId());
             context.setReportId(report.getId());
@@ -134,7 +139,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     }
 
     private CheckResult getResourceStatus(String resourceId) {
-        String statusKey = getResourceStatusKey(resourceId);
+        String statusKey = getResourceKey(resourceId);
         Object redisStatus = redisClientUtils.hmget(statusKey, RESOURCE_STATUS);
         if (redisStatus == null) {
             return new CheckResult(type(), CheckStatus.FAIL.ordinal(), resourceId, "未找到启动中的任务");
@@ -161,19 +166,25 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     }
 
     private void cache(SceneManageWrapperOutput sceneData, String resourceId) {
-        // 缓存压测场景-资源Id关系
-        redisClientUtils.hmset(getResourceMappingCacheKey(), String.valueOf(sceneData.getId()), resourceId);
-        // 缓存资源和租户环境关系
-        redisClientUtils.setString(getResourceTenantCacheKey(resourceId),
-            CloudPluginUtils.getTenantId() + "$" + CloudPluginUtils.getEnvCode());
         // 缓存资源锁定状态和pod数
-        Map<String, Object> param = new HashMap<>(8);
+        Map<String, Object> param = new HashMap<>(32);
         param.put(RESOURCE_STATUS, CheckStatus.PENDING.ordinal());
         param.put(RESOURCE_POD_NUM, sceneData.getIpNum());
         param.put(RESOURCE_SUCCESS_NUM, 0);
         param.put(RESOURCE_MESSAGE, "");
         param.put(RESOURCE_END_TIME, System.currentTimeMillis() + pressureNodeStartExpireTime * 1000);
-        redisClientUtils.hmset(getResourceStatusKey(resourceId), param);
+        param.put(TENANT_ID, sceneData.getTenantId());
+        param.put(ENV_CODE, sceneData.getEnvCode());
+        param.put(SCENE_ID, String.valueOf(sceneData.getId()));
+        redisClientUtils.hmset(getResourceKey(resourceId), param);
+    }
+
+    private void cache(ReportEntity report) {
+        String resourceId = report.getResourceId();
+        Map<String, Object> param = new HashMap<>(4);
+        param.put(REPORT_ID, report.getId());
+        param.put(PRESSURE_TASK_ID, report.getPressureTaskId());
+        redisClientUtils.hmset(getResourceKey(resourceId), param);
     }
 
     private StrategyConfigExt getStrategy() {
@@ -185,23 +196,11 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     }
 
     public static List<String> clearCacheKey(String resourceId) {
-        return Arrays.asList(getResourceStatusKey(resourceId), getResourceMappingCacheKey(),
-            getResourceTenantCacheKey(resourceId));
+        return Collections.singletonList(getResourceKey(resourceId));
     }
 
-    public static String getResourceStatusKey(String resourceId) {
-        ContextExt context = CloudPluginUtils.getContext();
-        return String.format("pressure:resource:locking:%s:%s:%s", context.getTenantId(), context.getEnvCode(),
-            resourceId);
-    }
-
-    public static String getResourceMappingCacheKey() {
-        ContextExt context = CloudPluginUtils.getContext();
-        return String.format("pressure:resource:mapping:%s:%s", context.getTenantId(), context.getEnvCode());
-    }
-
-    public static String getResourceTenantCacheKey(String resourceId) {
-        return String.format("pressure:resource:tenant:%s", resourceId);
+    public static String getResourceKey(String resourceId) {
+        return String.format("pressure:resource:locking:%s", resourceId);
     }
 
     private PressureTaskEntity initPressureTask(SceneManageWrapperOutput scene, SceneTaskStartInput input) {

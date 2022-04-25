@@ -37,5 +37,5 @@ public class SceneTaskStartInput {
 
     private String operateName;
 
-    private String cloudResourceId;
+    private String pressureResourceId;
 }

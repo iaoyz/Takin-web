@@ -12,7 +12,6 @@ import com.google.common.collect.Lists;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
 import io.shulie.takin.cloud.common.enums.ThreadGroupTypeEnum;
@@ -42,9 +41,6 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
 
     @Resource
     private PluginManager pluginManager;
-
-    @Resource
-    private CloudSceneManageService cloudSceneManageService;
 
     @Resource
     private ReportDao reportDao;
