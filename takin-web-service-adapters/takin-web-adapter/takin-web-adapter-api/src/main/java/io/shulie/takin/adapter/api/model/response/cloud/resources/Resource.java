@@ -27,4 +27,8 @@ public class Resource {
     private int taskId;
     @ApiModelProperty(value = "资源Id")
     private String resourceId;
+    @ApiModelProperty(value = "当前页")
+    private int currentPage;
+    @ApiModelProperty(value = "页数")
+    private int pageSize;
 }

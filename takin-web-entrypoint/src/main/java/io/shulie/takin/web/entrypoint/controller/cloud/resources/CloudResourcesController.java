@@ -27,7 +27,14 @@ public class CloudResourcesController {
      */
     @GetMapping("/getDetails")
     @ApiOperation("明细")
-    public Response getDetails(@RequestParam(name = "taskId") int taskId, @RequestParam("resourceId") String resourceId) {
-        return Response.success(cloudResourceApi.getDetails(taskId,resourceId));
+    public Response getDetails(
+            @RequestParam("taskId") int taskId,
+            @RequestParam("resourceId") String resourceId,
+            @RequestParam(value = "sortField",required = false) String sortField,
+            @RequestParam(value = "sortType",required = false) String sortType,
+            @RequestParam(value = "currentPage",required = false) Integer currentPage,
+            @RequestParam(value = "pageSize",required = false) Integer pageSize
+    ) {
+        return Response.success(cloudResourceApi.getDetails(taskId,resourceId,sortField,sortType,currentPage,pageSize));
     }
 }

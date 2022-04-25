@@ -420,4 +420,8 @@ public class RedisClientUtils {
     public Long zsetAdd(String key, String value) {
         return redisTemplate.opsForSet().add(key, value);
     }
+
+    public Long hIncrBy(String key, String field, long delta) {
+        return redisTemplate.opsForHash().increment(key, field, delta);
+    }
 }

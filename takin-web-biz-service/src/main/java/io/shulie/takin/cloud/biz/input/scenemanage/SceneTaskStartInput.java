@@ -36,4 +36,6 @@ public class SceneTaskStartInput {
     private Long operateId;
 
     private String operateName;
+
+    private String cloudResourceId;
 }

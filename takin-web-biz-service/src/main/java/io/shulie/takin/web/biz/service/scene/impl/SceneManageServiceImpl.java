@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -498,7 +499,7 @@ public class SceneManageServiceImpl implements SceneManageService {
     public ResponseResult<SceneManageWrapperResp> detailScene(Long id) {
         SceneManageIdReq req = new SceneManageIdReq();
         req.setId(id);
-        // cloud 获得场景详情
+        //TODO 调用cloud转为web
         ResponseResult<SceneManageWrapperResp> sceneDetail = sceneManageApi.getSceneDetail(req);
 
         if (Objects.isNull(sceneDetail) || Objects.isNull(sceneDetail.getData())) {
@@ -685,10 +686,7 @@ public class SceneManageServiceImpl implements SceneManageService {
         }
 
         if (scriptCheckResp.getData() != null && CollectionUtils.isNotEmpty(scriptCheckResp.getData().getErrorMsg())) {
-            StringBuilder stringBuilder = new StringBuilder();
-            scriptCheckResp.getData().getErrorMsg().forEach(errorMsg -> stringBuilder.append(errorMsg).append("|"));
-            stringBuilder.substring(0, stringBuilder.length() - 1);
-            dto.setErrmsg(stringBuilder.toString());
+            dto.setErrmsg(StringUtils.join(scriptCheckResp.getData().getErrorMsg(), "|"));
         }
 
         return dto;

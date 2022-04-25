@@ -8,7 +8,7 @@ import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 
 public interface CloudResourceApi {
 
-    Resource getDetails(int taskId, String resourceId);
+    Resource getDetails(int taskId, String resourceId, String sortField, String sortType, Integer currentPage, Integer pageSize);
 
     PhysicalResourceResponse physicalResource(PhysicalResourceRequest request);
 
