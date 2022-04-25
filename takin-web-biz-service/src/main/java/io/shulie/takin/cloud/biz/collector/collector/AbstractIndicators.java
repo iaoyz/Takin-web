@@ -1,14 +1,23 @@
 package io.shulie.takin.cloud.biz.collector.collector;
 
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
-import com.google.common.collect.Lists;
+import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
+import io.shulie.takin.cloud.biz.checker.EngineResourceChecker;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
-import io.shulie.takin.cloud.common.constants.CollectorConstants;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
+import io.shulie.takin.cloud.common.constants.ReportConstants;
+import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
+import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +26,7 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.types.Expiration;
+import org.springframework.util.CollectionUtils;
 
 /**
  * @author <a href="tangyuhan@shulie.io">yuhan.tang</a>
@@ -54,16 +64,21 @@ public abstract class AbstractIndicators {
     protected EventCenterTemplate eventCenterTemplate;
     @Resource
     protected RedisTemplate<String, Object> redisTemplate;
+    @Resource
+    private CloudSceneTaskService sceneTaskService;
+    @Resource
+    private CloudReportService cloudReportService;
+    @Resource
+    private RedisClientUtils redisClientUtils;
+    @Value("${pressure.heartbeat.timeout:30}")
+    private Long heartbeatTimeout;
     private DefaultRedisScript<Void> minRedisScript;
     private DefaultRedisScript<Void> maxRedisScript;
     private DefaultRedisScript<Void> unlockRedisScript;
-    private final Expiration expiration = Expiration.seconds((int)CollectorConstants.REDIS_KEY_TIMEOUT);
 
-    /**
-     * 压测场景强行关闭预留时间
-     */
-    @Value("${scene.pressure.forceCloseTime: 20}")
-    private Integer forceCloseTime;
+    private static final int REDIS_KEY_TIMEOUT = 60;
+
+    private final Expiration expiration = Expiration.seconds(REDIS_KEY_TIMEOUT);
 
     /**
      * 获取Metrics key
@@ -93,30 +108,6 @@ public abstract class AbstractIndicators {
         return String.format("COLLECTOR LOCK:%s", key);
     }
 
-    public void unlock(String key, String value) {
-        redisTemplate.execute(unlockRedisScript, Lists.newArrayList(getLockPrefix(key)), value);
-    }
-
-    /**
-     * 获取Metrics key
-     * 示例：COLLECTOR:TASK:102121:213124512312:1587375600000:登录接口
-     *
-     * @param taskKey 任务key
-     * @param time    时间
-     * @return -
-     */
-    protected String getWindowKey(String taskKey, String transaction, long time) {
-        return String.format("%s:%s:%s", taskKey, time, transaction);
-    }
-
-    public String getTaskKey(Long sceneId, Long reportId, Long tenantId) {
-        // 兼容原始redis key
-        if (tenantId == null) {
-            return String.format("%s_%s", sceneId, reportId);
-        }
-        return String.format("%s_%s_%s", sceneId, reportId, tenantId);
-    }
-
     /**
      * 获取Metrics 指标key
      * 示例：COLLECTOR:TASK:102121:213124512312:1587375600000:rt
@@ -126,22 +117,6 @@ public abstract class AbstractIndicators {
      */
     protected String getIndicatorsKey(String windowKey, String indicatorsName) {
         return String.format("%s:%s", windowKey, indicatorsName);
-    }
-
-    protected String saCountKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "saCount");
-    }
-
-    protected String activeThreadsKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "activeThreads");
-    }
-
-    protected String errorKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "error");
-    }
-
-    protected String testNameKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "testName");
     }
 
     /**
@@ -154,78 +129,8 @@ public abstract class AbstractIndicators {
         return getIndicatorsKey(String.format("%s:%s", taskKey, "last"), "last");
     }
 
-    /**
-     * 强行自动标识
-     *
-     * @param taskKey 任务key
-     * @return -
-     */
-    protected String forceCloseTime(String taskKey) {
-        return getIndicatorsKey(String.format("%s:%s", taskKey, "forceClose"), "force");
-    }
-
-    protected String countKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "count");
-    }
-
-    protected String failCountKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "failCount");
-    }
-
-    protected String rtKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "rt");
-    }
-
-    protected String maxRtKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "maxRt");
-    }
-
-    protected String minRtKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "minRt");
-    }
-
-    protected String percentDataKey(String taskKey, String transaction, long timeWindow) {
-        return getIndicatorsKey(getWindowKey(taskKey, transaction, timeWindow), "percents");
-    }
-
-    protected void saveRedisMap(String key, String timestampPodNum, Object value) {
-        // 归纳
-        redisTemplate.opsForHash().put(key, timestampPodNum, value);
-        setTtl(key);
-    }
-
-    protected void longSaveRedisMap(String key, String timestampPodNum, Long value) {
-        // 归纳
-        redisTemplate.opsForHash().put(key, timestampPodNum, value);
-        setTtl(key);
-    }
-
     protected void setLast(String key, String value) {
         redisTemplate.opsForValue().set(key, value);
-    }
-
-    /**
-     * 强行自动关闭时间
-     *
-     * @param key          key
-     * @param startTime    开始时间
-     * @param pressureTime 秒
-     */
-    protected void setForceCloseTime(String key, Long startTime, Long pressureTime) {
-        if (forceCloseTime > 30) {
-            // 大于30 强制改成30
-            forceCloseTime = 30;
-        }
-        Long forceTime = startTime + pressureTime * 1000 + forceCloseTime * 1000;
-        redisTemplate.opsForValue().set(key, forceTime);
-        log.info("redis key:{} 超时时间:{} ", key, forceTime);
-    }
-
-    protected void intSaveRedisMap(String key, String timestampPodNum, Integer value) {
-        // 归纳 数据
-        setTtl(key);
-        log.debug("无用的入参[value:{}]", value);
-        log.debug("无用的入参[timestampPodNum:{}]", timestampPodNum);
     }
 
     protected void setError(String key, String timestampPodNum, String value) {
@@ -255,17 +160,8 @@ public abstract class AbstractIndicators {
         }
     }
 
-    protected void mostValue(String key, Double value, Integer type) {
-        if (0 == type) {
-            redisTemplate.execute(maxRedisScript, Lists.newArrayList(key), value);
-        } else if (1 == type) {
-            redisTemplate.execute(minRedisScript, Lists.newArrayList(key), value);
-        }
-        setTtl(key);
-    }
-
     private void setTtl(String key) {
-        redisTemplate.expire(key, CollectorConstants.REDIS_KEY_TIMEOUT, TimeUnit.SECONDS);
+        redisTemplate.expire(key, REDIS_KEY_TIMEOUT, TimeUnit.SECONDS);
     }
 
     /**
@@ -296,5 +192,77 @@ public abstract class AbstractIndicators {
         unlockRedisScript.setResultType(Void.class);
         unlockRedisScript.setScriptText(UNLOCK_SCRIPT);
 
+    }
+
+    protected ResourceContext getResourceContext(String resourceId) {
+        String resourceKey = EngineResourceChecker.getResourceKey(resourceId);
+        Map<Object, Object> resource = redisClientUtils.hmget(resourceKey);
+        if (CollectionUtils.isEmpty(resource)) {
+            return null;
+        }
+        ResourceContext context = new ResourceContext();
+        context.setResourceKey(resourceKey);
+        context.setSceneId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.SCENE_ID))));
+        context.setReportId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.REPORT_ID))));
+        context.setTenantId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.TENANT_ID))));
+        context.setEndTime(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_POD_NUM))));
+        context.setStatus(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_STATUS)));
+        context.setStatus(String.valueOf(resource.get(EngineResourceChecker.HEARTBEAT_TIME)));
+        return context;
+    }
+
+    private void callStop(Long sceneId, Long taskId, String resourceId, String message, Long tenantId) {
+        // 汇报失败
+        cloudReportService.updateReportFeatures(taskId, ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, message);
+        cloudSceneManageService.reportRecord(
+            SceneManageStartRecordVO.build(sceneId, taskId, tenantId).success(false).errorMsg(message).build());
+    }
+
+    private void setTryRunTaskInfo(Long sceneId, Long reportId, Long tenantId, String errorMsg) {
+        log.info("压测启动失败--sceneId:【{}】,reportId:【{}】,tenantId:【{}】,errorMsg:【{}】", sceneId, reportId, tenantId, errorMsg);
+        String tryRunTaskKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
+        redisClientUtils.hmset(tryRunTaskKey,
+            SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.FAILED.getText());
+        redisClientUtils.hmset(tryRunTaskKey, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
+        //试跑失败，停掉pod
+        sceneTaskService.stop(sceneId);
+    }
+
+    protected void finalFailed(ResourceContext context, String message) {
+        //修改缓存压测启动状态为失败
+        Long sceneId = context.getSceneId();
+        Long reportId = context.getReportId();
+        String resourceId = context.getResourceId();
+        Long tenantId = context.getTenantId();
+        callStop(sceneId, reportId, resourceId, message, tenantId);
+        setTryRunTaskInfo(sceneId, reportId, tenantId, message);
+    }
+
+    protected boolean heartbeatTimeout(String resourceId) {
+        ResourceContext resourceContext = getResourceContext(resourceId);
+        if (resourceContext == null) {
+            return false;
+        }
+        Long heartbeatTime = resourceContext.getHeartbeatTime();
+        long now = System.currentTimeMillis();
+        if (Objects.isNull(heartbeatTime) || heartbeatTime == 0 || heartbeatTime + heartbeatTimeout <= now) {
+            redisClientUtils.hmset(EngineResourceChecker.getResourceKey(resourceId),
+                EngineResourceChecker.HEARTBEAT_TIME, now);
+            return false;
+        }
+        return true;
+    }
+
+    @Data
+    public static class ResourceContext {
+        private Long sceneId;
+        private Long reportId;
+        private String resourceId;
+        private Long tenantId;
+        private Long podNumber;
+        private Long endTime;
+        private String resourceKey;
+        private String status;
+        private Long heartbeatTime;
     }
 }

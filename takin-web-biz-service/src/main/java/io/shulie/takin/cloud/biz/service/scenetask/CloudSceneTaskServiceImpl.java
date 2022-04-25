@@ -438,7 +438,10 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         } else {
             sceneManageId = sceneManageResult.getId();
         }
-
+        CheckResult checkResult = engineResourceChecker.check(CloudConditionCheckerContext.of(sceneManageId));
+        if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
+            throw new RuntimeException(checkResult.getMessage());
+        }
         //启动该压测场景
         SceneTaskStartInput sceneTaskStartInput = new SceneTaskStartInput();
         sceneTaskStartInput.setSceneId(sceneManageId);
@@ -504,7 +507,10 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
             }
             sceneManageId = sceneManageResult.getId();
         }
-
+        CheckResult checkResult = engineResourceChecker.check(CloudConditionCheckerContext.of(sceneManageId));
+        if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
+            throw new RuntimeException(checkResult.getMessage());
+        }
         //启动该压测场景
         SceneTaskStartInput sceneTaskStartInput = new SceneTaskStartInput();
         sceneTaskStartInput.setSceneId(sceneManageId);
@@ -625,9 +631,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         } else {
             sceneManageId = sceneManageResult.getId();
         }
-        CloudConditionCheckerContext context = new CloudConditionCheckerContext();
-        context.setSceneId(sceneManageId);
-        CheckResult checkResult = engineResourceChecker.check(context);
+        CheckResult checkResult = engineResourceChecker.check(CloudConditionCheckerContext.of(sceneManageId));
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
             throw new RuntimeException(checkResult.getMessage());
         }

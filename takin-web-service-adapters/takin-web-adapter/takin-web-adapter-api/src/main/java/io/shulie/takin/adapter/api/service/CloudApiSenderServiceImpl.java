@@ -296,7 +296,8 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
             param.getEnvCode(),
             param.getFilterSql(),
             param.getUserName(),
-            param.getTenantCode());
+            param.getTenantCode(),
+            param.getUserAppKey());
         // 清理原来的上下文
         param.clean();
         // 返回对象
@@ -309,6 +310,8 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
     private static final String TENANT_ID = "tenant-id";
     private static final String FILTER_SQL = "filterSql";
     private static final String TENANT_CODE = "tenant-code";
+    private static final String USER_APP_KEY = "user-app-key";
+    private static final String TENANT_APP_KEY = "tenant-app-key";
 
     /**
      * 获取请求头信息
@@ -322,6 +325,8 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
             put(TENANT_CODE, context.getTenantCode());
             put(USER_ID, String.valueOf(context.getUserId()));
             put(TENANT_ID, String.valueOf(context.getTenantId()));
+            put(USER_APP_KEY, String.valueOf(context.getUserAppKey()));
+            put(TENANT_APP_KEY, String.valueOf(context.getUserAppKey()));
         }};
 
         //增加签名相关信息-时间戳

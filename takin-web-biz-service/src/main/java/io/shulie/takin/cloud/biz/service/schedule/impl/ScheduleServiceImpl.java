@@ -16,6 +16,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
+import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.DebugConfig;
@@ -25,12 +26,14 @@ import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.T
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
 import io.shulie.takin.adapter.api.model.response.pressure.PressureActionResp;
 import io.shulie.takin.cloud.biz.config.AppConfig;
+import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleEventService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
+import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.PressureInstanceRedisKey;
@@ -89,6 +92,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     private PressureTaskApi pressureTaskApi;
     @Resource
     private PressureTaskDAO pressureTaskDAO;
+    @Resource
+    private EngineConfigService engineConfigService;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -141,7 +146,11 @@ public class ScheduleServiceImpl implements ScheduleService {
             memSetting = CommonUtil.getValue(appConfig.getK8sJvmSettings(), config, StrategyConfigExt::getK8sJvmSettings);
         }
         eventRequest.setMemSetting(memSetting);
-        // TODO：设置采样率
+        Integer traceSampling = 1;
+        if (!request.isTryRun() && !request.isInspect()) {
+            traceSampling = CommonUtil.getValue(traceSampling, engineConfigService, EngineConfigService::getLogSimpling);
+        }
+        eventRequest.setTraceSampling(traceSampling);
         //把数据放入缓存，初始化回调调度需要
         stringRedisTemplate.opsForValue().set(scheduleName, JSON.toJSONString(eventRequest));
         // 需要将 本次调度 pod数量存入redis,报告中用到
@@ -256,6 +265,9 @@ public class ScheduleServiceImpl implements ScheduleService {
         req.setResourceId(request.getResourceId());
         req.setPressureType(request.getPressureScene());
         req.setSampling(runRequest.getTraceSampling());
+        req.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
+            EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
+                EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
 
         Map<String, ThreadGroupConfigExt> configMap = request.getThreadGroupConfigMap();
         Map<String, ThreadGroupConfig> testMap = new HashMap<>(configMap.size());

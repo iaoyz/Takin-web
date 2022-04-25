@@ -5,10 +5,8 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
-import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
-import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
@@ -18,8 +16,6 @@ import io.shulie.takin.cloud.common.utils.EnginePluginUtils;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
-import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt;
-import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,8 +58,7 @@ public class CloudAsyncServiceImpl implements CloudAsyncService {
                 String statusKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId,
                     reportId);
                 stringRedisTemplate.opsForHash().put(
-                    statusKey,
-                    SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY,
+                    statusKey, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY,
                     SceneRunTaskStatusEnum.ENDED.getText());
                 break;
             }
@@ -85,19 +80,8 @@ public class CloudAsyncServiceImpl implements CloudAsyncService {
 
     private boolean isJobFinished(Long sceneId, Long reportId, Long customerId) {
         String jobName = ScheduleConstants.getScheduleName(sceneId, reportId, customerId);
+        // TODO：此处使用心跳接口数据
         EngineCallExtApi engineCallExtApi = enginePluginUtils.getEngineCallExtApi();
         return !SceneManageConstant.SCENE_TASK_JOB_STATUS_RUNNING.equals(engineCallExtApi.getJobStatus(jobName));
-    }
-
-    private void callStop(ScheduleStartRequestExt startRequest) {
-        // 汇报失败
-        cloudSceneManageService.reportRecord(SceneManageStartRecordVO.build(startRequest.getSceneId(),
-            startRequest.getTaskId(),
-            startRequest.getTenantId()).success(false).errorMsg("").build());
-        // 清除 SLA配置 清除PushWindowDataScheduled 删除pod job configMap  生成报告拦截 状态拦截
-        Event event = new Event();
-        event.setEventName("finished");
-        event.setExt(new TaskResult(startRequest.getSceneId(), startRequest.getTaskId(), startRequest.getTenantId()));
-        eventCenterTemplate.doEvents(event);
     }
 }

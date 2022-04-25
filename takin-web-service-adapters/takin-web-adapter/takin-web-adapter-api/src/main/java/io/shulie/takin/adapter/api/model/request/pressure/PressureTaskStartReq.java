@@ -45,6 +45,11 @@ public class PressureTaskStartReq extends ContextExt {
 
     private List<PressureDataFile> files;
 
+    /**
+     * 状态接口回调地址
+     */
+    private String callBackUrl;
+
     @Data
     public static class ThreadGroupConfig {
         /**

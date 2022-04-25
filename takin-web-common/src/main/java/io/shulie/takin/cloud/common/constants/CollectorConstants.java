@@ -17,11 +17,6 @@ public class CollectorConstants {
      * 窗口大小
      */
     public static int[] timeWindow = new int[] {0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60};
-
-    /**
-     * 指标key 超时时间
-     */
-    public static final long REDIS_KEY_TIMEOUT = 60;
     /**
      * 单位：秒
      */

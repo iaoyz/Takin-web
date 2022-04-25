@@ -5,6 +5,7 @@ import java.util.Objects;
 import io.shulie.surge.data.common.zk.ZkClient;
 import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.common.constants.ZkNodePathConstants;
+import io.shulie.takin.cloud.common.utils.NumberUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,18 @@ public class EngineConfigServiceImpl implements EngineConfigService {
             return new String[] {};
         }
         return result.trim().split(",");
+    }
+
+    @Override
+    public Integer getLogSimpling() {
+        try {
+            byte[] data = zkClient.getData(ZkNodePathConstants.LOG_SAMPLING_PATH);
+            if (Objects.nonNull(data) && data.length > 0) {
+                return NumberUtil.parseInt(new String(data), 1);
+            }
+        } catch (Exception e) {
+        }
+        return 1;
     }
 
 }

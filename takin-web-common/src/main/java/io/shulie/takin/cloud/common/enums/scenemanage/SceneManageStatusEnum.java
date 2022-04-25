@@ -122,13 +122,6 @@ public enum SceneManageStatusEnum {
         return statusEnum == null ? null : statusEnum.getValue();
     }
 
-    public static Boolean canStop(Integer status) {
-        SceneManageStatusEnum statusEnum = getSceneManageStatusEnum(status);
-        return SceneManageStatusEnum.getFree().contains(statusEnum)
-            || SceneManageStatusEnum.getStarting().contains(statusEnum)
-            || PRESSURE_TESTING.equals(statusEnum);
-    }
-
     public static Boolean ifFinished(Integer status) {
         SceneManageStatusEnum statusEnum = getSceneManageStatusEnum(status);
         return SceneManageStatusEnum.getFree().contains(statusEnum)

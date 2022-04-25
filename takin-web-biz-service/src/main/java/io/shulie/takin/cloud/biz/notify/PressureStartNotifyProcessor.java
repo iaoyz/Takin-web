@@ -1,14 +1,12 @@
 package io.shulie.takin.cloud.biz.notify;
 
 import java.util.Date;
-import java.util.Map;
 import java.util.Objects;
 
 import javax.annotation.Resource;
 
 import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
-import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
@@ -28,7 +26,6 @@ import io.shulie.takin.eventcenter.Event;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 
 @Slf4j
 @Component
@@ -67,8 +64,11 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
             return ResponseResult.success();
         }
         switch (status) {
-            case START:
-                processStarted(context);
+            case START_SUCCESS:
+                processStartSuccess(context);
+                break;
+            case START_FAIL:
+                processStartFail(context);
                 break;
             case STOP:
                 processStopped(context);
@@ -79,28 +79,29 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         return ResponseResult.success();
     }
 
-    private void processStarted(NotifyContext context) {
+    private void processStartSuccess(NotifyContext context) {
         String resourceId = context.getResourceId();
+        ResourceContext resourceContext = getResourceContext(resourceId);
         String resourceKey = EngineResourceChecker.getResourceKey(resourceId);
-        Map<Object, Object> resource = redisClientUtils.hmget(resourceKey);
-        if (CollectionUtils.isEmpty(resource)) {
+        if (resourceContext == null) {
             return;
         }
         Long count = redisClientUtils.hIncrBy(resourceKey, EngineResourceChecker.JMETER_STARTED, 1);
-        Long tenantId = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.TENANT_ID)));
-        Long sceneId = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.SCENE_ID)));
-        Long reportId = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.REPORT_ID)));
-        Long podNumber = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_POD_NUM)));
-        long endTime = Long.parseLong(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_END_TIME)));
+        Long tenantId = resourceContext.getTenantId();
+        Long sceneId = resourceContext.getSceneId();
+        Long reportId = resourceContext.getReportId();
+        Long podNumber = resourceContext.getPodNumber();
+        long endTime = resourceContext.getEndTime();
         if (endTime < System.currentTimeMillis() && count < podNumber) {
             // 记录停止原因
             // 补充停止原因
-            //设置缓存，用以检查压测场景启动状态 lxr 20210623
-            String k8sPodKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s", sceneId, reportId);
-            redisClientUtils.hmset(k8sPodKey, SceneTaskRedisConstants.PRESSURE_NODE_START_ERROR,
-                String.format("节点没有在设定时间【%s】s内启动，计划启动节点个数【%s】,实际启动节点个数【%s】,"
-                    + "导致压测停止", pressureNodeStartExpireTime, podNumber, count));
-            callStop(sceneId, reportId, resourceId, tenantId);
+            // 设置缓存，用以检查压测场景启动状态 lxr 20210623
+            String k8sPodKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s", sceneId,
+                reportId);
+            String message = String.format("节点没有在设定时间【%s】s内启动，计划启动节点个数【%s】,实际启动节点个数【%s】,"
+                + "导致压测停止", pressureNodeStartExpireTime, podNumber, count);
+            redisClientUtils.hmset(k8sPodKey, SceneTaskRedisConstants.PRESSURE_NODE_START_ERROR, message);
+            finalFailed(resourceContext, message);
             return;
         }
         long time = context.getTime().getTime();
@@ -116,27 +117,42 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         }
     }
 
+    private void processStartFail(NotifyContext context) {
+        String resourceId = context.getResourceId();
+        ResourceContext resourceContext = getResourceContext(resourceId);
+        if (resourceContext == null) {
+            return;
+        }
+        String message = context.getMessage();
+        Long sceneId = resourceContext.getSceneId();
+        Long reportId = resourceContext.getReportId();
+        Long tenantId = resourceContext.getTenantId();
+        String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
+        String tempFailSign = ScheduleConstants.TEMP_FAIL_SIGN + engineName;
+        redisClientUtils.increment(tempFailSign, 1);
+        finalFailed(resourceContext, message);
+    }
+
     private void processStopped(NotifyContext context) {
-        String resourceKey = EngineResourceChecker.getResourceKey(context.getResourceId());
-        Map<Object, Object> resource = redisClientUtils.hmget(resourceKey);
-        if (CollectionUtils.isEmpty(resource)) {
+        ResourceContext resourceContext = getResourceContext(context.getResourceId());
+        if (resourceContext == null) {
             return;
         }
         long time = context.getTime().getTime();
-        Long sceneId = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.SCENE_ID)));
-        Long reportId = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.REPORT_ID)));
-        Long tenantId = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.TENANT_ID)));
-        Long podNumber = Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_POD_NUM)));
+        Long tenantId = resourceContext.getTenantId();
+        Long sceneId = resourceContext.getSceneId();
+        Long reportId = resourceContext.getReportId();
+        Long podNumber = resourceContext.getPodNumber();
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         String taskKey = getPressureTaskKey(sceneId, reportId, tenantId);
-        Long count = redisClientUtils.hIncrBy(resourceKey, EngineResourceChecker.JMETER_STOP, 1);
+        Long count = redisClientUtils.hIncrBy(resourceContext.getResourceKey(), EngineResourceChecker.JMETER_STOP, 1);
         if (count != null && count.equals(podNumber)) {
             setLast(last(taskKey), ScheduleConstants.LAST_SIGN);
             setMax(engineName + ScheduleConstants.LAST_SIGN, time);
             // 删除临时标识
             redisClientUtils.del(ScheduleConstants.TEMP_LAST_SIGN + engineName);
             // 压测停止
-            notifyEnd(sceneId, reportId, time, tenantId);
+            notifyEnd(resourceContext);
         }
     }
 
@@ -155,7 +171,12 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         reportDao.updateReportStartTime(reportId, new Date(startTime));
     }
 
-    private void notifyEnd(Long sceneId, Long reportId, long endTime, Long tenantId) {
+    private void notifyEnd(ResourceContext context) {
+        Long sceneId = context.getSceneId();
+        Long reportId = context.getReportId();
+        Long tenantId = context.getTenantId();
+        Long endTime = context.getEndTime();
+        String resourceId = context.getResourceId();
         log.info("场景[{}]压测任务已完成,更新结束时间{}", sceneId, reportId);
         // 刷新任务状态的Redis缓存
         taskStatusCache.cacheStatus(sceneId, reportId, SceneRunTaskStatusEnum.ENDED);
@@ -165,23 +186,20 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
             .updateEnum(SceneManageStatusEnum.STOP)
             .build());
         reportDao.updateReportEndTime(reportId, new Date(endTime));
-    }
 
-    private void callStop(Long sceneId, Long taskId, String resourceId, Long tenantId) {
-        // 汇报失败
-        cloudSceneManageService.reportRecord(SceneManageStartRecordVO.build(sceneId,
-            taskId, tenantId).success(false).errorMsg("").build());
-        // 清除 SLA配置 清除PushWindowDataScheduled 删除pod job configMap  生成报告拦截 状态拦截
+        // 清除 SLA配置  生成报告拦截 状态拦截
+        // TODO：需要确认是否在此位置
         Event event = new Event();
         event.setEventName("finished");
-        TaskResult result = new TaskResult(sceneId, taskId, tenantId);
+        TaskResult result = new TaskResult(sceneId, reportId, tenantId);
         result.setResourceId(resourceId);
         event.setExt(result);
         eventCenterTemplate.doEvents(event);
     }
 
     public enum JmeterStatus {
-        START,
+        START_SUCCESS,
+        START_FAIL,
         STOP;
 
         public static JmeterStatus of(Integer status) {

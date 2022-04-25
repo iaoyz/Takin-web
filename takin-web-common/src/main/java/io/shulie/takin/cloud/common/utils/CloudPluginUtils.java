@@ -22,6 +22,7 @@ public class CloudPluginUtils {
         ext.setFilterSql(null);
         ext.setEnvCode(WebPluginUtils.traceEnvCode());
         ext.setTenantCode(WebPluginUtils.traceTenantCode());
+        ext.setUserAppKey(WebPluginUtils.traceTenantAppKey());
         return ext;
     }
 
@@ -61,15 +62,21 @@ public class CloudPluginUtils {
         return getContext().getFilterSql();
     }
 
+    public static String getUserAppKey() {
+        return getContext().getUserAppKey();
+    }
+
     /**
      * 公共补充 查询 用户数据
      *
      * @param ext -
      */
     public static void fillUserData(ContextExt ext) {
-        ext.setUserId(getContext().getUserId());
-        ext.setTenantId(getContext().getTenantId());
-        ext.setEnvCode(getContext().getEnvCode());
-        ext.setFilterSql(getContext().getFilterSql());
+        ContextExt context = getContext();
+        ext.setUserId(context.getUserId());
+        ext.setTenantId(context.getTenantId());
+        ext.setEnvCode(context.getEnvCode());
+        ext.setFilterSql(context.getFilterSql());
+        ext.setUserAppKey(context.getUserAppKey());
     }
 }

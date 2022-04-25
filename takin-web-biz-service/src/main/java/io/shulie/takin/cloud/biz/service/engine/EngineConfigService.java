@@ -12,4 +12,10 @@ public interface EngineConfigService {
      */
     String[] getLocalMountSceneIds();
 
+    /**
+     * 获取日志采样率
+     *
+     * @return -
+     */
+    Integer getLogSimpling();
 }

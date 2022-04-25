@@ -13,6 +13,9 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class AppConfig {
 
+    @Value("${console.url}")
+    private String console;
+
     /**
      * 部署方式
      */
@@ -21,12 +24,6 @@ public class AppConfig {
     @Deprecated
     @Value("${k8s.jvm.settings:-XX:MaxRAMPercentage=90.0 -XX:InitialRAMPercentage=90.0 -XX:MinRAMPercentage=90.0}")
     private String k8sJvmSettings;
-
-    /**
-     * 数据收集模式:redis，influxdb
-     */
-    @Value("${report.data.collector:influxdb}")
-    private String collector;
 
     public DeploymentMethodEnum getDeploymentMethod() {
         return CommonUtil.getValue(DeploymentMethodEnum.PRIVATE, this.deploymentMethod, DeploymentMethodEnum::valueBy);

@@ -15,17 +15,20 @@ import javax.annotation.Resource;
 import com.alibaba.fastjson.JSONObject;
 
 import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivityDetail;
+import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.check.CloudCheckApi;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.request.check.ResourceCheckRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
 import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
+import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.notify.PodStatusNotifyProcessor.PodStatus;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
+import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
@@ -74,6 +77,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     public static final String PRESSURE_TASK_ID = "pressure_task_id";
     public static final String JMETER_STARTED = "jmeter_started";
     public static final String JMETER_STOP = "jmeter_stopped";
+    public static final String HEARTBEAT_TIME = "heartbeat_time";
 
     @Resource
     private CloudCheckApi cloudCheckApi;
@@ -107,6 +111,9 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
 
     @Resource
     private ReportBusinessActivityDetailDao reportBusinessActivityDetailDao;
+
+    @Resource
+    private AppConfig appConfig;
 
     @Override
     public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
@@ -157,7 +164,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         }
         int status = Integer.parseInt(String.valueOf(redisStatus));
         String message = String.valueOf(redisClientUtils.hmget(statusKey, RESOURCE_MESSAGE));
-        if (status == PodStatus.FAIL.ordinal()) {
+        if (status == PodStatus.START_FAIL.ordinal()) {
             // 失败时，删除对应缓存
             clearCache(resourceId);
         }
@@ -170,6 +177,9 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         request.setCpu(strategy.getCpuNum());
         request.setMemory(strategy.getMemorySize());
         request.setPod(sceneData.getIpNum());
+        request.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
+            EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
+                EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
         ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
         String resourceId = lockResponse.getResourceId();
         cache(sceneData, resourceId);
@@ -189,6 +199,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         param.put(SCENE_ID, String.valueOf(sceneData.getId()));
         param.put(JMETER_STARTED, 0);
         param.put(JMETER_STOP, 0);
+        param.put(HEARTBEAT_TIME, 0);
         redisClientUtils.hmset(getResourceKey(resourceId), param);
     }
 

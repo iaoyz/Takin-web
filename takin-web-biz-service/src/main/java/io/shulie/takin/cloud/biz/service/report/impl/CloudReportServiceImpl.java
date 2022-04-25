@@ -1084,6 +1084,7 @@ public class CloudReportServiceImpl implements CloudReportService {
         String transaction = StringUtils.isBlank(testPlanXpathMd5) ? ReportConstants.ALL_BUSINESS_ACTIVITY
             : testPlanXpathMd5;
         //汇总所有业务活动数据
+        // TODO：调用cloud接口
         StatReportDTO statReport = statReport(taskResult.getSceneId(), reportId, taskResult.getTenantId(), transaction);
         if (statReport == null) {
             log.warn("没有找到报表数据，报表生成失败。报告ID：{}", reportId);
@@ -1204,6 +1205,7 @@ public class CloudReportServiceImpl implements CloudReportService {
                 continue;
             }
             //统计RT分布
+            // TODO：调用Cloud接口
             Map<String, String> rtMap = reportEventService.queryAndCalcRtDistribute(tableName,
                 reportBusinessActivityDetail.getBindRef());
             //匹配报告业务的活动
