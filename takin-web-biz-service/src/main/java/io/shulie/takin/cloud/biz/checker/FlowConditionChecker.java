@@ -158,9 +158,4 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
     public String type() {
         return "flow";
     }
-
-    @Override
-    public int getOrder() {
-        return 4;
-    }
 }

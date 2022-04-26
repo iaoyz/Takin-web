@@ -1,7 +1,6 @@
 package io.shulie.takin.web.biz.service.scenemanage;
 
 import java.util.List;
-import java.util.Map;
 
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import com.pamirs.takin.entity.domain.vo.report.SceneActionParam;
@@ -83,5 +82,5 @@ public interface SceneTaskService {
      */
     ResponseResult<String> stop(Long sceneId);
 
-    List<CheckResult> preCheck(Long sceneId, String resourceId);
+    CheckResult preCheck(Long sceneId, String type, String resourceId);
 }

@@ -8,5 +8,6 @@ public class WebConditionCheckerContext {
 
     private Long sceneId;
     private String resourceId;
+    private String type;
     private SceneManageWrapperDTO sceneData;
 }

@@ -5,11 +5,10 @@ import javax.annotation.Resource;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 
 @Component
-public class WebScriptChecker implements WebStartConditionChecker, Ordered {
+public class WebScriptChecker implements WebStartConditionChecker {
 
     @Resource
     private SceneTaskService sceneTaskService;
@@ -28,10 +27,5 @@ public class WebScriptChecker implements WebStartConditionChecker, Ordered {
     @Override
     public String type() {
         return "file";
-    }
-
-    @Override
-    public int getOrder() {
-        return 1;
     }
 }

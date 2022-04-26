@@ -202,9 +202,4 @@ public class ApplicationChecker implements WebStartConditionChecker {
     public String type() {
         return "application";
     }
-
-    @Override
-    public int getOrder() {
-        return 0;
-    }
 }

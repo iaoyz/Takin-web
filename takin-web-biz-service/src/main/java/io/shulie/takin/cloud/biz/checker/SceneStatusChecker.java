@@ -65,9 +65,4 @@ public class SceneStatusChecker implements CloudStartConditionChecker {
     public String type() {
         return "status";
     }
-
-    @Override
-    public int getOrder() {
-        return 0;
-    }
 }

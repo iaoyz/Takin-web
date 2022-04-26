@@ -1,7 +1,6 @@
 package io.shulie.takin.web.biz.service.scenemanage.impl;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -10,7 +9,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -59,6 +57,7 @@ import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.web.biz.checker.CompositeWebStartConditionChecker;
 import io.shulie.takin.web.biz.checker.WebConditionCheckerContext;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
+import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckStatus;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.pojo.request.datasource.DataSourceTestRequest;
 import io.shulie.takin.web.biz.pojo.request.leakcheck.LeakSqlBatchRefsRequest;
@@ -753,19 +752,20 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     }
 
     @Override
-    public List<CheckResult> preCheck(Long sceneId, String resourceId) {
+    public CheckResult preCheck(Long sceneId, String type, String resourceId) {
         WebConditionCheckerContext webContext = new WebConditionCheckerContext();
         webContext.setSceneId(sceneId);
+        webContext.setType(type);
         webContext.setResourceId(resourceId);
-        List<CheckResult> webResultList = webStartConditionChecker.doCheck(webContext);
-
+        CheckResult webCheckResult = webStartConditionChecker.doCheck(webContext);
+        if (webCheckResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
+            return webCheckResult;
+        }
         CloudConditionCheckerContext cloudContext = new CloudConditionCheckerContext();
         cloudContext.setSceneId(sceneId);
+        cloudContext.setType(type);
         cloudContext.setResourceId(resourceId);
-        List<CheckResult> cloudResultList = cloudStartConditionChecker.doCheck(cloudContext);
-        webResultList.addAll(cloudResultList);
-        Collection<CheckResult> results = webResultList.stream().collect(
-            Collectors.toMap(CheckResult::getType, Function.identity(), CheckResult::merge)).values();
-        return new ArrayList<>(results);
+        CheckResult cloudResult = cloudStartConditionChecker.doCheck(cloudContext);
+        return webCheckResult.merge(cloudResult);
     }
 }
