@@ -226,6 +226,6 @@ public class ApplicationChecker implements WebStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 0;
+        return 1;
     }
 }

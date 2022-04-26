@@ -181,6 +181,6 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 4;
+        return 2;
     }
 }

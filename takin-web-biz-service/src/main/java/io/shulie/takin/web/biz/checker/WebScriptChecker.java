@@ -87,6 +87,6 @@ public class WebScriptChecker implements WebStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 1;
+        return 0;
     }
 }
