@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -138,7 +140,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
             request.setCpu(config.getCpuNum());
             request.setMemory(config.getMemorySize());
             request.setPod(sceneData.getIpNum());
-            cloudCheckApi.checkResources(request);
+            // cloudCheckApi.checkResources(request);
 
             // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
             String resourceId = lockResource(sceneData);
@@ -150,10 +152,17 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
 
             context.setTaskId(entity.getId());
             context.setReportId(report.getId());
+            refresh(resourceId);
             return getResourceStatus(resourceId);
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
         }
+    }
+
+    private void refresh(String resourceId) {
+        Executors.newScheduledThreadPool(1).scheduleWithFixedDelay(() -> {
+            redisClientUtils.hmset(getResourceKey(resourceId), RESOURCE_STATUS, PodStatus.START_SUCCESS);
+        }, 0, 15, TimeUnit.SECONDS);
     }
 
     private CheckResult getResourceStatus(String resourceId) {
@@ -180,8 +189,8 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         request.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
             EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
                 EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
-        ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
-        String resourceId = lockResponse.getResourceId();
+        // ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
+        String resourceId = "test-resourceId";
         cache(sceneData, resourceId);
         return resourceId;
     }
