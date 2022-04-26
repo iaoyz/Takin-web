@@ -26,7 +26,7 @@ public class EngineEnvChecker implements CloudStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 2;
+        return 3;
     }
 
     @Override
