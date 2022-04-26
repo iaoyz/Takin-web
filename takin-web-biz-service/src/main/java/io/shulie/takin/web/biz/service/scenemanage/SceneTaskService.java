@@ -7,7 +7,6 @@ import com.pamirs.takin.entity.domain.vo.report.SceneActionParam;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneActionResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
-import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.UpdateTpsRequest;
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 
@@ -82,5 +81,5 @@ public interface SceneTaskService {
      */
     ResponseResult<String> stop(Long sceneId);
 
-    CheckResult preCheck(Long sceneId, String type, String resourceId);
+    CheckResultVo preCheck(Long sceneId, String resourceId);
 }

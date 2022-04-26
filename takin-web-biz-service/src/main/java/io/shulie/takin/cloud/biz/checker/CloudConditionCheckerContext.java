@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 public class CloudConditionCheckerContext {
     private Long sceneId;
     private String resourceId;
-    private String type;
     private SceneManageWrapperOutput sceneData;
     private SceneTaskStartInput input;
     // 运行中补充
