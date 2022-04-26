@@ -125,13 +125,9 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     }
 
     private CheckResult firstCheck(CloudConditionCheckerContext context) {
-        SceneManageWrapperOutput sceneData = context.getSceneData();
-        if (sceneData == null) {
-            SceneManageQueryOptions options = new SceneManageQueryOptions();
-            sceneData = cloudSceneManageService.getSceneManage(context.getSceneId(), options);
-            context.setSceneData(sceneData);
-        }
         try {
+            fillContext(context);
+            SceneManageWrapperOutput sceneData = context.getSceneData();
             StrategyConfigExt config = getStrategy();
             sceneData.setStrategy(config);
             ResourceCheckRequest request = new ResourceCheckRequest();
@@ -153,6 +149,12 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
             return getResourceStatus(resourceId);
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
+        }
+    }
+
+    private void fillContext(CloudConditionCheckerContext context) {
+        if (context.getSceneData() == null) {
+            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), null));
         }
     }
 

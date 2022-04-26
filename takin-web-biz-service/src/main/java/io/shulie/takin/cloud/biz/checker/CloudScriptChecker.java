@@ -17,7 +17,9 @@ import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.utils.security.MD5Utils;
@@ -40,11 +42,14 @@ public class CloudScriptChecker implements CloudStartConditionChecker {
     @Resource
     private ScriptManageService scriptManageService;
 
+    @Resource
+    private CloudSceneManageService cloudSceneManageService;
+
     @Override
     public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
-        SceneManageWrapperOutput sceneData = context.getSceneData();
         try {
-            filePlugins(sceneData);
+            fillContext(context);
+            filePlugins(context);
             doCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
@@ -52,7 +57,17 @@ public class CloudScriptChecker implements CloudStartConditionChecker {
         }
     }
 
-    private void filePlugins(SceneManageWrapperOutput sceneData) {
+    private void fillContext(CloudConditionCheckerContext context) {
+        if (context.getSceneData() == null) {
+            SceneManageQueryOptions options = new SceneManageQueryOptions();
+            options.setIncludeBusinessActivity(true);
+            options.setIncludeScript(true);
+            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), options));
+        }
+    }
+
+    private void filePlugins(CloudConditionCheckerContext context) {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
         Long scriptId = sceneData.getScriptId();
         ScriptManageDeployDetailResponse deployDetail = scriptManageService.getScriptManageDeployDetail(scriptId);
         List<PluginConfigDetailResponse> pluginDetails = deployDetail.getPluginConfigDetailResponseList();

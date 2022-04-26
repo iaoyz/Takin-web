@@ -12,12 +12,14 @@ import com.google.common.collect.Lists;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
 import io.shulie.takin.cloud.common.enums.ThreadGroupTypeEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
+import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.cloud.common.utils.JsonUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
@@ -40,6 +42,9 @@ import org.springframework.stereotype.Component;
 public class FlowConditionChecker implements CloudStartConditionChecker {
 
     @Resource
+    private CloudSceneManageService cloudSceneManageService;
+
+    @Resource
     private PluginManager pluginManager;
 
     @Resource
@@ -48,6 +53,7 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
     @Override
     public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
         try {
+            fillContext(context);
             flowCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
@@ -151,6 +157,14 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
                 log.error(e.getMessage(), e);
                 throw e;
             }
+        }
+    }
+    private void fillContext(CloudConditionCheckerContext context) {
+        if (context.getSceneData() == null) {
+            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), null));
+            SceneTaskStartInput input = new SceneTaskStartInput();
+            input.setOperateId(CloudPluginUtils.getUserId());
+            context.setInput(input);
         }
     }
 

@@ -65,26 +65,29 @@ public class ApplicationChecker implements WebStartConditionChecker {
     }
 
     private void fileContext(WebConditionCheckerContext context) {
-        SceneManageIdReq req = new SceneManageIdReq();
-        Long sceneId = context.getSceneId();
-        req.setId(sceneId);
-        ResponseResult<SceneManageWrapperResp> resp = sceneManageApi.getSceneDetail(req);
-        if (!resp.getSuccess()) {
-            ResponseResult.ErrorInfo errorInfo = resp.getError();
-            String errorMsg = Objects.isNull(errorInfo) ? "" : errorInfo.getMsg();
-            log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId, errorMsg);
-            throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
-                getCloudMessage(errorInfo.getCode(), errorInfo.getMsg()));
+        SceneManageWrapperDTO sceneData = context.getSceneData();
+        if (sceneData == null) {
+            SceneManageIdReq req = new SceneManageIdReq();
+            Long sceneId = context.getSceneId();
+            req.setId(sceneId);
+            ResponseResult<SceneManageWrapperResp> resp = sceneManageApi.getSceneDetail(req);
+            if (!resp.getSuccess()) {
+                ResponseResult.ErrorInfo errorInfo = resp.getError();
+                String errorMsg = Objects.isNull(errorInfo) ? "" : errorInfo.getMsg();
+                log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId, errorMsg);
+                throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
+                    getCloudMessage(errorInfo.getCode(), errorInfo.getMsg()));
+            }
+            String jsonString = JsonHelper.bean2Json(resp.getData());
+            sceneData = JsonHelper.json2Bean(jsonString, SceneManageWrapperDTO.class);
+            if (null == sceneData) {
+                log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId,
+                    "sceneData is null! jsonString=" + jsonString);
+                throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
+                    "场景，id=" + sceneId + " 信息为空");
+            }
+            context.setSceneData(sceneData);
         }
-        String jsonString = JsonHelper.bean2Json(resp.getData());
-        SceneManageWrapperDTO sceneData = JsonHelper.json2Bean(jsonString, SceneManageWrapperDTO.class);
-        if (null == sceneData) {
-            log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId,
-                "sceneData is null! jsonString=" + jsonString);
-            throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
-                "场景，id=" + sceneId + " 信息为空");
-        }
-        context.setSceneData(sceneData);
     }
 
     private void doCheck(WebConditionCheckerContext context) {

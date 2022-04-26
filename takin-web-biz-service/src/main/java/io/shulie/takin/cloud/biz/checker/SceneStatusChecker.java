@@ -2,7 +2,6 @@ package io.shulie.takin.cloud.biz.checker;
 
 import javax.annotation.Resource;
 
-import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
@@ -10,7 +9,6 @@ import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
-import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -29,7 +27,6 @@ public class SceneStatusChecker implements CloudStartConditionChecker {
         try {
             fillContext(context);
             doCheck(context);
-            // 创建
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
@@ -37,15 +34,12 @@ public class SceneStatusChecker implements CloudStartConditionChecker {
     }
 
     private void fillContext(CloudConditionCheckerContext context) {
-        SceneManageQueryOptions options = new SceneManageQueryOptions();
-        options.setIncludeBusinessActivity(true);
-        options.setIncludeScript(true);
-        SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(context.getSceneId(), options);
-        context.setSceneData(sceneData);
-
-        SceneTaskStartInput input = new SceneTaskStartInput();
-        input.setOperateId(CloudPluginUtils.getUserId());
-        context.setInput(input);
+        if (context.getSceneData() == null) {
+            SceneManageQueryOptions options = new SceneManageQueryOptions();
+            options.setIncludeBusinessActivity(true);
+            options.setIncludeScript(true);
+            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), options));
+        }
     }
 
     private void doCheck(CloudConditionCheckerContext context) {
