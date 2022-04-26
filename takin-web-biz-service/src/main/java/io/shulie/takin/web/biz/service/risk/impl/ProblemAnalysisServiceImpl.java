@@ -28,7 +28,7 @@ import com.pamirs.takin.entity.domain.risk.LinkCount;
 import com.pamirs.takin.entity.domain.risk.Metrices;
 import com.pamirs.takin.entity.domain.risk.ReportLinkDetail;
 import io.shulie.takin.web.biz.pojo.response.linkmanage.BusinessLinkResponse;
-import io.shulie.takin.web.biz.service.linkManage.LinkManageService;
+import io.shulie.takin.web.biz.service.linkmanage.LinkManageService;
 import io.shulie.takin.web.biz.service.report.impl.ReportDataCache;
 import io.shulie.takin.web.biz.service.risk.ProblemAnalysisService;
 import io.shulie.takin.web.biz.service.risk.util.DateUtil;
@@ -137,7 +137,7 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
         appNameList.forEach(appName -> {
             Collection<BaseServerResult> baseList = baseServerDao.queryBaseServer(new BaseServerParam(sTime, eTime, appName));
             if (CollectionUtils.isNotEmpty(baseList)) {
-                logger.info("报告{}对应的应用{},查询时间段为：{}-{},在influx中对应的数据长度为:{}", dto.getId(), appName, sTime, eTime, baseList.size());
+                logger.debug("报告{}对应的应用{},查询时间段为：{}-{},在influx中对应的数据长度为:{}", dto.getId(), appName, sTime, eTime, baseList.size());
                 List<BaseAppVo> tmpList = baseList.stream().map(base -> {
                     BaseAppVo vo = new BaseAppVo();
                     vo.setCore(formatDouble(base.getCpuCores()).intValue());
@@ -154,7 +154,7 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
                     baseAppVoList.addAll(tmpList);
                 }
             } else {
-                logger.error("报告{}对应的应用{},查询时间段为：{}-{},在influx中对应的数据长度为空", dto.getId(), appName, sTime, eTime);
+                logger.debug("报告{}对应的应用{},查询时间段为：{}-{},在influx中对应的数据长度为空", dto.getId(), appName, sTime, eTime);
             }
         });
 
@@ -195,6 +195,8 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
                     baseAppVo.setReportId(null);
                     baseAppVo.setAgentIp(null);
                     tmp.setMachineBaseConfig(JSON.toJSONString(baseAppVo));
+                    // 增加租户
+                    WebPluginUtils.transferTenantParam(WebPluginUtils.traceTenantCommonExt(),tmp);
                     insertList.add(tmp);
                 }
             });
@@ -212,7 +214,6 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
     public void checkRisk(Long reportId) {
         List<BaseRiskResult> riskVoList = this.processRisk(reportId);
         if (CollectionUtils.isEmpty(riskVoList)) {
-            logger.error("无风险机器{}", reportId);
             return;
         }
 
@@ -223,7 +224,10 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
             reportMachine.setApplicationName(vo.getAppName());
             reportMachine.setMachineIp(vo.getAppIp());
             reportMachine.setRiskFlag(1);
-            reportMachine.setRiskContent(vo.getContent());
+            //reportMachine.setRiskValue();
+            if(StringUtils.isNotBlank(vo.getContent())) {
+                reportMachine.setRiskContent(vo.getContent());
+            }
             reportMachineDAO.updateRiskContent(reportMachine);
         });
     }
@@ -262,7 +266,7 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
 
         final long sTime = formatTimestamp(startTime);
         final long eTime = formatTimestamp(endTime);
-        dto.getBusinessActivity().stream().forEach(ba -> {
+        dto.getBusinessActivity().forEach(ba -> {
             Long businessActivityId = ba.getBusinessActivityId();
             BigDecimal maxTps = ba.getMaxTps() != null ? ba.getMaxTps() : new BigDecimal("0");
             // 目标TPS
@@ -356,6 +360,8 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
             record.setErrorReqs(data.getErrorCount());
             record.setNodeCount(data.getNodeCount());
             record.setBottleneckWeight(data.getRealWeight());
+            record.setTenantId(WebPluginUtils.traceTenantId());
+            record.setEnvCode(WebPluginUtils.traceEnvCode());
             recordList.add(record);
             sortNo++;
         }
@@ -520,6 +526,9 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
      * @return
      */
     private List<LinkDataResult> processLinkDataById(Long businessActivityId, long sTime, long eTime) {
+        if (businessActivityId == null || businessActivityId <= 0){
+            return null;
+        }
         List<LinkDataResult> linkDataResultList = Lists.newArrayList();
         BusinessLinkResponse businessLinkResponse = linkManageService.getBussisnessLinkDetail(
                 String.valueOf(businessActivityId));
@@ -665,7 +674,7 @@ public class ProblemAnalysisServiceImpl implements ProblemAnalysisService {
             String ipSql = "select distinct(app_ip) as app_ip from app_base_data where app_name = '" + appName
                     + "' and time > " + firstTime + " and time <= " + lastTime +
                 // 增加租户
-                " and tenant_app_Key = '" + WebPluginUtils.traceTenantAppKey() + "'" +
+                " and tenant_app_key = '" + WebPluginUtils.traceTenantAppKey() + "'" +
                 " and env_code = '" + WebPluginUtils.traceEnvCode() + "'";
             Collection<BaseServerResult> ipList = influxDatabaseManager.query(BaseServerResult.class, ipSql);
             if (CollectionUtils.isNotEmpty(ipList)) {

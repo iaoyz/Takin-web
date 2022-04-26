@@ -1,19 +1,19 @@
 package com.pamirs.takin.entity.domain.vo.report;
 
-import io.shulie.takin.web.common.domain.WebRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.io.Serializable;
 import java.util.List;
+
+import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 
 /**
  * @author 莫问
  * @date 2020-04-21
  */
 @Data
-public class SceneActionParamNew extends WebRequest implements Serializable {
-
-    private static final long serialVersionUID = 1513341649685896654L;
+@EqualsAndHashCode(callSuper = true)
+public class SceneActionParamNew extends ContextExt {
 
     private Long sceneId;
 
@@ -24,7 +24,14 @@ public class SceneActionParamNew extends WebRequest implements Serializable {
 
     private List<Long> enginePluginIds;
 
+    private List<ScenePluginParam> enginePlugins;
+
     private Boolean leakSqlEnable;
 
     private Boolean continueRead = false;
+
+    /**
+     * 资源Id
+     */
+    private String pressureResourceId;
 }
