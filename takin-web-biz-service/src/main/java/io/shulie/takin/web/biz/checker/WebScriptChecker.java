@@ -84,4 +84,9 @@ public class WebScriptChecker implements WebStartConditionChecker {
     public String type() {
         return "file";
     }
+
+    @Override
+    public int getOrder() {
+        return 1;
+    }
 }

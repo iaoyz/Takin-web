@@ -10,8 +10,11 @@ import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecor
 import io.shulie.takin.cloud.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
+import io.shulie.takin.cloud.common.bean.task.TaskResult;
+import io.shulie.takin.cloud.common.enums.scenemanage.TaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckStatus;
 import org.springframework.stereotype.Component;
 
@@ -71,11 +74,13 @@ public class PodStatusNotifyProcessor extends AbstractIndicators implements Clou
             }
             return;
         }
+        notifyEvent(resourceContext, context, true);
         Long successNumber = redisClientUtils.hIncrBy(statusKey, EngineResourceChecker.RESOURCE_SUCCESS_NUM, 1);
         if (Objects.equals(successNumber, podNumber)) {
             Map<String, Object> param = new HashMap<>(4);
             param.put(EngineResourceChecker.RESOURCE_STATUS, CheckStatus.SUCCESS.ordinal());
             redisClientUtils.hmset(EngineResourceChecker.getResourceKey(context.getResourceId()), param);
+            redisClientUtils.delete(EngineResourceChecker.getSceneResourceLockingKey(resourceContext.getSceneId()));
         }
     }
 
@@ -84,11 +89,26 @@ public class PodStatusNotifyProcessor extends AbstractIndicators implements Clou
         param.put(EngineResourceChecker.RESOURCE_STATUS, CheckStatus.FAIL.ordinal());
         param.put(EngineResourceChecker.RESOURCE_MESSAGE, context.getMessage());
         redisClientUtils.hmset(EngineResourceChecker.getResourceKey(context.getResourceId()), param);
+        redisClientUtils.delete(EngineResourceChecker.getSceneResourceLockingKey(resourceContext.getSceneId()));
+        notifyEvent(resourceContext, context, false);
         // 流量验证检查的是report的状态
         cloudSceneManageService.reportRecord(
             SceneManageStartRecordVO
                 .build(resourceContext.getSceneId(), resourceContext.getReportId(), resourceContext.getTenantId())
                 .success(false).errorMsg(context.getMessage()).build());
+    }
+
+    private void notifyEvent(ResourceContext resourceContext, NotifyContext context, boolean started) {
+        TaskResult result = new TaskResult();
+        result.setSceneId(resourceContext.getSceneId());
+        result.setTaskId(resourceContext.getReportId());
+        result.setTenantId(resourceContext.getTenantId());
+        result.setMsg(context.getMessage());
+        result.setStatus(started ? TaskStatusEnum.STARTED : TaskStatusEnum.FAILED);
+        Event event = new Event();
+        event.setEventName(started ? "started" : "failed");
+        event.setExt(result);
+        eventCenterTemplate.doEvents(event);
     }
 
     public enum PodStatus {

@@ -240,8 +240,7 @@ public class SceneTaskController {
 
     @GetMapping("preCheck")
     @ApiOperation("前置校验")
-    public ResponseResult<Object> preCheck(@RequestParam("sceneId") Long sceneId,
-        @RequestParam("type") String type, String resourceId) {
-        return ResponseResult.success(sceneTaskService.preCheck(sceneId, type, resourceId));
+    public ResponseResult<Object> preCheck(@RequestParam("sceneId") Long sceneId, String resourceId) {
+        return ResponseResult.success(sceneTaskService.preCheck(sceneId, resourceId));
     }
 }

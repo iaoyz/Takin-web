@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import javax.annotation.Resource;
 
 import com.google.common.collect.Lists;
+import com.pamirs.takin.common.constant.AppSwitchEnum;
 import com.pamirs.takin.common.constant.ConfigConstants;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneBusinessActivityRefDTO;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
@@ -18,6 +19,7 @@ import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.BaseConfigService;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
 import io.shulie.takin.web.common.enums.config.ConfigServerKeyEnum;
@@ -29,6 +31,7 @@ import io.shulie.takin.web.data.dao.application.ApplicationDAO;
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.shulie.takin.web.data.util.ConfigServerHelper;
 import io.shulie.takin.web.diff.api.scenemanage.SceneManageApi;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -52,6 +55,9 @@ public class ApplicationChecker implements WebStartConditionChecker {
 
     @Resource
     private SceneManageApi sceneManageApi;
+
+    @Resource
+    private ApplicationService applicationService;
 
     @Override
     public CheckResult check(WebConditionCheckerContext context) {
@@ -91,7 +97,19 @@ public class ApplicationChecker implements WebStartConditionChecker {
     }
 
     private void doCheck(WebConditionCheckerContext context) {
+        this.checkSwitch();
         this.checkBusinessActivity(context);
+    }
+
+    private void checkSwitch() {
+        //探针总开关关闭状态禁止启动压测
+        if (applicationService.silenceSwitchStatusIsTrue(WebPluginUtils.traceTenantCommonExt(), AppSwitchEnum.CLOSED)) {
+            throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_VALIDATE_ERROR, "启动压测场景失败，探针总开关已关闭");
+        }
+        String switchStatus = applicationService.getUserSwitchStatusForVo();
+        if (!AppSwitchEnum.OPENED.getCode().equals(switchStatus)) {
+            throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR, "压测开关处于关闭状态，禁止压测");
+        }
     }
 
     /**
@@ -204,5 +222,10 @@ public class ApplicationChecker implements WebStartConditionChecker {
     @Override
     public String type() {
         return "application";
+    }
+
+    @Override
+    public int getOrder() {
+        return 0;
     }
 }

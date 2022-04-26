@@ -22,7 +22,6 @@ import io.shulie.takin.adapter.api.entrypoint.check.CloudCheckApi;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.request.check.ResourceCheckRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
-import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.notify.PodStatusNotifyProcessor.PodStatus;
@@ -60,7 +59,9 @@ import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -117,13 +118,14 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     @Resource
     private AppConfig appConfig;
 
+    @Resource
+    @Qualifier("redisTemplate")
+    private RedisTemplate redisTemplate;
+
     @Override
     public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
         String resourceId = context.getResourceId();
-        if (StringUtils.isBlank(resourceId)) {
-            return firstCheck(context);
-        }
-        return getResourceStatus(resourceId);
+        return StringUtils.isBlank(resourceId) ? firstCheck(context) : getResourceStatus(resourceId);
     }
 
     private CheckResult firstCheck(CloudConditionCheckerContext context) {
@@ -162,7 +164,12 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
 
     private void fillContext(CloudConditionCheckerContext context) {
         if (context.getSceneData() == null) {
-            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), null));
+            SceneManageQueryOptions options = new SceneManageQueryOptions();
+            options.setIncludeBusinessActivity(true);
+            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), options));
+            SceneTaskStartInput input = new SceneTaskStartInput();
+            input.setOperateId(CloudPluginUtils.getUserId());
+            context.setInput(input);
         }
     }
 
@@ -174,7 +181,7 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
         }
         int status = Integer.parseInt(String.valueOf(redisStatus));
         String message = String.valueOf(redisClientUtils.hmget(statusKey, RESOURCE_MESSAGE));
-        if (status == PodStatus.START_FAIL.ordinal()) {
+        if (status == CheckStatus.FAIL.ordinal()) {
             // 失败时，删除对应缓存
             clearCache(resourceId);
         }
@@ -182,19 +189,28 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     }
 
     private String lockResource(SceneManageWrapperOutput sceneData) {
-        StrategyConfigExt strategy = sceneData.getStrategy();
-        ResourceLockRequest request = new ResourceLockRequest();
-        request.setCpu(strategy.getCpuNum());
-        request.setMemory(strategy.getMemorySize());
-        request.setPod(sceneData.getIpNum());
-        request.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
-            EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
-                EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
-        //ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
-        //String resourceId = lockResponse.getResourceId();
-        String resourceId = "test-resourceId";
-        cache(sceneData, resourceId);
-        return resourceId;
+        String sceneRunningKey = getSceneResourceLockingKey(sceneData.getId());
+        if (!Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(sceneRunningKey, 1))) {
+            throw new IllegalStateException("该场景正在启动压测中");
+        }
+        try {
+            StrategyConfigExt strategy = sceneData.getStrategy();
+            ResourceLockRequest request = new ResourceLockRequest();
+            request.setCpu(strategy.getCpuNum());
+            request.setMemory(strategy.getMemorySize());
+            request.setPod(sceneData.getIpNum());
+            request.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
+                EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
+                    EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
+            //ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
+            //String resourceId = lockResponse.getResourceId();
+            String resourceId = "test-resourceId";
+            cache(sceneData, resourceId);
+            return resourceId;
+        } catch (Exception e) {
+            redisTemplate.delete(sceneRunningKey);
+            throw e;
+        }
     }
 
     private void cache(SceneManageWrapperOutput sceneData, String resourceId) {
@@ -236,6 +252,10 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
 
     public static String getResourceKey(String resourceId) {
         return String.format("pressure:resource:locking:%s", resourceId);
+    }
+
+    public static String getSceneResourceLockingKey(Long sceneId) {
+        return "scene:pressure:resource:locking:" + sceneId;
     }
 
     private PressureTaskEntity initPressureTask(SceneManageWrapperOutput scene, SceneTaskStartInput input) {
@@ -418,5 +438,10 @@ public class EngineResourceChecker implements CloudStartConditionChecker {
     @Override
     public String type() {
         return "resource";
+    }
+
+    @Override
+    public int getOrder() {
+        return 3;
     }
 }

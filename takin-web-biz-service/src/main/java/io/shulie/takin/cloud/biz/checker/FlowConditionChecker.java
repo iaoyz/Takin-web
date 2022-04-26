@@ -35,6 +35,8 @@ import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -49,6 +51,10 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
 
     @Resource
     private ReportDao reportDao;
+
+    @Resource
+    @Qualifier("redisTemplate")
+    private RedisTemplate redisTemplate;
 
     @Override
     public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
@@ -171,5 +177,10 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
     @Override
     public String type() {
         return "flow";
+    }
+
+    @Override
+    public int getOrder() {
+        return 4;
     }
 }

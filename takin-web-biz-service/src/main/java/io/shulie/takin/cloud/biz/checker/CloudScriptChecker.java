@@ -171,6 +171,11 @@ public class CloudScriptChecker implements CloudStartConditionChecker {
         return "file";
     }
 
+    @Override
+    public int getOrder() {
+        return 1;
+    }
+
     public enum FileTypeEnum {
         ATTACHMENT,
         JMX,
