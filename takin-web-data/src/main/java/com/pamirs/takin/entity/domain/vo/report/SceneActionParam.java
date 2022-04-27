@@ -33,5 +33,5 @@ public class SceneActionParam extends ContextExt {
     /**
      * 资源id
      */
-    private String pressureResourceId;
+    private String resourceId;
 }

@@ -21,16 +21,13 @@ import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
-import io.shulie.takin.web.biz.checker.EngineResourceChecker;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import io.shulie.takin.web.biz.checker.StartConditionCheckerContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import static io.shulie.takin.web.biz.checker.CompositeStartConditionChecker.CHECK_SUCCESS_EVENT;
-import static io.shulie.takin.web.biz.checker.CompositeStartConditionChecker.LACK_POD_RESOURCE;
 
 /**
  * @author qianshui
@@ -79,14 +76,14 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         int currentTime = 0;
         boolean checkPass = false;
         String resourceId = context.getResourceId();
-        Object totalPodNumber = redisClientUtils.hmget(EngineResourceChecker.getResourceKey(resourceId),
-            EngineResourceChecker.RESOURCE_POD_NUM);
-        if (totalPodNumber == null) {
+        Object totalPodNumber = redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId),
+            PressureStartCache.RESOURCE_POD_NUM);
+        if (Objects.isNull(totalPodNumber)) {
             return;
         }
         String podNumber = String.valueOf(totalPodNumber);
         while (currentTime <= pressurePodStartExpireTime) {
-            Long startedPod = redisClientUtils.getSetSize(EngineResourceChecker.getResourcePodKey(resourceId));
+            Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourcePodKey(resourceId));
             try {
                 if (Long.parseLong(podNumber) == startedPod) {
                     checkPass = true;
@@ -107,6 +104,61 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         markResourceStatus(checkPass, context);
     }
 
+    @Async("checkStartedPodPool")
+    @Override
+    public void checkJmeterStartedTask(ResourceContext context) {
+        log.info("启动后台检查jmeter启动状态线程.....");
+        int currentTime = 0;
+        boolean checkPass = false;
+        String resourceId = context.getResourceId();
+        Object totalPodNumber = redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId),
+            PressureStartCache.RESOURCE_POD_NUM);
+        if (totalPodNumber == null) {
+            return;
+        }
+        String podNumber = String.valueOf(totalPodNumber);
+        while (currentTime <= pressureNodeStartExpireTime) {
+            Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterKey(resourceId));
+            try {
+                if (Long.parseLong(podNumber) == startedPod) {
+                    checkPass = true;
+                    log.info("后台检查到jmeter全部启动成功.....");
+                    break;
+                }
+            } catch (Exception e) {
+                log.error("异常代码【{}】,异常内容：任务启动异常 --> 从Redis里获取节点数量数据格式异常: {}",
+                    TakinCloudExceptionEnum.TASK_START_ERROR_CHECK_POD, e);
+            }
+            try {
+                TimeUnit.SECONDS.sleep(CHECK_INTERVAL_TIME);
+            } catch (InterruptedException ignore) {
+            }
+            currentTime += CHECK_INTERVAL_TIME;
+        }
+        //压力jmeter没有在设定时间内启动完毕，停止检测
+        markPressureStatus(checkPass, context);
+    }
+
+    private void markPressureStatus(boolean success, ResourceContext context) {
+        if (!success) {
+
+        } else {
+            String k8sPodKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s",
+                context.getSceneId(), context.getReportId());
+            String message = String.format("节点没有在设定时间【%s】s内启动，计划启动节点个数【%s】,实际启动节点个数【%s】,"
+                + "导致压测停止", pressureNodeStartExpireTime, context.getPodNumber(),
+                redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterKey(context.getResourceId())));
+            redisClientUtils.hmset(k8sPodKey, SceneTaskRedisConstants.PRESSURE_NODE_START_ERROR, message);
+            //修改缓存压测启动状态为失败
+            Long sceneId = context.getSceneId();
+            Long reportId = context.getReportId();
+            String resourceId = context.getResourceId();
+            Long tenantId = context.getTenantId();
+            callStop(sceneId, reportId, resourceId, message, tenantId);
+            setTryRunTaskInfo(sceneId, reportId, tenantId, message);
+        }
+    }
+
     private void markResourceStatus(boolean success, StartConditionCheckerContext context) {
         String resourceId = context.getResourceId();
         Long sceneId = context.getSceneId();
@@ -117,24 +169,19 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         resourceContext.setSceneId(sceneId);
         resourceContext.setReportId(reportId);
         resourceContext.setTenantId(tenantId);
+        resourceContext.setUniqueKey(context.getUniqueKey());
         if (success) {
             Event event = new Event();
-            event.setEventName(CHECK_SUCCESS_EVENT);
+            event.setEventName(PressureStartCache.CHECK_SUCCESS_EVENT);
             event.setExt(resourceContext);
             eventCenterTemplate.doEvents(event);
         } else {
             log.info("调度任务{}-{}-{},压力节点 没有在设定时间{}s内启动，停止压测,", sceneId, reportId, tenantId, pressurePodStartExpireTime);
             Event event = new Event();
-            event.setEventName(LACK_POD_RESOURCE);
+            event.setEventName(PressureStartCache.LACK_POD_RESOURCE_EVENT);
             event.setExt(resourceContext);
             eventCenterTemplate.doEvents(event);
         }
-    }
-
-    @Async("checkStartedPodPool")
-    @Override
-    public void checkPressureStartedTask(StartConditionCheckerContext context) {
-
     }
 
     @Async("updateStatusPool")

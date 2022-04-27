@@ -16,7 +16,7 @@ public class HeartbeatNotifyProcessor extends AbstractIndicators implements Clou
     public ResponseResult<?> process(NotifyContext context) {
         String resourceId = context.getResourceId();
         if (heartbeatTimeout(resourceId)) {
-            finalFailed(getResourceContext(resourceId), "心跳超时");
+            //finalFailed(getResourceContext(resourceId), "心跳超时");
         }
         return ResponseResult.success();
     }

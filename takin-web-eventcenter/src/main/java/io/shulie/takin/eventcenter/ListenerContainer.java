@@ -39,7 +39,7 @@ public class ListenerContainer {
         Map<String, Listener> map = LISTENERS.get(event.event());
         Class<?>[] parameters = method.getParameterTypes();
         String parameter = Arrays.stream(parameters).map(Class::getName).collect(Collectors.joining(","));
-        map.put(method.getClass() + "-" + method.getName() + "-" + parameter, new Listener(event, obj, method));
+        map.put(method.getDeclaringClass() + "-" + method.getName() + "-" + parameter, new Listener(event, obj, method));
     }
 
     /**

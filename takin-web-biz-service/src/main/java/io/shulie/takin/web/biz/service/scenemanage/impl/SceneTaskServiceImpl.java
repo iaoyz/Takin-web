@@ -17,6 +17,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -65,6 +66,7 @@ import io.shulie.takin.web.biz.pojo.request.leakcheck.LeakSqlBatchRefsRequest;
 import io.shulie.takin.web.biz.pojo.request.leakcheck.SqlTestRequest;
 import io.shulie.takin.web.biz.pojo.request.leakverify.LeakVerifyTaskStopRequest;
 import io.shulie.takin.web.biz.pojo.request.leakverify.VerifyTaskConfig;
+import io.shulie.takin.web.biz.pojo.request.scenemanage.TaskPreStopRequest;
 import io.shulie.takin.web.biz.pojo.request.scriptmanage.UpdateTpsRequest;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDetailResponse;
@@ -181,9 +183,9 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     private int isInnerPre;
 
     @Override
-    public void preStop(Long sceneId) {
+    public void preStop(TaskPreStopRequest req) {
         SceneManageIdReq request = new SceneManageIdReq();
-        request.setId(sceneId);
+        request.setId(req.getSceneId());
         ResponseResult<?> response = sceneTaskApi.preStopTask(request);
         if (response == null) {
             throw ApiException.create(AppConstants.RESPONSE_CODE_FAIL, "停止压测失败, 请重试!");
@@ -199,7 +201,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         }
 
         // 不成功调用停止
-        this.stop(sceneId);
+        this.stop(req.getSceneId());
     }
 
     @Override
@@ -754,8 +756,11 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     }
 
     @Override
-    public CheckResultVo preCheck(Long sceneId, String resourceId) {
+    public CheckResultVo preCheck(SceneActionParam param) {
+        Long sceneId = param.getSceneId();
+        String resourceId = param.getResourceId();
         StartConditionCheckerContext context = new StartConditionCheckerContext();
+        context.setUniqueKey(IdUtil.fastSimpleUUID());
         context.setSceneId(sceneId);
         context.setResourceId(resourceId);
         context.setTenantId(WebPluginUtils.traceTenantId());

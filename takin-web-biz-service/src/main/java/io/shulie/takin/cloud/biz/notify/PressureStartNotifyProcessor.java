@@ -8,13 +8,11 @@ import javax.annotation.Resource;
 import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
-import io.shulie.takin.web.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
-import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
@@ -24,13 +22,15 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 public class PressureStartNotifyProcessor extends AbstractIndicators implements CloudNotifyProcessor {
+
+    private static final String FIRST_JMETER = "pressure:resource:jmeter:first:%s";
 
     @Resource
     private RedisClientUtils redisClientUtils;
@@ -49,9 +49,6 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
 
     @Resource
     private SceneTaskStatusCache taskStatusCache;
-
-    @Value("${pressure.node.start.expireTime:30}")
-    private Integer pressureNodeStartExpireTime;
 
     @Override
     public String type() {
@@ -83,38 +80,21 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
     private void processStartSuccess(NotifyContext context) {
         String resourceId = context.getResourceId();
         ResourceContext resourceContext = getResourceContext(resourceId);
-        String resourceKey = EngineResourceChecker.getResourceKey(resourceId);
         if (resourceContext == null) {
             return;
         }
-        Long count = redisClientUtils.hIncrBy(resourceKey, EngineResourceChecker.JMETER_STARTED, 1);
         Long tenantId = resourceContext.getTenantId();
         Long sceneId = resourceContext.getSceneId();
         Long reportId = resourceContext.getReportId();
-        Long podNumber = resourceContext.getPodNumber();
-        long endTime = resourceContext.getEndTime();
-        if (endTime < System.currentTimeMillis() && count < podNumber) {
-            // 记录停止原因
-            // 补充停止原因
-            // 设置缓存，用以检查压测场景启动状态 lxr 20210623
-            String k8sPodKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s", sceneId,
-                reportId);
-            String message = String.format("节点没有在设定时间【%s】s内启动，计划启动节点个数【%s】,实际启动节点个数【%s】,"
-                + "导致压测停止", pressureNodeStartExpireTime, podNumber, count);
-            redisClientUtils.hmset(k8sPodKey, SceneTaskRedisConstants.PRESSURE_NODE_START_ERROR, message);
-            finalFailed(resourceContext, message);
-            return;
-        }
-        notifyStartEvent(resourceContext, context);
-        long time = context.getTime().getTime();
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
-        setMin(engineName + ScheduleConstants.FIRST_SIGN, time);
-        if (count != null && count == 1) {
+        setMin(engineName + ScheduleConstants.FIRST_SIGN, context.getTime().getTime());
+        redisClientUtils.setSetValue(PressureStartCache.getResourceJmeterKey(context.getResourceId()), context.getPodId());
+        if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(String.format(FIRST_JMETER, resourceId), 1))) {
             cloudSceneManageService.updateSceneLifeCycle(UpdateStatusBean.build(sceneId, reportId, tenantId)
                 .checkEnum(SceneManageStatusEnum.PRESSURE_NODE_RUNNING)
                 .updateEnum(SceneManageStatusEnum.ENGINE_RUNNING)
                 .build());
-            notifyStart(sceneId, reportId, time);
+            notifyStart(sceneId, reportId, context.getTime().getTime());
             cacheTryRunTaskStatus(sceneId, reportId, tenantId, SceneRunTaskStatusEnum.RUNNING);
         }
     }
@@ -132,7 +112,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         String tempFailSign = ScheduleConstants.TEMP_FAIL_SIGN + engineName;
         redisClientUtils.increment(tempFailSign, 1);
-        finalFailed(resourceContext, message);
+        // finalFailed(resourceContext, message);
     }
 
     private void processStopped(NotifyContext context) {
@@ -147,7 +127,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         Long podNumber = resourceContext.getPodNumber();
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         String taskKey = getPressureTaskKey(sceneId, reportId, tenantId);
-        Long count = redisClientUtils.hIncrBy(resourceContext.getResourceKey(), EngineResourceChecker.JMETER_STOP, 1);
+        Long count = redisClientUtils.hIncrBy(resourceContext.getResourceKey(), PressureStartCache.JMETER_STOP, 1);
         if (count != null && count.equals(podNumber)) {
             setLast(last(taskKey), ScheduleConstants.LAST_SIGN);
             setMax(engineName + ScheduleConstants.LAST_SIGN, time);
@@ -208,6 +188,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         event.setEventName("finished");
         TaskResult result = new TaskResult(sceneId, reportId, tenantId);
         result.setResourceId(resourceId);
+        result.setSceneId(sceneId);
         event.setExt(result);
         eventCenterTemplate.doEvents(event);
     }

@@ -20,7 +20,6 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.google.common.collect.Lists;
 import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
@@ -39,6 +38,9 @@ import io.shulie.takin.cloud.data.dao.report.ReportBusinessActivityDetailDao;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
+import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.EventCenterTemplate;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import io.shulie.takin.web.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
@@ -163,6 +165,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     private PressureTaskDAO pressureTaskDAO;
     @Resource
     private ReportBusinessActivityDetailDao reportBusinessActivityDetailDao;
+    @Resource
+    private EventCenterTemplate eventCenterTemplate;
     /**
      * 初始化报告开始时间偏移时间
      */
@@ -290,30 +294,11 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         if (sceneManage == null) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_STOP_VERIFY_ERROR, "停止压测失败，场景不存在!");
         }
-
-        ReportResult report = reportDao.getReportBySceneId(sceneId);
-        if (report == null) {
-            return 1;
-        }
-
-        // 数据库直接修改
-        if (SceneManageStatusEnum.ifFree(sceneManage.getStatus())) {
-            int sceneUpdateResult = sceneManageDAO.getBaseMapper().update(
-                null,
-                Wrappers.lambdaUpdate(SceneManageEntity.class)
-                    .set(SceneManageEntity::getStatus, 0)
-                    .eq(SceneManageEntity::getId, sceneId));
-
-            if (sceneUpdateResult == 1) {
-                ReportUpdateParam reportUpdateParam = new ReportUpdateParam();
-                reportUpdateParam.setId(report.getId());
-                reportUpdateParam.setStatus(2);
-                reportDao.updateReport(reportUpdateParam);
-            }
-            return 1;
-        }
-
-        return 2;
+        Event event = new Event();
+        event.setEventName(PressureStartCache.PRE_STOP_EVENT);
+        event.setExt(sceneId);
+        eventCenterTemplate.doEvents(event);
+        return 1;
     }
 
     @Override
@@ -782,40 +767,31 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     @Transactional(rollbackFor = Exception.class)
     public void testFailed(TaskResult taskResult) {
         log.info("场景[{}]压测任务启动失败，失败原因:{}", taskResult.getSceneId(), taskResult.getMsg());
-        ReportEntity report = reportMapper.selectById(taskResult.getTaskId());
+        Long taskId = taskResult.getTaskId();
+        ReportEntity report = reportMapper.selectById(taskId);
         if (report != null && report.getStatus() == ReportConstants.INIT_STATUS) {
             //删除报表
             report.setGmtUpdate(new Date());
             report.setIsDeleted(1);
-            report.setId(taskResult.getTaskId());
-            String amountLockId = null;
+            report.setId(taskId);
             JSONObject json = JsonUtil.parse(report.getFeatures());
             if (null == json) {
                 json = new JSONObject();
-            } else {
-                amountLockId = json.getString("lockId");
             }
             json.put(ReportConstants.FEATURES_ERROR_MSG, taskResult.getMsg());
             report.setFeatures(json.toJSONString());
             reportMapper.updateById(report);
 
             //释放流量
-            AssetExtApi assetExtApi = pluginManager.getExtension(AssetExtApi.class);
-            if (assetExtApi != null) {
-                boolean unLock;
-                if (StringUtils.isNotBlank(amountLockId)) {
-                    unLock = assetExtApi.unlock(taskResult.getTenantId(), amountLockId);
-                } else {
-                    unLock = assetExtApi.unlock(report.getTenantId(), taskResult.getTaskId().toString());
-                }
-                if (!unLock) {
-                    log.error("释放流量失败！");
-                }
-            }
+            Event event = new Event();
+            event.setEventName(PressureStartCache.UNLOCK_FLOW);
+            event.setExt(taskResult);
+            eventCenterTemplate.doEvents(event);
+
             ReportResult recentlyReport = reportDao.getRecentlyReport(taskResult.getSceneId());
-            if (!taskResult.getTaskId().equals(recentlyReport.getId())) {
+            if (!taskId.equals(recentlyReport.getId())) {
                 log.error("更新压测生命周期，所更新的报告不是压测场景的最新报告,场景id:{},更新的报告id:{},当前最新的报告id:{}",
-                    taskResult.getSceneId(), taskResult.getTaskId(), recentlyReport.getId());
+                    taskResult.getSceneId(), taskId, recentlyReport.getId());
                 return;
             }
             sceneManageDao.getBaseMapper().updateById(new SceneManageEntity() {{
@@ -1038,7 +1014,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         entity.setSceneName(scene.getPressureTestSceneName());
         // 解决开始时间 偏移10s
         entity.setStartTime(new Date(System.currentTimeMillis() + offsetStartTime * 1000));
-        entity.setStatus(PressureTaskStateEnum.RESOURCE_LOCKING.ordinal());
+        entity.setStatus(PressureTaskStateEnum.INITIALIZED.ordinal());
         entity.setGmtCreate(new Date());
         entity.setOperateId(input.getOperateId());
         entity.setUserId(WebPluginUtils.traceUserId());

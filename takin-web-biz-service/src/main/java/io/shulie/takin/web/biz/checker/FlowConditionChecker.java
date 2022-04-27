@@ -13,6 +13,7 @@ import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.utils.DataUtils;
+import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
 import io.shulie.takin.cloud.common.enums.ThreadGroupTypeEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
@@ -20,6 +21,8 @@ import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.utils.JsonUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
+import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
+import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
 import io.shulie.takin.cloud.data.result.report.ReportResult;
 import io.shulie.takin.cloud.ext.api.AssetExtApi;
@@ -28,7 +31,10 @@ import io.shulie.takin.cloud.ext.content.asset.AssetBillExt;
 import io.shulie.takin.cloud.ext.content.asset.AssetInvoiceExt;
 import io.shulie.takin.cloud.ext.content.enums.AssetTypeEnum;
 import io.shulie.takin.cloud.ext.content.response.Response;
+import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.plugin.framework.core.PluginManager;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -43,6 +49,9 @@ public class FlowConditionChecker implements StartConditionChecker {
 
     @Resource
     private ReportDao reportDao;
+
+    @Resource
+    private ReportMapper reportMapper;
 
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
@@ -150,6 +159,34 @@ public class FlowConditionChecker implements StartConditionChecker {
             } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 throw e;
+            }
+        }
+    }
+
+    @IntrestFor(event = PressureStartCache.UNLOCK_FLOW)
+    public void unLockFlow(Event event) {
+        TaskResult taskResult = (TaskResult)event.getExt();
+        Long taskId = taskResult.getTaskId();
+        ReportEntity report = reportMapper.selectById(taskId);
+        if (report != null) {
+            String amountLockId;
+            JSONObject json = JsonUtil.parse(report.getFeatures());
+            if (null == json) {
+                json = new JSONObject();
+            }
+            amountLockId = json.getString("lockId");
+            //释放流量
+            AssetExtApi assetExtApi = pluginManager.getExtension(AssetExtApi.class);
+            if (assetExtApi != null) {
+                boolean unLock;
+                if (StringUtils.isNotBlank(amountLockId)) {
+                    unLock = assetExtApi.unlock(taskResult.getTenantId(), amountLockId);
+                } else {
+                    unLock = assetExtApi.unlock(report.getTenantId(), taskId.toString());
+                }
+                if (!unLock) {
+                    log.error("释放流量失败！");
+                }
             }
         }
     }

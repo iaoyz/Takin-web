@@ -2,7 +2,9 @@ package io.shulie.takin.web.biz.checker;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -20,6 +22,7 @@ import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.BaseConfigService;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
@@ -70,9 +73,9 @@ public class ApplicationChecker implements StartConditionChecker {
     }
 
     private void doCheck(StartConditionCheckerContext context) {
-        this.checkSwitch();
         this.checkStatus(context);
-        this.checkBusinessActivity(context);
+        this.checkSwitch();
+        //this.checkBusinessActivity(context);
     }
 
     private void checkSwitch() {
@@ -91,12 +94,20 @@ public class ApplicationChecker implements StartConditionChecker {
         if (!SceneManageStatusEnum.ifFree(sceneData.getStatus()) || pressureRunning(context)) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
         }
+        cacheAssociation(context);
     }
 
     private boolean pressureRunning(StartConditionCheckerContext context) {
-        String resourceId = context.getResourceId();
-        return StringUtils.isNotBlank(resourceId) &&
-            redisClientUtils.hmget(EngineResourceChecker.getResourceKey(resourceId)) != null;
+        String sceneRunningKey = PressureStartCache.getSceneResourceLockingKey(context.getSceneId());
+        return !Boolean.TRUE.equals(redisClientUtils.lockNoExpire(sceneRunningKey, context.getUniqueKey()));
+    }
+
+    private void cacheAssociation(StartConditionCheckerContext context) {
+        Map<String, Object> param = new HashMap<>(4);
+        param.put(PressureStartCache.REPORT_ID, context.getReportId());
+        param.put(PressureStartCache.PRESSURE_TASK_ID, context.getTaskId());
+        param.put(PressureStartCache.UNIQUE_KEY, context.getUniqueKey());
+        redisClientUtils.hmset(PressureStartCache.getSceneResourceKey(context.getSceneId()), param);
     }
 
     /**

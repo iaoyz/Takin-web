@@ -20,7 +20,11 @@ public class StartConditionCheckerContext {
     private SceneManageWrapperDTO sceneDataDTO;
     private boolean initTaskAndReport;
 
-    public StartConditionCheckerContext(Long sceneId) {
+    // 临时记录错误信息使用
+    private String message;
+    private String uniqueKey;
+
+    private StartConditionCheckerContext(Long sceneId) {
         this.sceneId = sceneId;
     }
 

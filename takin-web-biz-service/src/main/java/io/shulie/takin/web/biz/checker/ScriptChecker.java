@@ -49,6 +49,7 @@ public class ScriptChecker implements StartConditionChecker {
     @Override
     public CheckResult check(StartConditionCheckerContext context) {
         try {
+            fillPlugins(context);
             SceneManageWrapperDTO sceneData = context.getSceneDataDTO();
             // 压测脚本文件检查
             String scriptCorrelation = sceneTaskService.checkScriptCorrelation(sceneData);
@@ -77,11 +78,13 @@ public class ScriptChecker implements StartConditionChecker {
             .filter(file -> FileTypeBusinessUtil.isScriptOrData(file.getFileType()))
             .map(file -> new FileInfo(deduceFileType(file), file.getUploadPath())).collect(Collectors.toList());
         List<EnginePluginRefOutput> enginePlugins = sceneData.getEnginePlugins();
-        List<String> pluginsPath = enginePluginFilesService.findPluginFilesPathByPluginIdAndVersion(enginePlugins);
-        List<FileInfo> plugins = pluginsPath.stream().filter(Objects::nonNull)
-            .map(path -> new FileInfo(FileTypeEnum.JAR.ordinal(), path)).collect(Collectors.toList());
-        if (!CollectionUtils.isEmpty(plugins)) {
-            fileInfos.addAll(plugins);
+        if (CollectionUtils.isNotEmpty(enginePlugins)) {
+            List<String> pluginsPath = enginePluginFilesService.findPluginFilesPathByPluginIdAndVersion(enginePlugins);
+            List<FileInfo> plugins = pluginsPath.stream().filter(Objects::nonNull)
+                .map(path -> new FileInfo(FileTypeEnum.JAR.ordinal(), path)).collect(Collectors.toList());
+            if (!CollectionUtils.isEmpty(plugins)) {
+                fileInfos.addAll(plugins);
+            }
         }
         checkExists(fileInfos);
     }
@@ -149,16 +152,18 @@ public class ScriptChecker implements StartConditionChecker {
         return false;
     }
 
-    private void filePlugins(StartConditionCheckerContext context) {
-        SceneManageWrapperOutput sceneData = context.getSceneData();
-        Long scriptId = sceneData.getScriptId();
-        ScriptManageDeployDetailResponse deployDetail = scriptManageService.getScriptManageDeployDetail(scriptId);
-        List<PluginConfigDetailResponse> pluginDetails = deployDetail.getPluginConfigDetailResponseList();
-        if (CollectionUtils.isNotEmpty(pluginDetails)) {
-            List<EnginePluginRefOutput> plugins = pluginDetails.stream()
-                .map(detail -> EnginePluginRefOutput.create(Long.parseLong(detail.getName()), detail.getVersion()))
-                .collect(Collectors.toList());
-            sceneData.setEnginePlugins(plugins);
+    private void fillPlugins(StartConditionCheckerContext context) {
+        SceneManageWrapperDTO dto = context.getSceneDataDTO();
+        Long scriptId = dto.getScriptId();
+        if (Objects.nonNull(scriptId)) {
+            ScriptManageDeployDetailResponse deployDetail = scriptManageService.getScriptManageDeployDetail(scriptId);
+            List<PluginConfigDetailResponse> pluginDetails = deployDetail.getPluginConfigDetailResponseList();
+            if (CollectionUtils.isNotEmpty(pluginDetails)) {
+                List<EnginePluginRefOutput> plugins = pluginDetails.stream()
+                    .map(detail -> EnginePluginRefOutput.create(Long.parseLong(detail.getName()), detail.getVersion()))
+                    .collect(Collectors.toList());
+                context.getSceneData().setEnginePlugins(plugins);
+            }
         }
     }
 

@@ -14,10 +14,10 @@ import com.pamirs.takin.common.constant.VerifyTypeEnum;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneBusinessActivityRefDTO;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import com.pamirs.takin.entity.domain.vo.report.SceneActionParam;
-import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneActionResp;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.annotation.ModuleDef;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
@@ -78,7 +78,7 @@ public class SceneTaskController {
         logMsgKey = BizOpConstants.Message.MESSAGE_PRESSURE_TEST_SCENE_STOP
     )
     public void preStop(@Validated @RequestBody TaskPreStopRequest request) {
-        sceneTaskService.preStop(request.getSceneId());
+        sceneTaskService.preStop(request);
     }
 
     /**
@@ -240,7 +240,7 @@ public class SceneTaskController {
 
     @GetMapping("preCheck")
     @ApiOperation("前置校验")
-    public ResponseResult<Object> preCheck(@RequestParam("sceneId") Long sceneId, String resourceId) {
-        return ResponseResult.success(sceneTaskService.preCheck(sceneId, resourceId));
+    public ResponseResult<Object> preCheck(SceneActionParam param) {
+        return ResponseResult.success(sceneTaskService.preCheck(param));
     }
 }

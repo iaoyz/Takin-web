@@ -8,7 +8,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
-import io.shulie.takin.web.biz.checker.EngineResourceChecker;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
@@ -195,31 +195,31 @@ public abstract class AbstractIndicators {
     }
 
     protected ResourceContext getResourceContext(String resourceId) {
-        String resourceKey = EngineResourceChecker.getResourceKey(resourceId);
+        String resourceKey = PressureStartCache.getResourceKey(resourceId);
         Map<Object, Object> resource = redisClientUtils.hmget(resourceKey);
         if (CollectionUtils.isEmpty(resource)) {
             return null;
         }
         ResourceContext context = new ResourceContext();
         context.setResourceKey(resourceKey);
-        context.setSceneId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.SCENE_ID))));
-        context.setReportId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.REPORT_ID))));
-        context.setTenantId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.TENANT_ID))));
-        context.setEndTime(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_POD_NUM))));
-        context.setStatus(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_STATUS)));
-        context.setHeartbeatTime(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.HEARTBEAT_TIME))));
-        context.setPressureTaskId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.PRESSURE_TASK_ID))));
+        context.setSceneId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.SCENE_ID))));
+        context.setReportId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.REPORT_ID))));
+        context.setTenantId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TENANT_ID))));
+        context.setEndTime(Long.valueOf(String.valueOf(resource.get(PressureStartCache.RESOURCE_POD_NUM))));
+        context.setStatus(String.valueOf(resource.get(PressureStartCache.RESOURCE_STATUS)));
+        context.setHeartbeatTime(Long.valueOf(String.valueOf(resource.get(PressureStartCache.HEARTBEAT_TIME))));
+        context.setPressureTaskId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.PRESSURE_TASK_ID))));
         return context;
     }
 
-    private void callStop(Long sceneId, Long taskId, String resourceId, String message, Long tenantId) {
+    protected void callStop(Long sceneId, Long taskId, String resourceId, String message, Long tenantId) {
         // 汇报失败
         cloudReportService.updateReportFeatures(taskId, ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, message);
         cloudSceneManageService.reportRecord(
             SceneManageStartRecordVO.build(sceneId, taskId, tenantId).success(false).errorMsg(message).build());
     }
 
-    private void setTryRunTaskInfo(Long sceneId, Long reportId, Long tenantId, String errorMsg) {
+    protected void setTryRunTaskInfo(Long sceneId, Long reportId, Long tenantId, String errorMsg) {
         log.info("压测启动失败--sceneId:【{}】,reportId:【{}】,tenantId:【{}】,errorMsg:【{}】", sceneId, reportId, tenantId, errorMsg);
         String tryRunTaskKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
         redisClientUtils.hmset(tryRunTaskKey,
@@ -227,16 +227,6 @@ public abstract class AbstractIndicators {
         redisClientUtils.hmset(tryRunTaskKey, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
         //试跑失败，停掉pod
         sceneTaskService.stop(sceneId);
-    }
-
-    protected void finalFailed(ResourceContext context, String message) {
-        //修改缓存压测启动状态为失败
-        Long sceneId = context.getSceneId();
-        Long reportId = context.getReportId();
-        String resourceId = context.getResourceId();
-        Long tenantId = context.getTenantId();
-        callStop(sceneId, reportId, resourceId, message, tenantId);
-        setTryRunTaskInfo(sceneId, reportId, tenantId, message);
     }
 
     protected boolean heartbeatTimeout(String resourceId) {
@@ -247,8 +237,8 @@ public abstract class AbstractIndicators {
         Long heartbeatTime = resourceContext.getHeartbeatTime();
         long now = System.currentTimeMillis();
         if (Objects.isNull(heartbeatTime) || heartbeatTime == 0 || heartbeatTime + heartbeatTimeout <= now) {
-            redisClientUtils.hmset(EngineResourceChecker.getResourceKey(resourceId),
-                EngineResourceChecker.HEARTBEAT_TIME, now);
+            redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId),
+                PressureStartCache.HEARTBEAT_TIME, now);
             return false;
         }
         return true;
@@ -266,5 +256,6 @@ public abstract class AbstractIndicators {
         private String resourceKey;
         private String status;
         private Long heartbeatTime;
+        private String uniqueKey;
     }
 }

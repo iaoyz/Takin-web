@@ -43,10 +43,6 @@ public interface StartConditionChecker extends Ordered {
             result.setMessage(message);
             return result;
         }
-
-        public static String getCheckResultKey(Long sceneId) {
-            return "scene:check:result:" + sceneId;
-        }
     }
 
     enum CheckStatus {
