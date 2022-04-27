@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
@@ -105,11 +107,13 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             request.setCpu(config.getCpuNum());
             request.setMemory(config.getMemorySize());
             request.setPod(sceneData.getIpNum());
-            cloudCheckApi.checkResources(request);
+            //cloudCheckApi.checkResources(request);
 
             // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
             String resourceId = lockResource(context);
-            sceneData.setResourceId(resourceId);
+            context.setResourceId(resourceId);
+            afterLocking(context);
+            refresh(resourceId);
             return getResourceStatus(resourceId);
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
@@ -142,14 +146,25 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             request.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
                 EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
                     EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
-            ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
-            String resourceId = lockResponse.getResourceId();
-            afterLocking(context);
+            //ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
+            //String resourceId = lockResponse.getResourceId();
+            String resourceId = "test-resource";
             return resourceId;
         } catch (Exception e) {
             redisTemplate.delete(sceneRunningKey);
             throw e;
         }
+    }
+
+    private void refresh(String resourceId) {
+        Executors.newScheduledThreadPool(1).schedule(() -> {
+            Event event = new Event();
+            ResourceContext context = new ResourceContext();
+            context.setResourceId(resourceId);
+            event.setExt(context);
+            event.setEventName(CHECK_SUCCESS_EVENT);
+            callStartSuccess(event);
+        }, 15, TimeUnit.SECONDS);
     }
 
     private void afterLocking(StartConditionCheckerContext context) {

@@ -16,7 +16,7 @@ public class EngineEnvChecker implements StartConditionChecker {
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
         try {
-            cloudCheckApi.checkEnv(new EnvCheckRequest());
+            //cloudCheckApi.checkEnv(new EnvCheckRequest());
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
