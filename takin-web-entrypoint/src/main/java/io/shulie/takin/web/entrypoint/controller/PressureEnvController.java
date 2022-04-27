@@ -24,7 +24,7 @@ public class PressureEnvController {
         if (StringUtils.isBlank(message)) {
             return ResponseResult.success();
         }
-        return ResponseResult.fail(message, "");
+        return ResponseResult.success(message);
     }
 
 }
