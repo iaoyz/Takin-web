@@ -11,6 +11,7 @@ import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskUpdateTpsInput;
 import io.shulie.takin.cloud.biz.output.report.SceneInspectTaskStartOutput;
 import io.shulie.takin.cloud.biz.output.report.SceneInspectTaskStopOutput;
+import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneActionOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneJobStateOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTaskStartCheckOutput;
@@ -18,6 +19,8 @@ import io.shulie.takin.cloud.biz.output.scenetask.SceneTaskStopOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTryRunTaskStartOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTryRunTaskStatusOutput;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
+import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
+import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.ext.content.asset.AssetBalanceExt;
 
 /**
@@ -176,4 +179,7 @@ public interface CloudSceneTaskService {
      */
     void writeBalance(AssetBalanceExt balanceExt);
 
+    PressureTaskEntity initPressureTask(SceneManageWrapperOutput scene, SceneTaskStartInput input);
+
+    ReportEntity initReport(SceneManageWrapperOutput scene, SceneTaskStartInput input, PressureTaskEntity pressureTask);
 }

@@ -1,5 +1,7 @@
 package io.shulie.takin.cloud.biz.service.async;
 
+import io.shulie.takin.web.biz.checker.StartConditionCheckerContext;
+
 /**
  * 异步服务
  *
@@ -7,6 +9,10 @@ package io.shulie.takin.cloud.biz.service.async;
  * @date 2020/10/30 下午7:13
  */
 public interface CloudAsyncService {
+
+    void checkPodStartedTask(StartConditionCheckerContext context);
+
+    void checkPressureStartedTask(StartConditionCheckerContext context);
 
     /**
      * 更新场景运行状态

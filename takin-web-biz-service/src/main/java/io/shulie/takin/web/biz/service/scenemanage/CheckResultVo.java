@@ -2,7 +2,7 @@ package io.shulie.takin.web.biz.service.scenemanage;
 
 import java.util.Collection;
 
-import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
+import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
 import lombok.Builder;
 import lombok.Data;
 

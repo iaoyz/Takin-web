@@ -12,14 +12,16 @@ import javax.annotation.Resource;
 
 import com.dangdang.ddframe.job.api.ShardingContext;
 import com.dangdang.ddframe.job.api.simple.SimpleJob;
-import io.shulie.takin.cloud.biz.checker.EngineEnvChecker;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.job.annotation.ElasticSchedulerJob;
+import io.shulie.takin.web.biz.checker.EngineEnvChecker;
+import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
+import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -28,8 +30,6 @@ import org.springframework.stereotype.Component;
 public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
 
     public static final String SCHEDULED_PRESSURE_ENV_KEY = "scheduled:pressure:env:check";
-
-    public static final String NORMAL_STATE = "prefect";
 
     private static final String WARNING_PERCENT_DEFAULT = "80";
 
@@ -41,7 +41,7 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
     private EngineEnvChecker engineEnvChecker;
 
     @Resource
-    private RedisTemplate redisTemplate;
+    private RedisClientUtils redisClientUtils;
 
     @Value("${data.path}")
     private String nfsMountPoint;
@@ -52,10 +52,9 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
     @Override
     public void execute(ShardingContext shardingContext) {
         List<String> errorMessage = new ArrayList<>(2);
-        try {
-            engineEnvChecker.check(null);
-        } catch (Exception e) {
-            errorMessage.add(e.getMessage());
+        CheckResult check = engineEnvChecker.check(null);
+        if (CheckStatus.FAIL.ordinal() == check.getStatus()) {
+            errorMessage.add(check.getMessage());
         }
         try {
             nfsSpaceCheck();
@@ -63,9 +62,9 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
             errorMessage.add(e.getMessage());
         }
         if (errorMessage.isEmpty()) {
-            redisTemplate.opsForValue().set(SCHEDULED_PRESSURE_ENV_KEY, NORMAL_STATE);
+            redisClientUtils.delete(SCHEDULED_PRESSURE_ENV_KEY);
         } else {
-            redisTemplate.opsForValue().set(SCHEDULED_PRESSURE_ENV_KEY, StringUtils.join(errorMessage, ","));
+            redisClientUtils.setString(SCHEDULED_PRESSURE_ENV_KEY, StringUtils.join(errorMessage, ","));
         }
     }
 

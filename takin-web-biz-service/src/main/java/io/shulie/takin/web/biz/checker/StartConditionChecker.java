@@ -6,9 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.core.Ordered;
 
-public interface WebStartConditionChecker extends Ordered {
+public interface StartConditionChecker extends Ordered {
 
-    default CheckResult check(WebConditionCheckerContext context) {
+    default CheckResult check(StartConditionCheckerContext context) {
         return CheckResult.success(type());
     }
 

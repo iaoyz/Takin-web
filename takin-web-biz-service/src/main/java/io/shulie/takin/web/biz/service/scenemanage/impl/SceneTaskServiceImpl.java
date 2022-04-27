@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -49,18 +48,17 @@ import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapper
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneActionResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneTaskAdjustTpsResp;
-import io.shulie.takin.cloud.biz.checker.CloudConditionCheckerContext;
-import io.shulie.takin.cloud.biz.checker.CompositeCloudStartConditionChecker;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.web.biz.checker.CompositeWebStartConditionChecker;
-import io.shulie.takin.web.biz.checker.WebConditionCheckerContext;
-import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
-import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckStatus;
+import io.shulie.takin.web.biz.checker.CompositeStartConditionChecker;
+import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
+import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
+import io.shulie.takin.web.biz.checker.StartConditionCheckerContext;
 import io.shulie.takin.web.biz.constant.WebRedisKeyConstant;
 import io.shulie.takin.web.biz.pojo.request.datasource.DataSourceTestRequest;
 import io.shulie.takin.web.biz.pojo.request.leakcheck.LeakSqlBatchRefsRequest;
@@ -171,10 +169,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     private CloudReportApi cloudReportApi;
 
     @Resource
-    private CompositeWebStartConditionChecker webStartConditionChecker;
-
-    @Resource
-    private CompositeCloudStartConditionChecker cloudStartConditionChecker;
+    private CompositeStartConditionChecker startConditionChecker;
 
     @Resource
     private CloudSceneManageService cloudSceneManageService;
@@ -760,37 +755,39 @@ public class SceneTaskServiceImpl implements SceneTaskService {
 
     @Override
     public CheckResultVo preCheck(Long sceneId, String resourceId) {
-        SceneManageWrapperOutput sceneManage = cloudSceneManageService.getSceneManage(sceneId, null);
-        WebConditionCheckerContext webContext = new WebConditionCheckerContext();
-        webContext.setSceneId(sceneId);
-        webContext.setResourceId(resourceId);
-        List<CheckResult> webResultList = webStartConditionChecker.doCheck(webContext);
-        boolean existsFail = webResultList.stream().anyMatch(result -> result.getStatus().equals(CheckStatus.FAIL.ordinal()));
-        if (existsFail) {
-            return CheckResultVo.builder().sceneName(sceneManage.getPressureTestSceneName())
-                    .podNumber(sceneManage.getIpNum()).status(CheckStatus.FAIL.ordinal()).checkList(webResultList).build();
+        StartConditionCheckerContext context = new StartConditionCheckerContext();
+        context.setSceneId(sceneId);
+        context.setResourceId(resourceId);
+        context.setTenantId(WebPluginUtils.traceTenantId());
+
+        SceneManageQueryOptions options = new SceneManageQueryOptions();
+        options.setIncludeBusinessActivity(true);
+        options.setIncludeScript(true);
+        SceneManageWrapperOutput sceneManage = cloudSceneManageService.getSceneManage(sceneId, options);
+        context.setSceneData(sceneManage);
+
+        List<CheckResult> webResultList = startConditionChecker.doCheck(context);
+        boolean existsFail = false;
+        boolean existsPending = false;
+        boolean notExistsResourceId = StringUtils.isBlank(resourceId);
+        String resource = resourceId;
+        for (CheckResult result : webResultList) {
+            if (result.getStatus().equals(CheckStatus.FAIL.ordinal())) {
+                existsFail = true;
+            } else if (result.getStatus().equals(CheckStatus.PENDING.ordinal())) {
+                existsPending = true;
+            }
+            String tmpResourceId;
+            if (notExistsResourceId && StringUtils.isNotBlank(tmpResourceId = result.getResourceId())) {
+                resource = tmpResourceId;
+            }
         }
-        CloudConditionCheckerContext cloudContext = new CloudConditionCheckerContext();
-        cloudContext.setSceneId(sceneId);
-        cloudContext.setResourceId(resourceId);
-        List<CheckResult> cloudResultList = cloudStartConditionChecker.doCheck(cloudContext);
-        existsFail = cloudResultList.stream().anyMatch(result -> result.getStatus().equals(CheckStatus.FAIL.ordinal()));
         if (existsFail) {
-            webResultList.addAll(cloudResultList);
             return CheckResultVo.builder().sceneName(sceneManage.getPressureTestSceneName())
                 .podNumber(sceneManage.getIpNum()).status(CheckStatus.FAIL.ordinal()).checkList(webResultList).build();
         }
-        webResultList.addAll(cloudResultList);
-        Collection<CheckResult> results = webResultList.stream().collect(
-            Collectors.toMap(CheckResult::getType, Function.identity(), (o1, o2) -> o1)).values();
-        CheckResult pendingResult = results.stream().filter(result ->
-            result.getStatus().equals(CheckStatus.PENDING.ordinal())
-                && StringUtils.isNotBlank(result.getResourceId())).findFirst().orElse(null);
-        if (StringUtils.isBlank(resourceId) && pendingResult != null) {
-            resourceId = pendingResult.getResourceId();
-        }
-        int status = pendingResult != null ? CheckStatus.PENDING.ordinal() : CheckStatus.SUCCESS.ordinal();
+        int status = existsPending ? CheckStatus.PENDING.ordinal() : CheckStatus.SUCCESS.ordinal();
         return CheckResultVo.builder().sceneName(sceneManage.getPressureTestSceneName())
-            .podNumber(sceneManage.getIpNum()).status(status).resourceId(resourceId).checkList(webResultList).build();
+            .podNumber(sceneManage.getIpNum()).status(status).resourceId(resource).checkList(webResultList).build();
     }
 }

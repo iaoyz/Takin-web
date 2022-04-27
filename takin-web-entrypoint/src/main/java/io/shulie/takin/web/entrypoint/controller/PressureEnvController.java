@@ -2,10 +2,11 @@ package io.shulie.takin.web.entrypoint.controller;
 
 import javax.annotation.Resource;
 
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.web.biz.job.PressureEnvInspectionJob;
 import io.shulie.takin.web.common.constant.ApiUrls;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,12 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class PressureEnvController {
 
     @Resource
-    private RedisTemplate redisTemplate;
+    private RedisClientUtils redisClientUtils;
 
     @GetMapping("pressure/state")
     public ResponseResult<String> pressureState() {
-        String message = (String)redisTemplate.opsForValue().get(PressureEnvInspectionJob.SCHEDULED_PRESSURE_ENV_KEY);
-        if (PressureEnvInspectionJob.NORMAL_STATE.equals(message)) {
+        String message = redisClientUtils.getString(PressureEnvInspectionJob.SCHEDULED_PRESSURE_ENV_KEY);
+        if (StringUtils.isBlank(message)) {
             return ResponseResult.success();
         }
         return ResponseResult.fail(message, "");

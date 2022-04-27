@@ -8,7 +8,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
-import io.shulie.takin.cloud.biz.checker.EngineResourceChecker;
+import io.shulie.takin.web.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
@@ -207,7 +207,8 @@ public abstract class AbstractIndicators {
         context.setTenantId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.TENANT_ID))));
         context.setEndTime(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_POD_NUM))));
         context.setStatus(String.valueOf(resource.get(EngineResourceChecker.RESOURCE_STATUS)));
-        context.setStatus(String.valueOf(resource.get(EngineResourceChecker.HEARTBEAT_TIME)));
+        context.setHeartbeatTime(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.HEARTBEAT_TIME))));
+        context.setPressureTaskId(Long.valueOf(String.valueOf(resource.get(EngineResourceChecker.PRESSURE_TASK_ID))));
         return context;
     }
 
@@ -257,6 +258,7 @@ public abstract class AbstractIndicators {
     public static class ResourceContext {
         private Long sceneId;
         private Long reportId;
+        private Long pressureTaskId;
         private String resourceId;
         private Long tenantId;
         private Long podNumber;
