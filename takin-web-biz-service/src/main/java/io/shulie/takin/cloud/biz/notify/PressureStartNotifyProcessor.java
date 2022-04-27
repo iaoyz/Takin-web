@@ -8,7 +8,7 @@ import javax.annotation.Resource;
 import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
-import io.shulie.takin.cloud.biz.checker.EngineResourceChecker;
+import io.shulie.takin.web.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
@@ -19,6 +19,7 @@ import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
+import io.shulie.takin.cloud.common.enums.scenemanage.TaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.common.beans.response.ResponseResult;
@@ -104,6 +105,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
             finalFailed(resourceContext, message);
             return;
         }
+        notifyStartEvent(resourceContext, context);
         long time = context.getTime().getTime();
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         setMin(engineName + ScheduleConstants.FIRST_SIGN, time);
@@ -156,6 +158,19 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         }
     }
 
+    private void notifyStartEvent(ResourceContext resourceContext, NotifyContext context) {
+        TaskResult result = new TaskResult();
+        result.setSceneId(resourceContext.getSceneId());
+        result.setTaskId(resourceContext.getReportId());
+        result.setTenantId(resourceContext.getTenantId());
+        result.setMsg(context.getMessage());
+        result.setStatus(TaskStatusEnum.STARTED);
+        Event event = new Event();
+        event.setEventName("started");
+        event.setExt(result);
+        eventCenterTemplate.doEvents(event);
+    }
+
     private void cacheTryRunTaskStatus(Long sceneId, Long reportId, Long customerId, SceneRunTaskStatusEnum status) {
         taskStatusCache.cacheStatus(sceneId, reportId, status);
         Report report = tReportMapper.selectByPrimaryKey(reportId);
@@ -199,6 +214,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
 
     public enum JmeterStatus {
         START_SUCCESS,
+        // TODO：不一定可以收集到
         START_FAIL,
         STOP;
 

@@ -1,4 +1,4 @@
-package io.shulie.takin.cloud.biz.checker;
+package io.shulie.takin.web.biz.checker;
 
 import java.util.List;
 import java.util.Objects;
@@ -12,14 +12,12 @@ import com.google.common.collect.Lists;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
 import io.shulie.takin.cloud.common.enums.ThreadGroupTypeEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
-import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.cloud.common.utils.JsonUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
@@ -31,20 +29,14 @@ import io.shulie.takin.cloud.ext.content.asset.AssetInvoiceExt;
 import io.shulie.takin.cloud.ext.content.enums.AssetTypeEnum;
 import io.shulie.takin.cloud.ext.content.response.Response;
 import io.shulie.takin.plugin.framework.core.PluginManager;
-import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class FlowConditionChecker implements CloudStartConditionChecker {
-
-    @Resource
-    private CloudSceneManageService cloudSceneManageService;
+public class FlowConditionChecker implements StartConditionChecker {
 
     @Resource
     private PluginManager pluginManager;
@@ -52,14 +44,9 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
     @Resource
     private ReportDao reportDao;
 
-    @Resource
-    @Qualifier("redisTemplate")
-    private RedisTemplate redisTemplate;
-
     @Override
-    public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
+    public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
         try {
-            fillContext(context);
             flowCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
@@ -67,7 +54,7 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
         }
     }
 
-    private void flowCheck(CloudConditionCheckerContext context) {
+    private void flowCheck(StartConditionCheckerContext context) {
         SceneManageWrapperOutput sceneData = context.getSceneData();
         if (null == sceneData.getTenantId()) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "场景没有绑定客户信息");
@@ -77,7 +64,8 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
         if (assetExtApi != null) {
             AccountInfoExt account = assetExtApi.queryAccount(sceneData.getTenantId(), input.getOperateId());
             if (null == account || account.getBalance().compareTo(sceneData.getEstimateFlow()) < 0) {
-                throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "压测流量不足！");
+                throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR,
+                    (account != null ? "您的流量余额 " + account.getBalance() + "VUM, " : "") + "流量余额不足, 请充值后继续压测！");
             }
             ReportResult report = reportDao.selectById(context.getReportId());
             //流量冻结
@@ -157,20 +145,12 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
                     features.put("lockId", res.getData());
                     reportDao.updateReport(rp);
                 } else {
-                    log.error("流量冻结失败");
+                    throw new RuntimeException("流量冻结失败");
                 }
             } catch (Exception e) {
                 log.error(e.getMessage(), e);
                 throw e;
             }
-        }
-    }
-    private void fillContext(CloudConditionCheckerContext context) {
-        if (context.getSceneData() == null) {
-            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), null));
-            SceneTaskStartInput input = new SceneTaskStartInput();
-            input.setOperateId(CloudPluginUtils.getUserId());
-            context.setInput(input);
         }
     }
 
@@ -181,6 +161,6 @@ public class FlowConditionChecker implements CloudStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 2;
+        return 1;
     }
 }

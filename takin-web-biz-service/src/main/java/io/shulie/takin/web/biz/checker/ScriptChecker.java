@@ -1,4 +1,4 @@
-package io.shulie.takin.cloud.biz.checker;
+package io.shulie.takin.web.biz.checker;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -12,44 +12,49 @@ import javax.annotation.Resource;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 
+import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import io.shulie.takin.adapter.api.model.request.check.ScriptCheckRequest.FileInfo;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.utils.security.MD5Utils;
-import io.shulie.takin.web.biz.checker.WebStartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResponse;
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDetailResponse;
+import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
 import io.shulie.takin.web.biz.service.scriptmanage.ScriptManageService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
-public class CloudScriptChecker implements CloudStartConditionChecker {
-
-    private static final String SCRIPT_NAME_SUFFIX = "jmx";
+public class ScriptChecker implements StartConditionChecker {
 
     @Resource
-    private EnginePluginFilesService enginePluginFilesService;
+    private SceneTaskService sceneTaskService;
 
     @Resource
     private ScriptManageService scriptManageService;
 
     @Resource
-    private CloudSceneManageService cloudSceneManageService;
+    private EnginePluginFilesService enginePluginFilesService;
+
+    private static final String SCRIPT_NAME_SUFFIX = "jmx";
 
     @Override
-    public CheckResult check(CloudConditionCheckerContext context) throws TakinCloudException {
+    public CheckResult check(StartConditionCheckerContext context) {
         try {
-            fillContext(context);
-            filePlugins(context);
+            SceneManageWrapperDTO sceneData = context.getSceneDataDTO();
+            // 压测脚本文件检查
+            String scriptCorrelation = sceneTaskService.checkScriptCorrelation(sceneData);
+            if (StringUtils.isNotBlank(scriptCorrelation)) {
+                return CheckResult.fail(type(), scriptCorrelation);
+            }
             doCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
@@ -57,29 +62,7 @@ public class CloudScriptChecker implements CloudStartConditionChecker {
         }
     }
 
-    private void fillContext(CloudConditionCheckerContext context) {
-        if (context.getSceneData() == null) {
-            SceneManageQueryOptions options = new SceneManageQueryOptions();
-            options.setIncludeBusinessActivity(true);
-            options.setIncludeScript(true);
-            context.setSceneData(cloudSceneManageService.getSceneManage(context.getSceneId(), options));
-        }
-    }
-
-    private void filePlugins(CloudConditionCheckerContext context) {
-        SceneManageWrapperOutput sceneData = context.getSceneData();
-        Long scriptId = sceneData.getScriptId();
-        ScriptManageDeployDetailResponse deployDetail = scriptManageService.getScriptManageDeployDetail(scriptId);
-        List<PluginConfigDetailResponse> pluginDetails = deployDetail.getPluginConfigDetailResponseList();
-        if (CollectionUtils.isNotEmpty(pluginDetails)) {
-            List<EnginePluginRefOutput> plugins = pluginDetails.stream()
-                .map(detail -> EnginePluginRefOutput.create(Long.parseLong(detail.getName()), detail.getVersion()))
-                .collect(Collectors.toList());
-            sceneData.setEnginePlugins(plugins);
-        }
-    }
-
-    private void doCheck(CloudConditionCheckerContext context) {
+    private void doCheck(StartConditionCheckerContext context) {
         SceneManageWrapperOutput sceneData = context.getSceneData();
         //检测脚本文件是否有变更
         checkModify(sceneData);
@@ -166,6 +149,19 @@ public class CloudScriptChecker implements CloudStartConditionChecker {
         return false;
     }
 
+    private void filePlugins(StartConditionCheckerContext context) {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
+        Long scriptId = sceneData.getScriptId();
+        ScriptManageDeployDetailResponse deployDetail = scriptManageService.getScriptManageDeployDetail(scriptId);
+        List<PluginConfigDetailResponse> pluginDetails = deployDetail.getPluginConfigDetailResponseList();
+        if (CollectionUtils.isNotEmpty(pluginDetails)) {
+            List<EnginePluginRefOutput> plugins = pluginDetails.stream()
+                .map(detail -> EnginePluginRefOutput.create(Long.parseLong(detail.getName()), detail.getVersion()))
+                .collect(Collectors.toList());
+            sceneData.setEnginePlugins(plugins);
+        }
+    }
+
     @Override
     public String type() {
         return "file";
@@ -173,7 +169,7 @@ public class CloudScriptChecker implements CloudStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 1;
+        return 0;
     }
 
     public enum FileTypeEnum {

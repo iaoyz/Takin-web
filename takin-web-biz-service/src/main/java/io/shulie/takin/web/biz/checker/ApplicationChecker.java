@@ -3,7 +3,6 @@ package io.shulie.takin.web.biz.checker;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -15,9 +14,11 @@ import com.pamirs.takin.common.constant.ConfigConstants;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneBusinessActivityRefDTO;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import com.pamirs.takin.entity.domain.entity.TBaseConfig;
-import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
-import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapperResp;
-import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
+import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
+import io.shulie.takin.cloud.common.exception.TakinCloudException;
+import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.BaseConfigService;
@@ -30,7 +31,6 @@ import io.shulie.takin.web.data.dao.SceneExcludedApplicationDAO;
 import io.shulie.takin.web.data.dao.application.ApplicationDAO;
 import io.shulie.takin.web.data.result.application.ApplicationDetailResult;
 import io.shulie.takin.web.data.util.ConfigServerHelper;
-import io.shulie.takin.web.diff.api.scenemanage.SceneManageApi;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -39,7 +39,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class ApplicationChecker implements WebStartConditionChecker {
+public class ApplicationChecker implements StartConditionChecker {
 
     @Resource
     private ApplicationDAO applicationDAO;
@@ -54,15 +54,14 @@ public class ApplicationChecker implements WebStartConditionChecker {
     private SceneTaskService sceneTaskService;
 
     @Resource
-    private SceneManageApi sceneManageApi;
-
-    @Resource
     private ApplicationService applicationService;
 
+    @Resource
+    private RedisClientUtils redisClientUtils;
+
     @Override
-    public CheckResult check(WebConditionCheckerContext context) {
+    public CheckResult check(StartConditionCheckerContext context) {
         try {
-            fileContext(context);
             doCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
@@ -70,34 +69,9 @@ public class ApplicationChecker implements WebStartConditionChecker {
         }
     }
 
-    private void fileContext(WebConditionCheckerContext context) {
-        SceneManageWrapperDTO sceneData = context.getSceneData();
-        if (sceneData == null) {
-            SceneManageIdReq req = new SceneManageIdReq();
-            Long sceneId = context.getSceneId();
-            req.setId(sceneId);
-            ResponseResult<SceneManageWrapperResp> resp = sceneManageApi.getSceneDetail(req);
-            if (!resp.getSuccess()) {
-                ResponseResult.ErrorInfo errorInfo = resp.getError();
-                String errorMsg = Objects.isNull(errorInfo) ? "" : errorInfo.getMsg();
-                log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId, errorMsg);
-                throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
-                    getCloudMessage(errorInfo.getCode(), errorInfo.getMsg()));
-            }
-            String jsonString = JsonHelper.bean2Json(resp.getData());
-            sceneData = JsonHelper.json2Bean(jsonString, SceneManageWrapperDTO.class);
-            if (null == sceneData) {
-                log.error("takin-cloud查询场景信息返回错误，id={},错误信息：{}", sceneId,
-                    "sceneData is null! jsonString=" + jsonString);
-                throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR,
-                    "场景，id=" + sceneId + " 信息为空");
-            }
-            context.setSceneData(sceneData);
-        }
-    }
-
-    private void doCheck(WebConditionCheckerContext context) {
+    private void doCheck(StartConditionCheckerContext context) {
         this.checkSwitch();
+        this.checkStatus(context);
         this.checkBusinessActivity(context);
     }
 
@@ -112,13 +86,26 @@ public class ApplicationChecker implements WebStartConditionChecker {
         }
     }
 
+    private void checkStatus(StartConditionCheckerContext context) {
+        SceneManageWrapperOutput sceneData = context.getSceneData();
+        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus()) || pressureRunning(context)) {
+            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
+        }
+    }
+
+    private boolean pressureRunning(StartConditionCheckerContext context) {
+        String resourceId = context.getResourceId();
+        return StringUtils.isNotBlank(resourceId) &&
+            redisClientUtils.hmget(EngineResourceChecker.getResourceKey(resourceId)) != null;
+    }
+
     /**
      * 检查业务活动相关
      *
      * @param context 校验上下文
      */
-    private void checkBusinessActivity(WebConditionCheckerContext context) {
-        SceneManageWrapperDTO sceneData = context.getSceneData();
+    private void checkBusinessActivity(StartConditionCheckerContext context) {
+        SceneManageWrapperDTO sceneData = context.getSceneDataDTO();
         //检查场景是否存可以开启启压测
         List<SceneBusinessActivityRefDTO> activityConfig = sceneData.getBusinessActivityConfig();
         if (CollectionUtils.isEmpty(activityConfig)) {
@@ -208,17 +195,6 @@ public class ApplicationChecker implements WebStartConditionChecker {
         return applicationIds;
     }
 
-    /**
-     * 返回cloud 数据
-     *
-     * @param code     错误编码
-     * @param errorMsg 错误信息
-     * @return 拼接后的错误信息
-     */
-    private String getCloudMessage(String code, String errorMsg) {
-        return String.format("takin-cloud启动场景失败，异常代码【%s】,异常原因【%s】", code, errorMsg);
-    }
-
     @Override
     public String type() {
         return "application";
@@ -226,6 +202,6 @@ public class ApplicationChecker implements WebStartConditionChecker {
 
     @Override
     public int getOrder() {
-        return 1;
+        return 2;
     }
 }

@@ -8,6 +8,9 @@ import lombok.Data;
 public class NotifyContext {
 
     private String resourceId;
+
+    private String podId;
+
     /**
      * 0-失败，1-成功
      */

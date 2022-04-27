@@ -18,7 +18,6 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.google.common.collect.Maps;
 import com.pamirs.takin.cloud.entity.dao.scene.manage.TWarnDetailMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.WarnDetail;
-import io.shulie.takin.cloud.biz.event.SlaPublish;
 import io.shulie.takin.cloud.biz.input.report.UpdateReportSlaDataInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneSlaRefInput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
@@ -61,8 +60,6 @@ public class SlaServiceImpl implements SlaService {
 
     @Resource
     private ReportDao reportDao;
-    @Resource
-    private SlaPublish slaPublish;
     @Resource
     private CloudReportService cloudReportService;
     @Resource
@@ -192,8 +189,8 @@ public class SlaServiceImpl implements SlaService {
                         slaDataInput.setReportId(scheduleStopRequest.getTaskId());
                         slaDataInput.setSlaBean(slaBean);
                         cloudReportService.updateReportSlaData(slaDataInput);
-                        // 触发中止方法
-                        slaPublish.stop(scheduleStopRequest);
+                        // TODO：触发中止方法
+                        //slaPublish.stop(scheduleStopRequest);
                         log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
                     }
                 } catch (Exception e) {
