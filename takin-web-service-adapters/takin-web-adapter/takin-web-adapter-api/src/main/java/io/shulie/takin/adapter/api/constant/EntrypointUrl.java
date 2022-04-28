@@ -41,22 +41,21 @@ public class EntrypointUrl {
     public final static String MODULE_RESOURCE = "resource";
     public final static String METHOD_RESOURCE_PHYSICAL = "physical/all";
     public final static String METHOD_RESOURCE_MACHINE = "machine/task";
-    public final static String METHOD_RESOURCE_LOCK = "lock?callbackUrl=%s";
+    public final static String METHOD_RESOURCE_LOCK = "lock";
     public final static String METHOD_RESOURCE_UNLOCK = "unlock";
 
     /**
-     * 模块 - 校验
+     * 模块 - 任务
      */
-    public final static String MODULE_CHECK = "check";
-    public final static String METHOD_CHECK_RESOURCES = "resources";
-    public final static String METHOD_CHECK_ENV = "env";
+    public final static String MODULE_RRESSURE = "job";
+    public final static String METHOD_RRESSURE_START = "start";
+    public final static String METHOD_RRESSURE_STOP = "stop";
+    public final static String METHOD_RRESSURE_MODIFY = "config/modify";
+    public final static String METHOD_RRESSURE_PARAMS = "config/get";
 
     /**
-     * 模块 - 压测
+     * 调度器
      */
-    public final static String MODULE_RRESSURE = "pressure";
-    public final static String METHOD_RRESSURE_START = "task/start";
-    public final static String METHOD_RRESSURE_STOP = "task/stop";
-    public final static String METHOD_RRESSURE_MODIFY = "task/modify";
-    public final static String METHOD_RRESSURE_PARAMS = "task/params";
+    public final static String MODULE_WATCHMAN = "watchman";
+    public final static String MATHOD_WATCHMAN_STATUS = "status";
 }

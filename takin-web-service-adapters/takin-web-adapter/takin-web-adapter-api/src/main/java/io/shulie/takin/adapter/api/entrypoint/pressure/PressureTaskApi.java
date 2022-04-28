@@ -9,11 +9,11 @@ import io.shulie.takin.adapter.api.model.response.pressure.PressureParamsRespons
 
 public interface PressureTaskApi {
 
-    PressureActionResp start(PressureTaskStartReq req);
+    Long start(PressureTaskStartReq req);
 
-    PressureActionResp stop(PressureTaskStopReq req);
+    String stop(PressureTaskStopReq req);
 
-    PressureActionResp modifyParam(PressureParamModifyReq req);
+    Void modifyParam(PressureParamModifyReq req);
 
     PressureParamsResponse params(PressureParamsReq req);
 }

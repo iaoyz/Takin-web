@@ -1,9 +1,7 @@
 package io.shulie.takin.cloud.biz.service.schedule.impl;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -12,19 +10,12 @@ import javax.annotation.Resource;
 
 import com.alibaba.fastjson.JSON;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
-import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
-import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.DebugConfig;
-import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFile;
-import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.PressureDataFilePosition;
-import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadGroupConfig;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
-import io.shulie.takin.adapter.api.model.response.pressure.PressureActionResp;
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
@@ -33,7 +24,6 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleEventService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
-import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.PressureInstanceRedisKey;
@@ -48,10 +38,8 @@ import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleInitParamExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleRunRequest;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt;
-import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt.StartEndPosition;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStopRequestExt;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
-import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +47,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 
 /**
  * @author 莫问
@@ -197,10 +184,10 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .build());
         PressureTaskStartReq req = buildStartReq(request);
         try {
-            PressureActionResp actionResp = pressureTaskApi.start(req);
+            Long pressureTask = pressureTaskApi.start(req);
             // 是空的
             log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
-            updateReportAssociation(startRequest, actionResp);
+            updateReportAssociation(startRequest, pressureTask);
         } catch (Exception e) {
             // 创建失败
             log.info("场景{},任务{},顾客{}开始启动压测，压测启动失败", sceneId, taskId, customerId);
@@ -261,58 +248,57 @@ public class ScheduleServiceImpl implements ScheduleService {
     private PressureTaskStartReq buildStartReq(ScheduleRunRequest runRequest) {
         ScheduleStartRequestExt request = runRequest.getRequest();
         PressureTaskStartReq req = new PressureTaskStartReq();
-        req.setJvmParams(runRequest.getMemSetting());
-        req.setResourceId(request.getResourceId());
-        req.setPressureType(request.getPressureScene());
-        req.setSampling(runRequest.getTraceSampling());
-        req.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
-            EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
-                EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
-
-        Map<String, ThreadGroupConfigExt> configMap = request.getThreadGroupConfigMap();
-        Map<String, ThreadGroupConfig> testMap = new HashMap<>(configMap.size());
-        configMap.forEach((key, value) -> {
-            ThreadGroupConfig config = new ThreadGroupConfig();
-            config.setType(value.getType());
-            config.setModel(value.getMode());
-            config.setThreadNum(value.getThreadNum());
-            config.setRampUp(value.getRampUp());
-            config.setRampUnit(value.getRampUpUnit());
-            config.setSteps(value.getSteps());
-            testMap.putIfAbsent(key, config);
-        });
-        req.setTest(testMap);
-        List<PressureDataFile> dataFiles = request.getDataFile().stream().map(file -> {
-            PressureDataFile dataFile = new PressureDataFile();
-            dataFile.setPath(file.getPath());
-            dataFile.setType(file.getFileType());
-            dataFile.setSplit(file.isSplit());
-            dataFile.setOrdered(file.isOrdered());
-            dataFile.setBigFile(file.isBigFile());
-            dataFile.setMd5(file.getFileMd5());
-
-            Map<Integer, List<StartEndPosition>> positions = file.getStartEndPositions();
-            if (!CollectionUtils.isEmpty(positions)) {
-                Map<Integer, List<PressureDataFilePosition>> dataFilePositions = new HashMap<>(positions.size());
-                positions.forEach((key, value) -> {
-                    List<PressureDataFilePosition> filePositions = value.stream()
-                        .map(val -> BeanUtil.copyProperties(val, PressureDataFilePosition.class))
-                        .collect(Collectors.toList());
-                    dataFilePositions.putIfAbsent(key, filePositions);
-                });
-                dataFile.setSplitPositions(dataFilePositions);
-            }
-            return dataFile;
-        }).collect(Collectors.toList());
-        req.setFiles(dataFiles);
-        if (request.isTryRun()) {
-            req.setDebugInfo(new DebugConfig(request.getLoopsNum(), request.getConcurrenceNum()));
-        }
+        //req.setJvmOptions(runRequest.getMemSetting());
+        //req.setResourceId(request.getResourceId());
+        //req.setType(request.getPressureScene());
+        //req.setSampling(runRequest.getTraceSampling());
+        //req.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
+        //    EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
+        //        EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
+        //
+        //Map<String, ThreadGroupConfigExt> configMap = request.getThreadGroupConfigMap();
+        //Map<String, ThreadGroupConfig> testMap = new HashMap<>(configMap.size());
+        //configMap.forEach((key, value) -> {
+        //    ThreadGroupConfig config = new ThreadGroupConfig();
+        //    config.setType(value.getType());
+        //    config.setModel(value.getMode());
+        //    config.setThreadNum(value.getThreadNum());
+        //    config.setRampUp(value.getRampUp());
+        //    config.setRampUnit(value.getRampUpUnit());
+        //    config.setSteps(value.getSteps());
+        //    testMap.putIfAbsent(key, config);
+        //});
+        //req.setThreadConfig(testMap);
+        //List<FileInfo> dataFiles = request.getDataFile().stream().map(file -> {
+        //    FileInfo dataFile = new FileInfo();
+        //    dataFile.setUri(file.getPath());
+        //    dataFile.setType(file.getFileType());
+        //    dataFile.setSplit(file.isSplit());
+        //    dataFile.setOrdered(file.isOrdered());
+        //    dataFile.setBigFile(file.isBigFile());
+        //    dataFile.setMd5(file.getFileMd5());
+        //
+        //    Map<Integer, List<StartEndPosition>> positions = file.getStartEndPositions();
+        //    if (!CollectionUtils.isEmpty(positions)) {
+        //        Map<Integer, List<FilePosition>> dataFilePositions = new HashMap<>(positions.size());
+        //        positions.forEach((key, value) -> {
+        //            List<FilePosition> filePositions = value.stream()
+        //                .map(val -> BeanUtil.copyProperties(val, FilePosition.class))
+        //                .collect(Collectors.toList());
+        //            dataFilePositions.putIfAbsent(key, filePositions);
+        //        });
+        //        dataFile.setSplitPositions(dataFilePositions);
+        //    }
+        //    return dataFile;
+        //}).collect(Collectors.toList());
+        //req.setFiles(dataFiles);
+        //if (request.isTryRun()) {
+        //    req.setDebugInfo(new DebugConfig(request.getLoopsNum(), request.getConcurrenceNum()));
+        //}
         return req;
     }
 
-    private void updateReportAssociation(ScheduleStartRequestExt startRequest, PressureActionResp actionResp) {
-        Long pressureTaskId = actionResp.getTaskId();
+    private void updateReportAssociation(ScheduleStartRequestExt startRequest, Long pressureTaskId) {
         String resourceId = startRequest.getResourceId();
         cloudReportService.updateResourceAssociation(resourceId, pressureTaskId);
         pressureTaskDAO.updateResourceAssociation(resourceId, pressureTaskId);

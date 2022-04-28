@@ -15,6 +15,6 @@ public class ResourceLockRequest extends ContextExt {
     private BigDecimal cpu;
     private BigDecimal memory;
     private Integer number;
-    private Integer watchmanId = WATCH_MAN_ID;
+    private Long watchmanId = WATCH_MAN_ID;
     private String callbackUrl;
 }

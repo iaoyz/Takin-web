@@ -19,8 +19,8 @@ import cn.hutool.http.ContentType;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.http.Method;
-import io.shulie.takin.adapter.api.model.common.ResponseResult;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
+import io.shulie.takin.cloud.model.response.ApiResult;
 import io.shulie.takin.utils.security.MD5Utils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -198,10 +198,10 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
             // 返回接口响应
             T apiResponse = JSON.parseObject(responseBody, responseClass);
             if (apiResponse == null) {throw new NullPointerException();}
-            if (ResponseResult.class.equals(apiResponse.getClass())) {
-                ResponseResult<?> cloudResult = (ResponseResult<?>)apiResponse;
+            if (ApiResult.class.equals(apiResponse.getClass())) {
+                ApiResult<?> cloudResult = (ApiResult<?>)apiResponse;
                 // 接口成功
-                if (Boolean.TRUE.equals(cloudResult.getSuccess())) {return apiResponse;}
+                if (Boolean.TRUE.equals(cloudResult.isSuccess())) {return apiResponse;}
                 // success == null || success == false
                 else if (cloudResult.getMsg() != null) {throw new RuntimeException(cloudResult.getMsg());}
                 // cloud 回传的 error 信息为空
@@ -263,10 +263,10 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
             // 返回接口响应
             T apiResponse = JSON.parseObject(responseBody, responseClass);
             if (apiResponse == null) {throw new NullPointerException();}
-            if (ResponseResult.class.equals(apiResponse.getClass())) {
-                ResponseResult<?> cloudResult = (ResponseResult<?>)apiResponse;
+            if (ApiResult.class.equals(apiResponse.getClass())) {
+                ApiResult<?> cloudResult = (ApiResult<?>)apiResponse;
                 // 接口成功
-                if (Boolean.TRUE.equals(cloudResult.getSuccess())) {return apiResponse;}
+                if (Boolean.TRUE.equals(cloudResult.isSuccess())) {return apiResponse;}
                 // success == null || success == false
                 else if (cloudResult.getMsg() != null) {throw new RuntimeException(cloudResult.getMsg());}
                 // cloud 回传的 error 信息为空

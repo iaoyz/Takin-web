@@ -94,8 +94,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             StrategyConfigExt config = getStrategy();
             sceneData.setStrategy(config);
             ResourceCheckRequest request = new ResourceCheckRequest();
-            request.setCpu(config.getCpuNum());
-            request.setMemory(config.getMemorySize());
+            request.setCpu(config.getCpuNum().toPlainString());
+            request.setMemory(config.getMemorySize().toPlainString());
             request.setNumber(sceneData.getIpNum());
             cloudResourceApi.check(request);
 

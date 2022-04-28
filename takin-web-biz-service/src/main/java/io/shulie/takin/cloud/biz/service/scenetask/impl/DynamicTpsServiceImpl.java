@@ -44,10 +44,6 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
     /**
      * 获取动态TPS目标值
      *
-     * @param sceneId  场景主键
-     * @param reportId 报告主键
-     * @param tenantId 租户主键
-     * @param md5      脚本节点md5
      * @return 值-可能为空
      */
     @Override
