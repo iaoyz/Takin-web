@@ -3,7 +3,6 @@ package io.shulie.takin.web.biz.checker;
 import javax.annotation.Resource;
 
 import io.shulie.takin.adapter.api.entrypoint.check.CloudCheckApi;
-import io.shulie.takin.adapter.api.model.request.check.EnvCheckRequest;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import org.springframework.stereotype.Component;
 

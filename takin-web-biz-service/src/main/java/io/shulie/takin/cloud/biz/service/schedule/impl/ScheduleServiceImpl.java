@@ -265,7 +265,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         req.setResourceId(request.getResourceId());
         req.setPressureType(request.getPressureScene());
         req.setSampling(runRequest.getTraceSampling());
-        req.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
+        req.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
             EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
                 EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
 

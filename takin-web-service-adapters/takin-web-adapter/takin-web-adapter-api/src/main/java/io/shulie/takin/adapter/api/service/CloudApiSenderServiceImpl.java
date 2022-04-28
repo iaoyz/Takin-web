@@ -19,8 +19,8 @@ import cn.hutool.http.ContentType;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.http.Method;
+import io.shulie.takin.adapter.api.model.common.ResponseResult;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
-import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.security.MD5Utils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -203,7 +203,7 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
                 // 接口成功
                 if (Boolean.TRUE.equals(cloudResult.getSuccess())) {return apiResponse;}
                 // success == null || success == false
-                else if (cloudResult.getError() != null) {throw new RuntimeException(cloudResult.getError().getMsg());}
+                else if (cloudResult.getMsg() != null) {throw new RuntimeException(cloudResult.getMsg());}
                 // cloud 回传的 error 信息为空
                 else {throw new RuntimeException("无法展示更多信息,请参照cloud日志");}
             }
@@ -268,7 +268,7 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
                 // 接口成功
                 if (Boolean.TRUE.equals(cloudResult.getSuccess())) {return apiResponse;}
                 // success == null || success == false
-                else if (cloudResult.getError() != null) {throw new RuntimeException(cloudResult.getError().getMsg());}
+                else if (cloudResult.getMsg() != null) {throw new RuntimeException(cloudResult.getMsg());}
                 // cloud 回传的 error 信息为空
                 else {throw new RuntimeException("无法展示更多信息,请参照cloud日志");}
             }
@@ -340,7 +340,7 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
          */
         TreeMap<String,String> treeMap = new TreeMap<>();
         treeMap.putAll(headMap);
-        treeMap.put("url", "/takin-cloud"+url.split("/takin-cloud")[1]);
+        treeMap.put("url", url);
         treeMap.put("body",new String(body));
 
         String signBodyStr = treeMap.toString().replace("null","");

@@ -140,7 +140,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
     }
 
     private void markPressureStatus(boolean success, ResourceContext context) {
-        if (!success) {
+        if (success) {
 
         } else {
             String k8sPodKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s",
