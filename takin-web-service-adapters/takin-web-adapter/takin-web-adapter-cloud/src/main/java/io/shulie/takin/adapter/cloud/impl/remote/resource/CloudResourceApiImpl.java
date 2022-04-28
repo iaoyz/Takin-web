@@ -8,16 +8,16 @@ import com.alibaba.fastjson.TypeReference;
 
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
+import io.shulie.takin.adapter.api.model.common.ResponseResult;
+import io.shulie.takin.adapter.api.model.request.resource.ResourceCheckRequest;
 import io.shulie.takin.adapter.api.model.request.cloud.resources.CloudResourcesRequest;
 import io.shulie.takin.adapter.api.model.request.resource.PhysicalResourceRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceUnLockRequest;
 import io.shulie.takin.adapter.api.model.response.cloud.resources.CloudResource;
 import io.shulie.takin.adapter.api.model.response.resource.PhysicalResourceResponse;
-import io.shulie.takin.adapter.api.model.response.resource.ResourceLockResponse;
 import io.shulie.takin.adapter.api.model.response.resource.ResourceUnLockResponse;
 import io.shulie.takin.adapter.api.service.CloudApiSenderService;
-import io.shulie.takin.common.beans.response.ResponseResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -45,10 +45,18 @@ public class CloudResourceApiImpl implements CloudResourceApi {
     }
 
     @Override
-    public ResourceLockResponse lockResource(ResourceLockRequest request) {
-        return cloudApiSenderService.get(
-                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.METHOD_RESOURCE_LOCK),
-                request, new TypeReference<ResponseResult<ResourceLockResponse>>() {
+    public Boolean check(ResourceCheckRequest request) {
+        return cloudApiSenderService.post(
+            EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.MODULE_CHECK),
+            request, new TypeReference<ResponseResult<Boolean>>() {
+            }).getData();
+    }
+
+    @Override
+    public String lock(ResourceLockRequest request) {
+        return cloudApiSenderService.post(
+                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, String.format(EntrypointUrl.METHOD_RESOURCE_LOCK, request.getCallbackUrl())),
+                request, new TypeReference<ResponseResult<String>>() {
                 }).getData();
     }
 
@@ -56,7 +64,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
     public void unLock(ResourceUnLockRequest request) {
         try {
             cloudApiSenderService.get(
-                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.METHOD_RESOURCE_LOCK),
+                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.METHOD_RESOURCE_UNLOCK),
                 request, new TypeReference<ResponseResult<ResourceUnLockResponse>>() {
                 }).getData();
         } catch (Exception e) {

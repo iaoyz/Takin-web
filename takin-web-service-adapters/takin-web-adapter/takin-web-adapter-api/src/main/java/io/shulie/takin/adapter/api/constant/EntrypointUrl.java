@@ -15,7 +15,7 @@ public class EntrypointUrl {
     /**
      * 基础路径
      */
-    public final static String BASIC = "/api";
+    public final static String BASIC = "";
 
     /**
      * 模块 - 通用接口
@@ -41,7 +41,7 @@ public class EntrypointUrl {
     public final static String MODULE_RESOURCE = "resource";
     public final static String METHOD_RESOURCE_PHYSICAL = "physical/all";
     public final static String METHOD_RESOURCE_MACHINE = "machine/task";
-    public final static String METHOD_RESOURCE_LOCK = "lock";
+    public final static String METHOD_RESOURCE_LOCK = "lock?callbackUrl=%s";
     public final static String METHOD_RESOURCE_UNLOCK = "unlock";
 
     /**

@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(EntrypointUrl.BASIC + "/" + EntrypointUrl.MODULE_ENGINE_CALLBACK)
+@RequestMapping("api/" + EntrypointUrl.MODULE_ENGINE_CALLBACK)
 public class PressureCallbackController {
 
     @Resource
