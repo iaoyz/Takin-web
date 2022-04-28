@@ -6,6 +6,7 @@ import io.swagger.annotations.Api;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -19,7 +20,7 @@ public class SLAController {
     private SlaService slaService;
 
     @GetMapping("/push")
-    public void detection(List<SlaInfo> slaInfo) {
+    public void detection(@RequestParam(value = "slaInfo") List<SlaInfo> slaInfo) {
         slaService.detection(slaInfo);
     }
 }
