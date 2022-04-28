@@ -11,11 +11,9 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
-import cn.hutool.core.util.IdUtil;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
-import io.shulie.takin.adapter.api.entrypoint.check.CloudCheckApi;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
-import io.shulie.takin.adapter.api.model.request.check.ResourceCheckRequest;
+import io.shulie.takin.adapter.api.model.request.resource.ResourceCheckRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceUnLockRequest;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
@@ -59,9 +57,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     private CloudResourceApi cloudResourceApi;
 
     @Resource
-    private CloudCheckApi cloudCheckApi;
-
-    @Resource
     private CloudSceneManageService cloudSceneManageService;
 
     @Resource
@@ -101,8 +96,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             ResourceCheckRequest request = new ResourceCheckRequest();
             request.setCpu(config.getCpuNum());
             request.setMemory(config.getMemorySize());
-            request.setPod(sceneData.getIpNum());
-            //cloudCheckApi.checkResources(request);
+            request.setNumber(sceneData.getIpNum());
+            cloudResourceApi.check(request);
 
             // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
             String resourceId = lockResource(context);
@@ -135,14 +130,11 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         ResourceLockRequest request = new ResourceLockRequest();
         request.setCpu(strategy.getCpuNum());
         request.setMemory(strategy.getMemorySize());
-        request.setPod(sceneData.getIpNum());
-        request.setCallBackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
+        request.setNumber(sceneData.getIpNum());
+        request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
             EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
                 EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
-        //ResourceLockResponse lockResponse = cloudResourceApi.lockResource(request);
-        //String resourceId = lockResponse.getResourceId();
-        String resourceId = IdUtil.fastSimpleUUID();
-        return resourceId;
+        return cloudResourceApi.lock(request);
     }
 
     private void refresh(String resourceId) {
@@ -158,7 +150,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
 
     private void afterLocking(StartConditionCheckerContext context) {
         associateResource(context);
-        cloudAsyncService.checkPodStartedTask(context);
         SceneManageWrapperOutput sceneData = context.getSceneData();
         cloudSceneManageService.updateSceneLifeCycle(
             UpdateStatusBean.build(context.getSceneId(), context.getReportId(), sceneData.getTenantId())
@@ -166,6 +157,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
                     SceneManageStatusEnum.FORCE_STOP)
                 .updateEnum(SceneManageStatusEnum.STARTING).build());
         initCache(context);
+        // cloudAsyncService.checkPodStartedTask(context);
     }
 
     private void initCache(StartConditionCheckerContext context) {
@@ -220,8 +212,10 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     public void callStartSuccess(Event event) {
         ResourceContext ext = (ResourceContext)event.getExt();
         String resourceId = ext.getResourceId();
-        redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId),
-            PressureStartCache.RESOURCE_STATUS, CheckStatus.SUCCESS.ordinal());
+        String resourceKey = PressureStartCache.getResourceKey(resourceId);
+        if (redisClientUtils.hasKey(resourceKey)) {
+            redisClientUtils.hmset(resourceKey, PressureStartCache.RESOURCE_STATUS, CheckStatus.SUCCESS.ordinal());
+        }
         redisClientUtils.delete(PressureStartCache.getErrorMessageKey(resourceId));
     }
 
@@ -229,7 +223,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     public void lackPodResource(Event event) {
         log.info("pod resource不足");
         ResourceContext context = (ResourceContext)event.getExt();
-        failed(context.getResourceId(), "压力机资源不足");
+        context.setMessage("压力机资源不足");
+        failed(context.getResourceId(), context.getMessage());
 
         Event failEvent = new Event();
         failEvent.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
@@ -259,7 +254,10 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     }
 
     private void failed(String resourceId, String message) {
-        redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId), PressureStartCache.RESOURCE_STATUS, CheckStatus.FAIL.ordinal());
+        String resourceKey = PressureStartCache.getResourceKey(resourceId);
+        if (redisClientUtils.hasKey(resourceKey)) {
+            redisClientUtils.hmset(resourceKey, PressureStartCache.RESOURCE_STATUS, CheckStatus.FAIL.ordinal());
+        }
         redisClientUtils.setString(PressureStartCache.getErrorMessageKey(resourceId), message, 30, TimeUnit.SECONDS);
     }
 

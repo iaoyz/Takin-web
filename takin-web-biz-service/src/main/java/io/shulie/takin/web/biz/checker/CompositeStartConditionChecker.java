@@ -23,6 +23,7 @@ import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.EventCenterTemplate;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.web.biz.cache.PressureStartCache;
@@ -58,6 +59,9 @@ public class CompositeStartConditionChecker implements InitializingBean {
     @Resource
     private List<StartConditionChecker> checkerList;
 
+    @Resource
+    private EventCenterTemplate eventCenterTemplate;
+
     // 此处特殊使用
     public List<CheckResult> doCheck(StartConditionCheckerContext context) {
         initContext(context);
@@ -68,7 +72,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
             resultList.add(checkResult);
             if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
                 context.setMessage(checkResult.getMessage());
-                callStartFailClear(context);
+                callStartFailEvent(context);
                 break;
             }
         }
@@ -125,6 +129,20 @@ public class CompositeStartConditionChecker implements InitializingBean {
         }
     }
 
+    private void callStartFailEvent(StartConditionCheckerContext context) {
+        Event event = new Event();
+        event.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
+        ResourceContext resourceContext = new ResourceContext();
+        resourceContext.setSceneId(context.getSceneId());
+        resourceContext.setPressureTaskId(context.getTaskId());
+        resourceContext.setReportId(context.getReportId());
+        resourceContext.setResourceId(context.getResourceId());
+        resourceContext.setMessage(context.getMessage());
+        resourceContext.setUniqueKey(context.getUniqueKey());
+        event.setExt(resourceContext);
+        eventCenterTemplate.doEvents(event);
+    }
+
     @IntrestFor(event = PressureStartCache.CHECK_FAIL_EVENT, order = 0)
     public void callStartFailClear(Event event) {
         ResourceContext ext = (ResourceContext)event.getExt();
@@ -132,7 +150,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
         context.setSceneId(ext.getSceneId());
         context.setTaskId(ext.getPressureTaskId());
         context.setReportId(ext.getReportId());
-        context.setMessage("压力机资源不足");
+        context.setMessage(ext.getMessage());
         context.setUniqueKey(ext.getUniqueKey());
         callStartFailClear(context);
     }
@@ -159,7 +177,9 @@ public class CompositeStartConditionChecker implements InitializingBean {
     }
 
     private void callStartFailClear(StartConditionCheckerContext context) {
-        redisClientUtils.unlock(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()), context.getUniqueKey());
+        if (redisClientUtils.unlock(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()), context.getUniqueKey())) {
+            redisClientUtils.delete(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()));
+        }
         Long taskId = context.getTaskId();
         if (Objects.nonNull(taskId)) {
             PressureTaskEntity entity = new PressureTaskEntity();

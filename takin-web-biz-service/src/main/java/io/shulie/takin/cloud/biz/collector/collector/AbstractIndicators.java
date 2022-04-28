@@ -205,7 +205,7 @@ public abstract class AbstractIndicators {
         context.setSceneId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.SCENE_ID))));
         context.setReportId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.REPORT_ID))));
         context.setTenantId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TENANT_ID))));
-        context.setEndTime(Long.valueOf(String.valueOf(resource.get(PressureStartCache.RESOURCE_POD_NUM))));
+        context.setEndTime(Long.valueOf(String.valueOf(resource.get(PressureStartCache.RESOURCE_END_TIME))));
         context.setStatus(String.valueOf(resource.get(PressureStartCache.RESOURCE_STATUS)));
         context.setHeartbeatTime(Long.valueOf(String.valueOf(resource.get(PressureStartCache.HEARTBEAT_TIME))));
         context.setPressureTaskId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.PRESSURE_TASK_ID))));
@@ -257,5 +257,7 @@ public abstract class AbstractIndicators {
         private String status;
         private Long heartbeatTime;
         private String uniqueKey;
+
+        private String message;
     }
 }

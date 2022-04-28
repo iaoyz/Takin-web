@@ -9,4 +9,5 @@ import lombok.EqualsAndHashCode;
 public class PressureTaskStopReq extends ContextExt {
 
     private Long taskId;
+    private String callbackUrl;
 }

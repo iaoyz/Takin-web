@@ -6,12 +6,9 @@ import com.alibaba.fastjson.TypeReference;
 
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.check.CloudCheckApi;
+import io.shulie.takin.adapter.api.model.common.ResponseResult;
 import io.shulie.takin.adapter.api.model.request.check.EnvCheckRequest;
-import io.shulie.takin.adapter.api.model.request.check.ResourceCheckRequest;
-import io.shulie.takin.adapter.api.model.response.check.EnvCheckResponse;
-import io.shulie.takin.adapter.api.model.response.check.ResourceCheckResponse;
 import io.shulie.takin.adapter.api.service.CloudApiSenderService;
-import io.shulie.takin.common.beans.response.ResponseResult;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,15 +18,8 @@ public class CloudCheckApiImpl implements CloudCheckApi {
     private CloudApiSenderService cloudApiSenderService;
 
     @Override
-    public ResourceCheckResponse checkResources(ResourceCheckRequest request) {
-        return cloudApiSenderService.get(
-            EntrypointUrl.join(EntrypointUrl.MODULE_CHECK, EntrypointUrl.METHOD_CHECK_RESOURCES),
-            request, new TypeReference<ResponseResult<ResourceCheckResponse>>() {}).getData();
-    }
-
-    @Override
-    public EnvCheckResponse checkEnv(EnvCheckRequest request) {
+    public Boolean checkEnv(EnvCheckRequest request) {
         return cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.MODULE_CHECK, EntrypointUrl.METHOD_CHECK_ENV),
-            request, new TypeReference<ResponseResult<EnvCheckResponse>>() {}).getData();
+            request, new TypeReference<ResponseResult<Boolean>>() {}).getData();
     }
 }

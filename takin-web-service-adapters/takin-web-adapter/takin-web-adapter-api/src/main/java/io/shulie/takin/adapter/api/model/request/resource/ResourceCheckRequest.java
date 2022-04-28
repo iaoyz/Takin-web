@@ -1,4 +1,4 @@
-package io.shulie.takin.adapter.api.model.request.check;
+package io.shulie.takin.adapter.api.model.request.resource;
 
 import java.math.BigDecimal;
 
@@ -10,7 +10,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class ResourceCheckRequest extends ContextExt {
 
-    public static final String WATCH_MAN_ID = "cloud";
+    public static final Integer WATCH_MAN_ID = 1;
 
     /**
      * 压力机所需要的cpu
@@ -23,10 +23,18 @@ public class ResourceCheckRequest extends ContextExt {
     /**
      * 需要的压力机数
      */
-    private Integer pod;
+    private Integer number;
+    /**
+     * 限制的CPU
+     */
+    private String limitCpu;
+    /**
+     * 限制的内存
+     */
+    private String limitMemory;
     /**
      * 调度主键
      */
-    private String watchmanId = WATCH_MAN_ID;
+    private Integer watchmanId = WATCH_MAN_ID;
 
 }

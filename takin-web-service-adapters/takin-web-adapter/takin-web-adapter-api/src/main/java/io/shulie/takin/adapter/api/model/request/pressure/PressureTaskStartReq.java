@@ -48,7 +48,7 @@ public class PressureTaskStartReq extends ContextExt {
     /**
      * 状态接口回调地址
      */
-    private String callBackUrl;
+    private String callbackUrl;
 
     @Data
     public static class ThreadGroupConfig {
