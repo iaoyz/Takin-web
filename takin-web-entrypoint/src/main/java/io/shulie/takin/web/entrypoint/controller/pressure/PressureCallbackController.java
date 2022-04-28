@@ -10,13 +10,13 @@ import javax.annotation.Resource;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.cloud.biz.notify.CloudNotifyParam;
 import io.shulie.takin.cloud.biz.notify.CloudNotifyProcessor;
+import io.shulie.takin.cloud.biz.service.sla.SlaService;
+import io.shulie.takin.cloud.common.bean.collector.SlaInfo;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("api/" + EntrypointUrl.MODULE_ENGINE_CALLBACK)
@@ -27,6 +27,9 @@ public class PressureCallbackController {
 
     private Map<String, CloudNotifyProcessor> processorMap;
 
+    @Autowired
+    private SlaService slaService;
+
     @PostMapping(EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)
     @ApiOperation(value = "cloud回调状态")
     public ResponseResult<?> taskResultNotify(@RequestBody CloudNotifyParam param) {
@@ -35,6 +38,11 @@ public class PressureCallbackController {
             return processor.process(param.getContext());
         }
         return ResponseResult.success();
+    }
+
+    @PostMapping("/detection")
+    public void detection(@RequestBody List<SlaInfo> slaInfo) {
+        slaService.detection(slaInfo);
     }
 
     @PostConstruct
