@@ -9,11 +9,9 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
-import io.shulie.takin.web.biz.checker.EngineResourceChecker;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
 import org.springframework.stereotype.Component;
-
-import static io.shulie.takin.web.biz.checker.CompositeStartConditionChecker.LACK_POD_RESOURCE;
 
 @Component
 public class PodStatusNotifyProcessor extends AbstractIndicators implements CloudNotifyProcessor {
@@ -57,12 +55,12 @@ public class PodStatusNotifyProcessor extends AbstractIndicators implements Clou
 
     // 增加pod实例数
     private void processStartSuccess(NotifyContext context) {
-        redisClientUtils.setSetValue(EngineResourceChecker.getResourcePodKey(context.getResourceId()), context.getPodId());
+        redisClientUtils.setSetValue(PressureStartCache.getResourcePodKey(context.getResourceId()), context.getPodId());
     }
 
     private void processStartFail(NotifyContext context, ResourceContext resourceContext) {
         Event event = new Event();
-        event.setEventName(LACK_POD_RESOURCE);
+        event.setEventName(PressureStartCache.LACK_POD_RESOURCE_EVENT);
         event.setExt(resourceContext);
         eventCenterTemplate.doEvents(event);
     }

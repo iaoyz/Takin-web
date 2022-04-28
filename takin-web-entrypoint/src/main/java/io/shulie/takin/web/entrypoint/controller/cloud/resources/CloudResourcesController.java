@@ -1,7 +1,7 @@
 package io.shulie.takin.web.entrypoint.controller.cloud.resources;
 
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
-import io.shulie.takin.adapter.api.model.response.cloud.resources.CloudResource;
+import io.shulie.takin.cloud.biz.service.cloud.server.resource.CloudResourcesService;
 import io.shulie.takin.web.common.common.Response;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -19,9 +19,11 @@ public class CloudResourcesController {
     @Autowired
     private CloudResourceApi cloudResourceApi;
 
+    @Autowired
+    private CloudResourcesService cloudResourcesService;
+
     /**
-     * 
-     * @param taskId 启动压测任务后返回ID
+     * @param taskId     启动压测任务后返回ID
      * @param resourceId 锁定资源后会返回资源ID
      * @return
      */
@@ -30,11 +32,11 @@ public class CloudResourcesController {
     public Response getDetails(
             @RequestParam("taskId") int taskId,
             @RequestParam("resourceId") String resourceId,
-            @RequestParam(value = "sortField",required = false) String sortField,
-            @RequestParam(value = "sortType",required = false) String sortType,
-            @RequestParam(value = "currentPage",required = false) Integer currentPage,
-            @RequestParam(value = "pageSize",required = false) Integer pageSize
+            @RequestParam(value = "sortField", required = false) String sortField,
+            @RequestParam(value = "sortType", required = false) String sortType,
+            @RequestParam(value = "currentPage", required = false) Integer currentPage,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize
     ) {
-        return Response.success(cloudResourceApi.getDetails(taskId,resourceId,sortField,sortType,currentPage,pageSize));
+        return Response.success(cloudResourcesService.getDetail(cloudResourceApi.getDetails(taskId, resourceId), taskId, resourceId, sortField, sortType, currentPage, pageSize));
     }
 }
