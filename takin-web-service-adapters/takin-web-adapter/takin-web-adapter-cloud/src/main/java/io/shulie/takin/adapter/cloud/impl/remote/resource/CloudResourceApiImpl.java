@@ -40,7 +40,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
     @Override
     public Boolean check(ResourceCheckRequest request) {
         return cloudApiSenderService.post(
-            EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.MODULE_RESOURCE),
+            EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.MODULE_RESOURCE_CHECK),
             request, new TypeReference<ApiResult<Boolean>>() {
             }).getData();
     }
@@ -48,7 +48,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
     @Override
     public String lock(ResourceLockRequest request) {
         return cloudApiSenderService.post(
-                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.METHOD_RESOURCE_LOCK),
+                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, String.format(EntrypointUrl.METHOD_RESOURCE_LOCK, request.getCallbackUrl())),
                 request, new TypeReference<ApiResult<String>>() {
                 }).getData();
     }

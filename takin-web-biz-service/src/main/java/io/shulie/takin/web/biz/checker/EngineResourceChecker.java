@@ -190,8 +190,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
 
     public static List<String> clearCacheKey(String resourceId, Long sceneId) {
         return Arrays.asList(PressureStartCache.getResourceKey(resourceId), PressureStartCache.getResourcePodKey(resourceId),
-            PressureStartCache.getResourceJmeterKey(resourceId), PressureStartCache.getSceneResourceLockingKey(sceneId),
-            PressureStartCache.getSceneResourceKey(sceneId));
+            PressureStartCache.getResourceJmeterKey(resourceId), PressureStartCache.getSceneResourceKey(sceneId));
     }
 
     @IntrestFor(event = PressureStartCache.CHECK_FAIL_EVENT, order = 1)
@@ -201,7 +200,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         if (StringUtils.isNotBlank(resourceId)) {
             redisClientUtils.expire(PressureStartCache.getResourceKey(resourceId), 30);
             redisClientUtils.expire(PressureStartCache.getResourcePodKey(resourceId), 30);
-            redisClientUtils.delete(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()));
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resourceId);
             cloudResourceApi.unLock(request);

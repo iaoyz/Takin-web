@@ -237,8 +237,10 @@ public abstract class AbstractIndicators {
         Long heartbeatTime = resourceContext.getHeartbeatTime();
         long now = System.currentTimeMillis();
         if (Objects.isNull(heartbeatTime) || heartbeatTime == 0 || heartbeatTime + heartbeatTimeout <= now) {
-            redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId),
-                PressureStartCache.HEARTBEAT_TIME, now);
+            String resourceKey = PressureStartCache.getResourceKey(resourceId);
+            if (redisClientUtils.hasKey(resourceKey)) {
+                redisClientUtils.hmset(resourceKey, PressureStartCache.HEARTBEAT_TIME, now);
+            }
             return false;
         }
         return true;

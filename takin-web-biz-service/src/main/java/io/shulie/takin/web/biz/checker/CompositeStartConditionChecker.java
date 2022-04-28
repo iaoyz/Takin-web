@@ -178,7 +178,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
 
     private void callStartFailClear(StartConditionCheckerContext context) {
         if (redisClientUtils.unlock(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()), context.getUniqueKey())) {
-            redisClientUtils.delete(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()));
+            redisClientUtils.delete(PressureStartCache.getSceneResourceKey(context.getSceneId()));
         }
         Long taskId = context.getTaskId();
         if (Objects.nonNull(taskId)) {
