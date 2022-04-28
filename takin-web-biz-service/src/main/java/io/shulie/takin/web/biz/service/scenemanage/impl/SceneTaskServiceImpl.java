@@ -186,6 +186,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
     public void preStop(TaskPreStopRequest req) {
         SceneManageIdReq request = new SceneManageIdReq();
         request.setId(req.getSceneId());
+        request.setResourceId(req.getResourceId());
         ResponseResult<?> response = sceneTaskApi.preStopTask(request);
         if (response == null) {
             throw ApiException.create(AppConstants.RESPONSE_CODE_FAIL, "停止压测失败, 请重试!");

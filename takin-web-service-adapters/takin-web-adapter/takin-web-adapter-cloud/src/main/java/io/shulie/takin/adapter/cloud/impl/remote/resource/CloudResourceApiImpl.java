@@ -48,7 +48,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
     @Override
     public String lock(ResourceLockRequest request) {
         return cloudApiSenderService.post(
-                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, String.format(EntrypointUrl.METHOD_RESOURCE_LOCK, request.getCallbackUrl())),
+                EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.METHOD_RESOURCE_LOCK),
                 request, new TypeReference<ApiResult<String>>() {
                 }).getData();
     }

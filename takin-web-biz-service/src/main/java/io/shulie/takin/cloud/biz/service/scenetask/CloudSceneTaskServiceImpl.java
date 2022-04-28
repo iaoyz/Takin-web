@@ -29,7 +29,9 @@ import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
+import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
 import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.utils.CommonUtil;
@@ -286,17 +288,21 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
      * <li>重置对应的最新的压测报告状态为2</li>
      * </ui>
      *
-     * @param sceneId 场景主键
+     * @param req 场景主键
      */
     @Override
-    public int blotStop(Long sceneId) {
+    public int blotStop(SceneManageIdReq req) {
+        Long sceneId = req.getId();
         SceneManageEntity sceneManage = sceneManageDAO.getSceneById(sceneId);
         if (sceneManage == null) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_STOP_VERIFY_ERROR, "停止压测失败，场景不存在!");
         }
+        ResourceContext context = new ResourceContext();
+        context.setSceneId(sceneId);
+        context.setResourceId(req.getResourceId());
         Event event = new Event();
         event.setEventName(PressureStartCache.PRE_STOP_EVENT);
-        event.setExt(sceneId);
+        event.setExt(context);
         eventCenterTemplate.doEvents(event);
         return 1;
     }

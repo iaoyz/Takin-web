@@ -40,7 +40,7 @@ public class EntrypointUrl {
      */
     public final static String MODULE_RESOURCE = "resource";
     public final static String METHOD_RESOURCE_MACHINE = "machine/task";
-    public final static String METHOD_RESOURCE_LOCK = "lock?callbackUrl=%s";
+    public final static String METHOD_RESOURCE_LOCK = "lock";
     public final static String METHOD_RESOURCE_UNLOCK = "unlock";
     public final static String MODULE_RESOURCE_CHECK = "check";
 

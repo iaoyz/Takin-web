@@ -75,14 +75,27 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         log.info("启动后台检查pod启动状态线程.....");
         int currentTime = 0;
         boolean checkPass = false;
+        Long sceneId = context.getSceneId();
         String resourceId = context.getResourceId();
         Object totalPodNumber = redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId),
             PressureStartCache.RESOURCE_POD_NUM);
         if (Objects.isNull(totalPodNumber)) {
             return;
         }
+        String message = "压力机资源不足";
         String podNumber = String.valueOf(totalPodNumber);
+        String preStopKey = PressureStartCache.getScenePreStopKey(sceneId, resourceId);
+        String emptyPreStopKey = PressureStartCache.getScenePreStopKey(sceneId, "");
+        long startTime = context.getTime();
         while (currentTime <= pressurePodStartExpireTime) {
+            if ((redisClientUtils.hasKey(preStopKey)
+                && Long.parseLong(redisClientUtils.getString(preStopKey)) > startTime)
+                || (redisClientUtils.hasKey(emptyPreStopKey)
+                && Long.parseLong(redisClientUtils.getString(emptyPreStopKey)) > startTime)) {
+                redisClientUtils.delete(preStopKey);
+                message = "取消压测";
+                break;
+            }
             Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourcePodKey(resourceId));
             try {
                 if (Long.parseLong(podNumber) == startedPod) {
@@ -100,6 +113,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
             }
             currentTime += CHECK_INTERVAL_TIME;
         }
+        context.setMessage(message);
         //压力pod没有在设定时间内启动完毕，停止检测
         markResourceStatus(checkPass, context);
     }
@@ -169,6 +183,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         resourceContext.setSceneId(sceneId);
         resourceContext.setReportId(reportId);
         resourceContext.setTenantId(tenantId);
+        resourceContext.setPressureTaskId(context.getTaskId());
         resourceContext.setUniqueKey(context.getUniqueKey());
         if (success) {
             Event event = new Event();
@@ -177,6 +192,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
             eventCenterTemplate.doEvents(event);
         } else {
             log.info("调度任务{}-{}-{},压力节点 没有在设定时间{}s内启动，停止压测,", sceneId, reportId, tenantId, pressurePodStartExpireTime);
+            resourceContext.setMessage(context.getMessage());
             Event event = new Event();
             event.setEventName(PressureStartCache.LACK_POD_RESOURCE_EVENT);
             event.setExt(resourceContext);
