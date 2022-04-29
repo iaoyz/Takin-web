@@ -158,6 +158,24 @@
         limit 1
     </select>
 
+    <select id="getReportByTaskId" resultType="com.pamirs.takin.cloud.entity.domain.entity.report.Report">
+        select id,
+        scene_id,
+        scene_name,
+        start_time,
+        end_time,
+        `status`,
+        operate_id,
+        features,
+        amount,
+        customer_id
+        from t_report
+        where task_id = #{sceneId,jdbcType=BIGINT}
+        and `status` = 0
+        order by id desc
+        limit 1
+    </select>
+
     <select id="getTempReportBySceneId" resultType="com.pamirs.takin.cloud.entity.domain.entity.report.Report">
         select id,
                scene_id,
