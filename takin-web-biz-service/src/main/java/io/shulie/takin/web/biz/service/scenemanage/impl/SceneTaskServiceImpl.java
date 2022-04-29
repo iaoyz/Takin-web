@@ -56,6 +56,7 @@ import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.biz.cache.PressureStartCache;
 import io.shulie.takin.web.biz.checker.CompositeStartConditionChecker;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
@@ -255,17 +256,19 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         }
         sceneData.setIsAbsoluteScriptPath(FileUtils.isAbsoluteUploadPath(sceneData.getUploadFile(), scriptFilePath));
 
-        // 校验该场景是否正在压测中
-        if (!SceneManageStatusEnum.ifFinished(sceneData.getStatus())) {
-            // 正在压测中
-            throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR,
-                "场景，id=" + param.getSceneId() + "已启动压测，请刷新页面！");
-        } else {
-            // 记录key 过期时长为压测时长
-            redisClientUtils.setString(SceneTaskUtils.getSceneTaskKey(param.getSceneId()),
-                DateUtils.getServerTime(),
-                Integer.parseInt(sceneData.getPressureTestTime().getTime().toString()), TimeUnit.MINUTES);
-        }
+        // TODO: mock放行
+        //Object resourceId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(param.getSceneId()),
+        //    PressureStartCache.RESOURCE_ID);
+        //if (!Objects.equals(param.getResourceId(), resourceId)
+        //    || !SceneManageStatusEnum.STARTING.getValue().equals(sceneData.getStatus())) {
+        //    // 正在压测中
+        //    throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR,
+        //        "场景，id=" + param.getSceneId() + "还未申请压测资源，请刷新页面！");
+        //}
+        // 记录key 过期时长为压测时长
+        redisClientUtils.setString(SceneTaskUtils.getSceneTaskKey(param.getSceneId()),
+            DateUtils.getServerTime(),
+            Integer.parseInt(sceneData.getPressureTestTime().getTime().toString()), TimeUnit.MINUTES);
 
         preCheckStart(sceneData);
 
