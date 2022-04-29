@@ -178,6 +178,13 @@
         where scene_id = #{sceneId,jdbcType=BIGINT}
     </select>
 
+    <select id="selectByBindRef" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_scene_business_activity_ref
+        where scene_id = #{sceneId} AND bind_ref = #{bindRef}
+    </select>
+
     <select id="querySceneBusinessActivityRefByActivityId" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>

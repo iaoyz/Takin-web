@@ -6,8 +6,10 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.google.common.collect.Maps;
 import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
+import com.pamirs.takin.cloud.entity.dao.scene.manage.TSceneBusinessActivityRefMapper;
 import com.pamirs.takin.cloud.entity.dao.scene.manage.TWarnDetailMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
+import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneBusinessActivityRef;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneSlaRef;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.WarnDetail;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
@@ -79,6 +81,8 @@ public class SlaServiceImpl implements SlaService {
     private SceneSlaRefMapper sceneSlaRefMapper;
     @Resource
     private TReportMapper tReportMapper;
+    @Resource
+    private TSceneBusinessActivityRefMapper tSceneBusinessActivityRefMapper;
 
     @Override
     public Boolean buildWarn(SendMetricsEvent metrics) {
@@ -152,28 +156,30 @@ public class SlaServiceImpl implements SlaService {
 
     @Override
     public void detection(List<SlaInfo> slaInfo) {
-        slaInfo.forEach(info -> {
+        Set<Object> keys = stringRedisTemplate.opsForHash().keys(SLA_DESTROY_KEY);
+        List keyList = new ArrayList(keys);
+        for (SlaInfo info : slaInfo) {
             Report report = tReportMapper.getReportByTaskId(info.getJobId());
-            Set<Object> keys = stringRedisTemplate.opsForHash().keys(SLA_DESTROY_KEY);
-            List keyList = new ArrayList(keys);
             String ref = info.getRef();
             if (org.apache.commons.lang3.StringUtils.isNoneBlank(ref)) {
-                List<String> list = Arrays.asList(ref.split(","));//拿到引用
-                for (String id : list) {
-                    SceneSlaRefEntity slaRef = sceneSlaRefMapper.selectById(id);
-                    SceneSlaRef sceneSlaRef = new SceneSlaRef();
-                    BeanUtils.copyProperties(slaRef, sceneSlaRef);
-                    SceneManageWrapperOutput.SceneSlaRefOutput output = SceneManageDTOConvert.INSTANCE.of(sceneSlaRef);
-                    String event = output.getEvent();
-                    SceneSlaRefInput input = BeanUtil.copyProperties(output, SceneSlaRefInput.class);
-                    SendMetricsEvent sendMetricsEvent = new SendMetricsEvent();
-                    Map<String, Object> conditionMap = SlaUtil.matchCondition(input, sendMetricsEvent);
-                    conditionMap.put("real", info.getNumber());
+                String[] refArray = ref.split(",");//拿到引用
+                String id = refArray[0];
+                String bindRef = refArray[1];
+                SceneBusinessActivityRef activityRef = tSceneBusinessActivityRefMapper.selectByBindRef(bindRef, report.getSceneId());
+                SceneSlaRefEntity slaRef = sceneSlaRefMapper.selectById(id);
+                SceneSlaRef sceneSlaRef = new SceneSlaRef();
+                BeanUtils.copyProperties(slaRef, sceneSlaRef);
+                SceneManageWrapperOutput.SceneSlaRefOutput output = SceneManageDTOConvert.INSTANCE.of(sceneSlaRef);
+                String event = output.getEvent();
+                SceneSlaRefInput input = BeanUtil.copyProperties(output, SceneSlaRefInput.class);
+                SendMetricsEvent sendMetricsEvent = new SendMetricsEvent();
+                Map<String, Object> conditionMap = SlaUtil.matchCondition(input, sendMetricsEvent);
+                conditionMap.put("real", info.getNumber());
 
-                    SceneManageQueryOptions options = new SceneManageQueryOptions();
-                    options.setIncludeBusinessActivity(true);
-                    options.setIncludeSLA(true);
-                    SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(slaRef.getSceneId(), options);
+                SceneManageQueryOptions options = new SceneManageQueryOptions();
+                options.setIncludeBusinessActivity(true);
+                options.setIncludeSLA(true);
+                SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(slaRef.getSceneId(), options);
 //            List<ReportBusinessActivityDetailEntity> testPlan = reportDao
 //                    .getReportBusinessActivityDetailsByReportId(reportId, NodeTypeEnum.TEST_PLAN);
 //            if (CollectionUtils.isNotEmpty(testPlan) && testPlan.size() == 1) {
@@ -189,76 +195,74 @@ public class SlaServiceImpl implements SlaService {
 //                refOutput.setTargetTPS(detailEntity.getTargetTps().intValue());
 //                dto.getBusinessActivityConfig().add(refOutput);
 //            }
-                    SceneBusinessActivityRefOutput businessActivity =
-                            dto.getBusinessActivityConfig()
-                                    .stream()
-//                            .filter(data -> metrics.getTransaction().equals(data.getBindRef()))
-                                    .findFirst()
-                                    .orElse(null);
+                SceneBusinessActivityRefOutput businessActivity = new SceneBusinessActivityRefOutput();
+                businessActivity.setBindRef(bindRef);
+                businessActivity.setBusinessActivityId(activityRef.getBusinessActivityId());
+                businessActivity.setBusinessActivityName(activityRef.getBusinessActivityName());
 
 
-                    //从redis中获取条件数据
-                    String object = (String) stringRedisTemplate.opsForHash().get(SLA_DESTROY_KEY, id);
-                    AchieveModel model = (object != null ? JSON.parseObject(object, AchieveModel.class) : null);
-                    if (!matchContinue(model, System.currentTimeMillis())) {//为空记录条件数据
-                        Map<String, Object> dataMap = Maps.newHashMap();
-                        dataMap.put(id,
-                                JSON.toJSONString(new AchieveModel(1, System.currentTimeMillis())));
-                        stringRedisTemplate.opsForHash().putAll(SLA_DESTROY_KEY, dataMap);
-                        stringRedisTemplate.expire(SLA_DESTROY_KEY, EXPIRE_TIME, TimeUnit.SECONDS);
-                        continue;
-                    }
-                    model.setTimes(model.getTimes() + 1);
-                    model.setLastAchieveTime(System.currentTimeMillis());
-                    if (model.getTimes() >= output.getRule().getTimes()) {//连续命中次数满足条件
-                        try {
-                            ScheduleStopRequestExt scheduleStopRequest = new ScheduleStopRequestExt();
-                            scheduleStopRequest.setTaskId(info.getJobId());
-                            scheduleStopRequest.setSceneId(slaRef.getSceneId());
-                            // 增加顾客id
-//                    scheduleStopRequest.setTenantId();
-                            Map<String, Object> extendMap = new HashMap<>(1);
-                            extendMap.put(Constants.SLA_DESTROY_EXTEND, "SLA发送压测任务终止事件");
-                            scheduleStopRequest.setExtend(extendMap);
-                            //报告未结束，才通知
-                            if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(PREFIX_TASK + slaRef.getSceneId()))) {
-                                // 熔断数据也记录到告警明细中
-                                SendMetricsEvent metricsEvent = new SendMetricsEvent();
-                                metricsEvent.setReportId(report.getId());
-                                metricsEvent.setTimestamp(System.currentTimeMillis());
-                                WarnDetail warnDetail = buildWarnDetail(conditionMap, businessActivity, metricsEvent, output);
-                                //t_warn_detail
-                                tWarnDetailMapper.insertSelective(warnDetail);
-                                if (SceneManageConstant.EVENT_DESTORY.equals(event)) {
-                                    // 记录sla熔断数据
-                                    UpdateReportSlaDataInput slaDataInput = new UpdateReportSlaDataInput();
-                                    SlaBean slaBean = new SlaBean();
-                                    slaBean.setRuleName(slaRef.getSlaName());
-//                        slaBean.setBusinessActivity(businessActivityDTO.getBusinessActivityName());
-//                        slaBean.setBindRef(businessActivityDTO.getBindRef());
-                                    slaBean.setRule(warnDetail.getWarnContent());
-                                    slaDataInput.setReportId(report.getId());
-                                    slaDataInput.setSlaBean(slaBean);
-                                    //更新report
-                                    cloudReportService.updateReportSlaData(slaDataInput);
-                                    PressureTaskStopReq req = new PressureTaskStopReq();
-                                    req.setTaskId(scheduleStopRequest.getTaskId());
-                                    //触发停止
-                                    pressureTaskApi.stop(req);
-                                    log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
-                                }
-                            }
-                        } catch (Exception e) {
-                            log.warn("【SLA】发送压测任务终止事件失败:{}", e.getMessage(), e);
-                        }
-                    } else {//不满足连续条件更新条件数据
-                        stringRedisTemplate.opsForHash().put(SLA_DESTROY_KEY, id, JSON.toJSONString(model));
-                        keyList.remove(id);
-                    }
+                //从redis中获取条件数据
+                String object = (String) stringRedisTemplate.opsForHash().get(SLA_DESTROY_KEY, id);
+                AchieveModel model = (object != null ? JSON.parseObject(object, AchieveModel.class) : null);
+                if (!matchContinue(model, System.currentTimeMillis())) {//为空记录条件数据
+                    Map<String, Object> dataMap = Maps.newHashMap();
+                    dataMap.put(id,
+                            JSON.toJSONString(new AchieveModel(1, System.currentTimeMillis())));
+                    stringRedisTemplate.opsForHash().putAll(SLA_DESTROY_KEY, dataMap);
+                    stringRedisTemplate.expire(SLA_DESTROY_KEY, EXPIRE_TIME, TimeUnit.SECONDS);
+                    continue;
                 }
+                model.setTimes(model.getTimes() + 1);
+                model.setLastAchieveTime(System.currentTimeMillis());
+                if (model.getTimes() >= output.getRule().getTimes()) {//连续命中次数满足条件
+                    try {
+                        ScheduleStopRequestExt scheduleStopRequest = new ScheduleStopRequestExt();
+                        scheduleStopRequest.setTaskId(info.getJobId());
+                        scheduleStopRequest.setSceneId(slaRef.getSceneId());
+                        // 增加顾客id
+//                    scheduleStopRequest.setTenantId();
+                        Map<String, Object> extendMap = new HashMap<>(1);
+                        extendMap.put(Constants.SLA_DESTROY_EXTEND, "SLA发送压测任务终止事件");
+                        scheduleStopRequest.setExtend(extendMap);
+                        //报告未结束，才通知
+                        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(PREFIX_TASK + slaRef.getSceneId()))) {
+                            // 熔断数据也记录到告警明细中
+                            SendMetricsEvent metricsEvent = new SendMetricsEvent();
+                            metricsEvent.setReportId(report.getId());
+                            metricsEvent.setTimestamp(System.currentTimeMillis());
+                            WarnDetail warnDetail = buildWarnDetail(conditionMap, businessActivity, metricsEvent, output);
+                            //t_warn_detail
+                            tWarnDetailMapper.insertSelective(warnDetail);
+                            if (SceneManageConstant.EVENT_DESTORY.equals(event)) {
+                                // 记录sla熔断数据
+                                UpdateReportSlaDataInput slaDataInput = new UpdateReportSlaDataInput();
+                                SlaBean slaBean = new SlaBean();
+                                slaBean.setRuleName(slaRef.getSlaName());
+                                slaBean.setBusinessActivity(activityRef.getBusinessActivityName());
+                                slaBean.setBindRef(bindRef);
+                                slaBean.setRule(warnDetail.getWarnContent());
+                                slaDataInput.setReportId(report.getId());
+                                slaDataInput.setSlaBean(slaBean);
+                                //更新report
+                                cloudReportService.updateReportSlaData(slaDataInput);
+                                PressureTaskStopReq req = new PressureTaskStopReq();
+                                req.setTaskId(scheduleStopRequest.getTaskId());
+                                //触发停止
+                                pressureTaskApi.stop(req);
+                                log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("【SLA】发送压测任务终止事件失败:{}", e.getMessage(), e);
+                    }
+                } else {//不满足连续条件更新条件数据
+                    stringRedisTemplate.opsForHash().put(SLA_DESTROY_KEY, id, JSON.toJSONString(model));
+                    keyList.remove(id);
+                }
+
             }
-            doClean(keyList);
-        });
+        }
+        doClean(keyList);
     }
 
     private void doClean(List keyList) {

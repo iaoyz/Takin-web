@@ -74,4 +74,6 @@ public interface TSceneBusinessActivityRefMapper {
      */
     SceneBusinessActivityRef querySceneBusinessActivityRefByActivityId(@Param("sceneId") Long sceneId,
         @Param("businessActivityId") Long businessActivityId);
+
+    SceneBusinessActivityRef selectByBindRef(@Param("bindRef") String bindRef, @Param("sceneId") Long sceneId);
 }
