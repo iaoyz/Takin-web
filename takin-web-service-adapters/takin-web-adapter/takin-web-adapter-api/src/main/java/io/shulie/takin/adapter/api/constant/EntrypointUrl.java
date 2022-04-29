@@ -8,8 +8,7 @@ package io.shulie.takin.adapter.api.constant;
 @SuppressWarnings("SpellCheckingInspection")
 public class EntrypointUrl {
     public static String join(String... path) {
-        return BASIC + "/"
-            + String.join("/", path);
+        return String.join("/", path);
     }
 
     /**
