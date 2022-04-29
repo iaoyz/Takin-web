@@ -11,21 +11,27 @@ import com.alibaba.fastjson.JSON;
 import cn.hutool.core.util.StrUtil;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureParamModifyReq;
-import io.shulie.takin.adapter.api.model.request.pressure.PressureParamModifyReq.PressureParam;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureParamsReq;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskQueryTpsInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskUpdateTpsInput;
 import io.shulie.takin.cloud.biz.output.report.ReportDetailOutput;
 import io.shulie.takin.cloud.biz.output.report.ReportOutput;
+import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneService;
 import io.shulie.takin.cloud.biz.service.scenetask.DynamicTpsService;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.utils.JmxUtil;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
+import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
+import io.shulie.takin.cloud.model.request.StartRequest.ThreadConfigInfo;
+import io.shulie.takin.cloud.model.response.JobConfig;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 /**
  * 动态TPS服务
@@ -37,9 +43,12 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
     @Resource
     private CloudSceneService cloudSceneService;
     @Resource
+    private CloudSceneManageService cloudSceneManageService;
+    @Resource
     private CloudReportService cloudReportService;
     @Resource
     private PressureTaskApi pressureTaskApi;
+    private static final String TPS_FIELD = "tps";
 
     /**
      * 获取动态TPS目标值
@@ -48,15 +57,22 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
      */
     @Override
     public Double get(SceneTaskQueryTpsInput input) {
-        // TODO: 调用cloud动态tps获取接口 ( 只需要提取tps值 )
         Long sceneId = input.getSceneId();
         ReportOutput report = cloudReportService.selectById(input.getReportId());
         PressureParamsReq req = new PressureParamsReq();
         req.setTaskId(report.getPressureTaskId());
-        req.setBindRef(getThreadGroupMd5ByXpathMd5(sceneId, input.getXpathMd5()));
-        pressureTaskApi.params(req);
-        // TODO: 获取对应的tps值
-        return new Double(0);
+        req.setRef(getThreadGroupMd5ByXpathMd5(sceneId, input.getXpathMd5()));
+        try {
+            List<JobConfig> params = pressureTaskApi.params(req);
+            if (CollectionUtils.isEmpty(params)) {
+                return null;
+            }
+            ThreadConfigInfo ext = params.get(0).getContext();
+            Integer tps = ext.getTps();
+            return tps == null ? null : tps.doubleValue();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
@@ -106,9 +122,14 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
         Long sceneId = input.getSceneId();
         ReportOutput report = cloudReportService.selectById(input.getReportId());
         PressureParamModifyReq req = new PressureParamModifyReq();
-        req.setTaskId(report.getPressureTaskId());
-        req.setBingRef(getThreadGroupMd5ByXpathMd5(sceneId, input.getXpathMd5()));
-        req.setParams(PressureParam.of(1, String.valueOf(input.getTpsNum())));
+        req.setJobId(report.getPressureTaskId());
+        String md5 = getThreadGroupMd5ByXpathMd5(sceneId, input.getXpathMd5());
+        req.setRef(md5);
+        SceneManageWrapperOutput sceneManage = cloudSceneManageService.getSceneManage(sceneId, null);
+        ThreadGroupConfigExt configExt = sceneManage.getThreadGroupConfigMap().get(md5);
+        req.setType(PressureTaskStartReq.ofGroupType(configExt.getType(), configExt.getMode()));
+        ThreadConfigInfo info = new ThreadConfigInfo();
+        info.setTps(input.getTpsNum().intValue());
         pressureTaskApi.modifyParam(req);
     }
 

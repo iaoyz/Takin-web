@@ -12,5 +12,5 @@ public class PressureParamsReq extends ContextExt {
     /**
      * 修改的关联节点
      */
-    private String bindRef;
+    private String ref;
 }

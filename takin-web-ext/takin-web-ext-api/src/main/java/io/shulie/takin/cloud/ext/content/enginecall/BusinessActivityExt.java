@@ -1,5 +1,7 @@
 package io.shulie.takin.cloud.ext.content.enginecall;
 
+import java.math.BigDecimal;
+
 import io.shulie.takin.cloud.ext.content.AbstractEntry;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,4 +33,12 @@ public class BusinessActivityExt extends AbstractEntry {
      * 业务目标tps占总的tps百分比
      */
     private Double rate;
+    /**
+     * 目标成功率
+     */
+    private BigDecimal sr;
+    /**
+     * 目标sa
+     */
+    private BigDecimal sa;
 }

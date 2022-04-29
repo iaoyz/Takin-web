@@ -1,5 +1,6 @@
 package io.shulie.takin.cloud.ext.content.enginecall;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -114,6 +115,10 @@ public class ScheduleStartRequestExt extends ScheduleEventRequestExt {
      */
     private Map<String, ThreadGroupConfigExt> threadGroupConfigMap;
 
+    private List<SlaConfig> stopCondition;
+
+    private List<SlaConfig> warningCondition;
+
     /**
      * 添加引擎插件路径
      *
@@ -194,5 +199,17 @@ public class ScheduleStartRequestExt extends ScheduleEventRequestExt {
          * pod读取文件结束位置
          */
         private String end = "-1";
+    }
+
+    @Data
+    public static class SlaConfig {
+        private Long id;
+        private String ruleName;
+        private Integer status;
+        private String event;
+        private Integer indexInfo;
+        private Integer condition;
+        private BigDecimal during;
+        private Integer times;
     }
 }
