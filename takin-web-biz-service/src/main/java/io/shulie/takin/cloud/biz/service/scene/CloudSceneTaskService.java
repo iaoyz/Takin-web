@@ -3,6 +3,7 @@ package io.shulie.takin.cloud.biz.service.scene;
 import java.util.List;
 
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
+import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageWrapperInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskQueryTpsInput;
@@ -52,10 +53,10 @@ public interface CloudSceneTaskService {
      * <li>重置对应的最新的压测报告状态为2</li>
      * </ui>
      *
-     * @param sceneId 场景主键
+     * @param req 取消参数
      * @return 业务码, 1 成功, 2 调用停止压测
      */
-    int blotStop(Long sceneId);
+    int blotStop(SceneManageIdReq req);
 
     /**
      * 检查场景压测启动状态

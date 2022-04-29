@@ -210,6 +210,8 @@ public interface SceneManageDTOConvert {
         @Mapping(source = "businessActivityName", target = "activityName"),
         @Mapping(source = "targetRT", target = "rt"),
         @Mapping(source = "targetTPS", target = "tps"),
+        @Mapping(source = "targetSuccessRate", target = "sr"),
+        @Mapping(source = "targetSA", target = "sa"),
     })
     BusinessActivityExt of(SceneManageWrapperOutput.SceneBusinessActivityRefOutput source);
 }

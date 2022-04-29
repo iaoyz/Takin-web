@@ -94,8 +94,8 @@ public class RedisClientUtils {
         }));
     }
 
-    public boolean reentrylockNoExpire(String key, String value) {
-        return "1".equals(stringRedisTemplate.execute(reentryLockRedisScript, Lists.newArrayList(key), value));
+    public boolean reentryLockNoExpire(String key, String value) {
+        return "1".equals(stringRedisTemplate.execute(reentryLockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
     }
 
     private String getLockPrefix(String key) {

@@ -32,4 +32,6 @@ public class ScheduleRunRequest {
      * 采样率
      */
     private Integer traceSampling;
+
+    private String callbackUrl;
 }

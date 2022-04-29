@@ -10,8 +10,10 @@ import javax.annotation.Resource;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
+import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
+import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneSlaRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
@@ -23,6 +25,7 @@ import io.shulie.takin.cloud.common.utils.NumberUtil;
 import io.shulie.takin.cloud.data.result.report.ReportResult;
 import io.shulie.takin.cloud.ext.content.enginecall.BusinessActivityExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt;
+import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStartRequestExt.SlaConfig;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStopRequestExt;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
@@ -91,6 +94,15 @@ public class SceneTaskEventService {
         scheduleStartRequest.setTotalIp(scene.getIpNum());
         scheduleStartRequest.setExpectThroughput(scene.getConcurrenceNum());
         scheduleStartRequest.setThreadGroupConfigMap(scene.getThreadGroupConfigMap());
+
+        List<SceneSlaRefOutput> warningCondition = scene.getWarningCondition();
+        if (CollectionUtils.isNotEmpty(warningCondition)) {
+            scheduleStartRequest.setWarningCondition(
+                warningCondition.stream().map(this::convertSla).collect(Collectors.toList()));
+        }
+        List<SceneSlaRefOutput> stopCondition = scene.getStopCondition();
+        scheduleStartRequest.setStopCondition(
+            stopCondition.stream().map(this::convertSla).collect(Collectors.toList()));
 
         Map<String, BusinessActivityExt> businessData = Maps.newHashMap();
         Integer tps = CommonUtil.sum(scene.getBusinessActivityConfig(), SceneManageWrapperOutput.SceneBusinessActivityRefOutput::getTargetTPS);
@@ -220,4 +232,17 @@ public class SceneTaskEventService {
         return index;
     }
 
+    private SlaConfig convertSla(SceneSlaRefOutput sla) {
+        SlaConfig config = new SlaConfig();
+        config.setId(sla.getId());
+        config.setRuleName(sla.getRuleName());
+        config.setStatus(sla.getStatus());
+        config.setEvent(sla.getEvent());
+        RuleBean rule = sla.getRule();
+        config.setIndexInfo(rule.getIndexInfo());
+        config.setCondition(rule.getCondition());
+        config.setDuring(rule.getDuring());
+        config.setTimes(rule.getTimes());
+        return config;
+    }
 }

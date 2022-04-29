@@ -99,7 +99,7 @@ public class ApplicationChecker implements StartConditionChecker {
 
     private boolean pressureRunning(StartConditionCheckerContext context) {
         String sceneRunningKey = PressureStartCache.getSceneResourceLockingKey(context.getSceneId());
-        return !Boolean.TRUE.equals(redisClientUtils.reentrylockNoExpire(sceneRunningKey, context.getUniqueKey()));
+        return !redisClientUtils.reentryLockNoExpire(sceneRunningKey, context.getUniqueKey());
     }
 
     private void cacheAssociation(StartConditionCheckerContext context) {

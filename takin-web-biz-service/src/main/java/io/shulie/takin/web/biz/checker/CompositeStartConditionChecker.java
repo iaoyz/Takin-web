@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
+import cn.hutool.core.util.StrUtil;
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import io.shulie.takin.adapter.api.entrypoint.scene.manage.SceneManageApi;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
@@ -33,6 +35,7 @@ import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 
@@ -40,6 +43,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class CompositeStartConditionChecker implements InitializingBean {
 
+    /**
+     * 压力节点 启动时间超时
+     */
+    @Value("${pressure.pod.start.expireTime: 30}")
+    private Integer pressurePodStartExpireTime;
 
     @Resource
     private RedisClientUtils redisClientUtils;
@@ -68,7 +76,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
         initTaskAndReportIfNecessary(context);
         List<CheckResult> resultList = new ArrayList<>(checkerList.size());
         for (StartConditionChecker checker : checkerList) {
-            CheckResult checkResult = checker.check(context);
+            CheckResult checkResult = doCheck(context, checker);
             resultList.add(checkResult);
             if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
                 context.setMessage(checkResult.getMessage());
@@ -77,6 +85,18 @@ public class CompositeStartConditionChecker implements InitializingBean {
             }
         }
         return resultList;
+    }
+
+    private CheckResult doCheck(StartConditionCheckerContext context, StartConditionChecker checker) {
+        String preStopKey = PressureStartCache.getScenePreStopKey(context.getSceneId(),
+            StrUtil.nullToEmpty(context.getResourceId()));
+        if (redisClientUtils.hasKey(preStopKey)) {
+            if (Long.parseLong(redisClientUtils.getString(preStopKey)) > context.getTime()) {
+                redisClientUtils.delete(preStopKey);
+                return new CheckResult(checker.type(), CheckStatus.FAIL.ordinal(), "取消压测");
+            }
+        }
+        return checker.check(context);
     }
 
     private void initContext(StartConditionCheckerContext context) {
@@ -157,10 +177,13 @@ public class CompositeStartConditionChecker implements InitializingBean {
 
     @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 0)
     public void callPreStop(Event event) {
-        Long sceneId = (Long)event.getExt();
+        ResourceContext resourceContext = (ResourceContext)event.getExt();
+        Long sceneId = resourceContext.getSceneId();
+        cachePreStopEvent(resourceContext);
         StartConditionCheckerContext context = new StartConditionCheckerContext();
         context.setSceneId(sceneId);
-        context.setMessage("压测取消");
+        context.setResourceId(resourceContext.getResourceId());
+        context.setMessage("取消压测");
         Object reportId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.REPORT_ID);
         if (Objects.nonNull(reportId)) {
             context.setReportId(Long.valueOf(String.valueOf(reportId)));
@@ -176,9 +199,21 @@ public class CompositeStartConditionChecker implements InitializingBean {
         callStartFailClear(context);
     }
 
+    private void cachePreStopEvent(ResourceContext resourceContext) {
+        Long sceneId = resourceContext.getSceneId();
+        String curTime = String.valueOf(System.currentTimeMillis());
+        redisClientUtils.setString(PressureStartCache.getScenePreStopKey(sceneId, ""),
+            curTime, pressurePodStartExpireTime, TimeUnit.SECONDS);
+        String resourceId = resourceContext.getResourceId();
+        if (StringUtils.isNotBlank(resourceId)) {
+            redisClientUtils.setString(PressureStartCache.getScenePreStopKey(sceneId, resourceId),
+                curTime, pressurePodStartExpireTime, TimeUnit.SECONDS);
+        }
+    }
+
     private void callStartFailClear(StartConditionCheckerContext context) {
         if (redisClientUtils.unlock(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()), context.getUniqueKey())) {
-            redisClientUtils.delete(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()));
+            redisClientUtils.delete(PressureStartCache.getSceneResourceKey(context.getSceneId()));
         }
         Long taskId = context.getTaskId();
         if (Objects.nonNull(taskId)) {

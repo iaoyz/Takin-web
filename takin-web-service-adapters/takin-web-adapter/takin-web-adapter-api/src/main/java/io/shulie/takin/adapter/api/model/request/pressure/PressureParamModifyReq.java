@@ -1,6 +1,8 @@
 package io.shulie.takin.adapter.api.model.request.pressure;
 
+import io.shulie.takin.cloud.constant.enums.ThreadGroupType;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
+import io.shulie.takin.cloud.model.request.StartRequest.ThreadConfigInfo;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -8,26 +10,11 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class PressureParamModifyReq extends ContextExt {
 
-    private Long taskId;
+    private Long jobId;
     /**
      * 修改的关联节点
      */
-    private String bingRef;
-    private PressureParam params;
-
-    @Data
-    public static class PressureParam {
-        // 1-tps
-        private Integer type;
-        private String value;
-
-        public PressureParam(Integer type, String value) {
-            this.type = type;
-            this.value = value;
-        }
-
-        public static PressureParam of(Integer type, String value) {
-            return new PressureParam(type, value);
-        }
-    }
+    private String ref;
+    private ThreadGroupType type;
+    private ThreadConfigInfo context;
 }
