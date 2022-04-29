@@ -22,7 +22,7 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.eventcenter.Event;
-import io.shulie.takin.web.biz.cache.PressureStartCache;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

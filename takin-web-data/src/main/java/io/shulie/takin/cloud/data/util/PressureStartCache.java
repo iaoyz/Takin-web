@@ -1,4 +1,4 @@
-package io.shulie.takin.web.biz.cache;
+package io.shulie.takin.cloud.data.util;
 
 public abstract class PressureStartCache {
 

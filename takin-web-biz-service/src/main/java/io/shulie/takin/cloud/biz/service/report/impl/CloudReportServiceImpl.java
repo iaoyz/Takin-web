@@ -1603,9 +1603,4 @@ public class CloudReportServiceImpl implements CloudReportService {
     public void updateResourceAssociation(String resourceId, Long pressureTaskId) {
         reportDao.updateResourceAssociation(resourceId, pressureTaskId);
     }
-
-    @Override
-    public ReportResult getReportBaseInfo(String resourceId) {
-        return reportDao.selectByResourceId(resourceId);
-    }
 }

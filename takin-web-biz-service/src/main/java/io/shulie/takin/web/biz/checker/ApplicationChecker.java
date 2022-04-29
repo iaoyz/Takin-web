@@ -23,7 +23,7 @@ import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.web.biz.cache.PressureStartCache;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.BaseConfigService;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;

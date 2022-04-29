@@ -151,6 +151,7 @@ public class SceneTaskEventService {
         });
         scheduleStartRequest.setDataFile(dataFileList);
         scheduleStartRequest.setFileContinueRead(scene.isContinueRead());
+        scheduleStartRequest.setResourceId(scene.getResourceId());
         Event event = new Event();
         event.setEventName(ScheduleEventConstant.START_SCHEDULE_EVENT);
         event.setExt(scheduleStartRequest);

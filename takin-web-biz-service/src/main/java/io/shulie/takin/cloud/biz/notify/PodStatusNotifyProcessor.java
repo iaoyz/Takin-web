@@ -9,7 +9,7 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
-import io.shulie.takin.web.biz.cache.PressureStartCache;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
 import org.springframework.stereotype.Component;
 

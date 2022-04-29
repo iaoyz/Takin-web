@@ -21,7 +21,7 @@ import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
-import io.shulie.takin.web.biz.cache.PressureStartCache;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.web.biz.checker.StartConditionCheckerContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

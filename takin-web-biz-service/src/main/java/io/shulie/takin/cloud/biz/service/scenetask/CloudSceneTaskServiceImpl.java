@@ -34,6 +34,7 @@ import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
 import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CommonUtil;
 import io.shulie.takin.cloud.common.utils.JsonPathUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportBusinessActivityDetailDao;
@@ -42,7 +43,7 @@ import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
-import io.shulie.takin.web.biz.cache.PressureStartCache;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.web.biz.checker.EngineResourceChecker;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
@@ -174,6 +175,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
      */
     @Value("${init.report.startTime.Offset:10}")
     private Long offsetStartTime;
+    @Resource
+    private RedisClientUtils redisClientUtils;
 
     private static final Long KB = 1024L;
     private static final Long MB = KB * 1024;
@@ -193,6 +196,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         SceneManageQueryOptions options = new SceneManageQueryOptions();
         options.setIncludeBusinessActivity(true);
         options.setIncludeScript(true);
+        options.setIncludeSLA(true);
         SceneManageWrapperOutput sceneData = cloudSceneManageService.getSceneManage(input.getSceneId(), options);
 
         sceneData.setPressureType(PressureSceneEnum.DEFAULT.getCode());
@@ -243,8 +247,10 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         //启动前置校验
         preCheckStart(sceneData, input);
 
-        ReportResult report = cloudReportService.getReportBaseInfo(input.getPressureResourceId());
-
+        Object reportId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneData.getId()),
+            PressureStartCache.REPORT_ID);
+        ReportResult report = cloudReportService.getReportBaseInfo(Long.valueOf(String.valueOf(reportId)));
+        sceneData.setResourceId(report.getResourceId());
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());
         // 报告已经完成，则退出

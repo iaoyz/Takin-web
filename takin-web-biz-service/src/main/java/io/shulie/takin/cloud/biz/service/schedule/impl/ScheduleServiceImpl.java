@@ -1,4 +1,5 @@
 package io.shulie.takin.cloud.biz.service.schedule.impl;
+import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -298,14 +299,15 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private static void completedFile(PressureTaskStartReq req, ScheduleStartRequestExt requestExt) {
+        FileInfo script = new FileInfo();
+        script.setUri(requestExt.getScriptPath());
+        req.setScriptFile(script);
         Map<Integer, List<DataFile>> fileTypeMap = requestExt.getDataFile().stream()
-            .filter(file -> FileTypeBusinessUtil.isScriptOrData(file.getFileType()))
+            .filter(file -> FileTypeBusinessUtil.isData(file.getFileType()))
             .collect(groupingBy(DataFile::getFileType));
-        List<DataFile> scripts = fileTypeMap.get(FileTypeEnum.SCRIPT.getCode());
-        req.setScriptFile(convertFile(scripts.get(0)));
-        List<DataFile> dataFiles = fileTypeMap.get(FileTypeEnum.DATA.getCode());
-        if (!CollectionUtils.isEmpty(dataFiles)) {
-            req.setData(dataFiles.stream().map(ScheduleServiceImpl::convertFile).collect(Collectors.toList()));
+        if (!CollectionUtils.isEmpty(fileTypeMap)) {
+            req.setData(fileTypeMap.values().stream().flatMap(Collection::stream)
+                .map(ScheduleServiceImpl::convertFile).collect(Collectors.toList()));
         }
         List<String> enginePluginsFilePath = requestExt.getEnginePluginsFilePath();
         if (!CollectionUtils.isEmpty(enginePluginsFilePath)) {

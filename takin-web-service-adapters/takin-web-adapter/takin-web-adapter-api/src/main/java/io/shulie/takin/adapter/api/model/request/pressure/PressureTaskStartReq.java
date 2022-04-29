@@ -87,7 +87,7 @@ public class PressureTaskStartReq extends ContextExt {
             SYMBOL_MAP.put(symbol.ordinal(), symbol);
         }
         for (FormulaTarget target : FormulaTarget.values()) {
-            FORMULA_MAP.put(target.ordinal(), target);
+            FORMULA_MAP.put(target.getCode(), target);
         }
     }
 
@@ -105,5 +105,9 @@ public class PressureTaskStartReq extends ContextExt {
 
     public static FormulaTarget ofTarget(Integer code) {
         return FORMULA_MAP.get(code);
+    }
+
+    public static void main(String[] args) {
+        System.out.println("1");
     }
 }
