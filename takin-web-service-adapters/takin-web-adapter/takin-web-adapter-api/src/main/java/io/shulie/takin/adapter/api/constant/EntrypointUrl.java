@@ -8,7 +8,8 @@ package io.shulie.takin.adapter.api.constant;
 @SuppressWarnings("SpellCheckingInspection")
 public class EntrypointUrl {
     public static String join(String... path) {
-        return String.join("/", path);
+        return  BASIC + "/"
+                + String.join("/", path);
     }
 
     /**
@@ -38,7 +39,7 @@ public class EntrypointUrl {
      * 模块 - 资源
      */
     public final static String MODULE_RESOURCE = "resource";
-    public final static String METHOD_RESOURCE_MACHINE = "/resource/example/list";
+    public final static String METHOD_RESOURCE_MACHINE = "resource/example/list";
     public final static String METHOD_RESOURCE_LOCK = "lock";
     public final static String METHOD_RESOURCE_UNLOCK = "unlock";
     public final static String MODULE_RESOURCE_CHECK = "check";
