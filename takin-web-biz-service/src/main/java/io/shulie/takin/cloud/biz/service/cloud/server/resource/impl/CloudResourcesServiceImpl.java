@@ -36,7 +36,7 @@ public class CloudResourcesServiceImpl implements CloudResourcesService {
             collect.entrySet().forEach(entry -> {
                 switch (entry.getKey()) {
                     case 0:
-//                        resource.setInitializedAmount(entry.getValue());
+                        resource.setInitializedAmount(entry.getValue());
                         //默认全部压测中完成
                         break;
                     case 1:
