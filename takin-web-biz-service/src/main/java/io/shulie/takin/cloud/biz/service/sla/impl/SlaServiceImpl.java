@@ -28,6 +28,7 @@ import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.sla.AchieveModel;
 import io.shulie.takin.cloud.common.constants.Constants;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
+import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.mapper.mysql.SceneSlaRefMapper;
@@ -163,9 +164,10 @@ public class SlaServiceImpl implements SlaService {
                     SceneSlaRef sceneSlaRef = new SceneSlaRef();
                     BeanUtils.copyProperties(slaRef, sceneSlaRef);
                     SceneManageWrapperOutput.SceneSlaRefOutput output = SceneManageDTOConvert.INSTANCE.of(sceneSlaRef);
+                    String event = output.getEvent();
                     SceneSlaRefInput input = BeanUtil.copyProperties(output, SceneSlaRefInput.class);
-                    SendMetricsEvent event = new SendMetricsEvent();
-                    Map<String, Object> conditionMap = SlaUtil.matchCondition(input, event);
+                    SendMetricsEvent sendMetricsEvent = new SendMetricsEvent();
+                    Map<String, Object> conditionMap = SlaUtil.matchCondition(input, sendMetricsEvent);
                     conditionMap.put("real", info.getNumber());
 
                     SceneManageQueryOptions options = new SceneManageQueryOptions();
@@ -227,22 +229,24 @@ public class SlaServiceImpl implements SlaService {
                                 WarnDetail warnDetail = buildWarnDetail(conditionMap, businessActivity, metricsEvent, output);
                                 //t_warn_detail
                                 tWarnDetailMapper.insertSelective(warnDetail);
-                                // 记录sla熔断数据
-                                UpdateReportSlaDataInput slaDataInput = new UpdateReportSlaDataInput();
-                                SlaBean slaBean = new SlaBean();
-                                slaBean.setRuleName(slaRef.getSlaName());
+                                if (SceneManageConstant.EVENT_DESTORY.equals(event)) {
+                                    // 记录sla熔断数据
+                                    UpdateReportSlaDataInput slaDataInput = new UpdateReportSlaDataInput();
+                                    SlaBean slaBean = new SlaBean();
+                                    slaBean.setRuleName(slaRef.getSlaName());
 //                        slaBean.setBusinessActivity(businessActivityDTO.getBusinessActivityName());
 //                        slaBean.setBindRef(businessActivityDTO.getBindRef());
-                                slaBean.setRule(warnDetail.getWarnContent());
-                                slaDataInput.setReportId(report.getId());
-                                slaDataInput.setSlaBean(slaBean);
-                                //更新report
-                                cloudReportService.updateReportSlaData(slaDataInput);
-                                PressureTaskStopReq req = new PressureTaskStopReq();
-                                req.setTaskId(scheduleStopRequest.getTaskId());
-                                //触发停止
-                                pressureTaskApi.stop(req);
-                                log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
+                                    slaBean.setRule(warnDetail.getWarnContent());
+                                    slaDataInput.setReportId(report.getId());
+                                    slaDataInput.setSlaBean(slaBean);
+                                    //更新report
+                                    cloudReportService.updateReportSlaData(slaDataInput);
+                                    PressureTaskStopReq req = new PressureTaskStopReq();
+                                    req.setTaskId(scheduleStopRequest.getTaskId());
+                                    //触发停止
+                                    pressureTaskApi.stop(req);
+                                    log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
+                                }
                             }
                         } catch (Exception e) {
                             log.warn("【SLA】发送压测任务终止事件失败:{}", e.getMessage(), e);
