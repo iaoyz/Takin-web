@@ -10,16 +10,16 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class ResourceCheckRequest extends ContextExt {
 
-    public static final Integer WATCH_MAN_ID = 1;
+    public static final Long WATCH_MAN_ID = 1L;
 
     /**
      * 压力机所需要的cpu
      */
-    private BigDecimal cpu;
+    private String cpu;
     /**
      * 压力机所需要的内存
      */
-    private BigDecimal memory;
+    private String memory;
     /**
      * 需要的压力机数
      */
@@ -35,6 +35,6 @@ public class ResourceCheckRequest extends ContextExt {
     /**
      * 调度主键
      */
-    private Integer watchmanId = WATCH_MAN_ID;
+    private Long watchmanId = WATCH_MAN_ID;
 
 }

@@ -25,4 +25,7 @@ public class SceneManageIdReq extends ContextExt {
 
     @ApiModelProperty(value = "sla触发")
     private SlaBean slaBean;
+
+    @ApiModelProperty(value = "资源Id")
+    private String resourceId;
 }

@@ -2,7 +2,8 @@ package io.shulie.takin.web.biz.checker;
 
 import javax.annotation.Resource;
 
-import io.shulie.takin.adapter.api.entrypoint.check.CloudCheckApi;
+import io.shulie.takin.adapter.api.entrypoint.watchman.CloudWatchmanApi;
+import io.shulie.takin.adapter.api.model.request.watchman.WatchmanStatusRequest;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import org.springframework.stereotype.Component;
 
@@ -10,12 +11,12 @@ import org.springframework.stereotype.Component;
 public class EngineEnvChecker implements StartConditionChecker {
 
     @Resource
-    private CloudCheckApi cloudCheckApi;
+    private CloudWatchmanApi cloudWatchmanApi;
 
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
         try {
-            //cloudCheckApi.checkEnv(new EnvCheckRequest());
+            cloudWatchmanApi.status(new WatchmanStatusRequest());
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());

@@ -49,4 +49,8 @@ public abstract class PressureStartCache {
     public static String getSceneResourceKey(Long sceneId) {
         return String.format("pressure:scene:resource:%s", sceneId);
     }
+
+    public static String getScenePreStopKey(Long sceneId, String resourceId) {
+        return String.format("pressure:scene:pre_stop:%s:%s", sceneId, resourceId);
+    }
 }

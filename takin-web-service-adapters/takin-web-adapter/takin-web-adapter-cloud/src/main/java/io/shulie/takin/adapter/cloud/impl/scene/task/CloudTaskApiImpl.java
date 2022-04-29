@@ -97,7 +97,7 @@ public class CloudTaskApiImpl implements CloudTaskApi {
 
     @Override
     public Integer boltStopTask(SceneManageIdReq req) {
-        return sceneTaskService.blotStop(req.getId());
+        return sceneTaskService.blotStop(req);
     }
 
     @Override

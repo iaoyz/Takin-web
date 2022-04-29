@@ -94,8 +94,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             StrategyConfigExt config = getStrategy();
             sceneData.setStrategy(config);
             ResourceCheckRequest request = new ResourceCheckRequest();
-            request.setCpu(config.getCpuNum());
-            request.setMemory(config.getMemorySize());
+            request.setCpu(config.getCpuNum().toPlainString());
+            request.setMemory(config.getMemorySize().toPlainString());
             request.setNumber(sceneData.getIpNum());
             cloudResourceApi.check(request);
 
@@ -190,8 +190,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
 
     public static List<String> clearCacheKey(String resourceId, Long sceneId) {
         return Arrays.asList(PressureStartCache.getResourceKey(resourceId), PressureStartCache.getResourcePodKey(resourceId),
-            PressureStartCache.getResourceJmeterKey(resourceId), PressureStartCache.getSceneResourceLockingKey(sceneId),
-            PressureStartCache.getSceneResourceKey(sceneId));
+            PressureStartCache.getResourceJmeterKey(resourceId), PressureStartCache.getSceneResourceKey(sceneId));
     }
 
     @IntrestFor(event = PressureStartCache.CHECK_FAIL_EVENT, order = 1)
@@ -201,7 +200,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         if (StringUtils.isNotBlank(resourceId)) {
             redisClientUtils.expire(PressureStartCache.getResourceKey(resourceId), 30);
             redisClientUtils.expire(PressureStartCache.getResourcePodKey(resourceId), 30);
-            redisClientUtils.delete(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()));
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resourceId);
             cloudResourceApi.unLock(request);
@@ -223,22 +221,28 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     public void lackPodResource(Event event) {
         log.info("pod resource不足");
         ResourceContext context = (ResourceContext)event.getExt();
-        context.setMessage("压力机资源不足");
         failed(context.getResourceId(), context.getMessage());
 
         Event failEvent = new Event();
         failEvent.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
         failEvent.setExt(context);
-        eventCenterTemplate.doEvents(event);
+        eventCenterTemplate.doEvents(failEvent);
     }
 
     @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 1)
     public void callPreStop(Event event) {
-        Long sceneId = (Long)event.getExt();
-        Object resourceId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.RESOURCE_ID);
-        if (Objects.nonNull(resourceId)) {
-            String resource = String.valueOf(resourceId);
-            failed(resource, "压测取消");
+        ResourceContext context = (ResourceContext)event.getExt();
+        Long sceneId = context.getSceneId();
+        String resource = context.getResourceId();
+        if (StringUtils.isBlank(resource)) {
+            Object resourceId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.RESOURCE_ID);
+            if (Objects.nonNull(resource)) {
+                resource = String.valueOf(resourceId);
+            }
+        }
+        if (StringUtils.isNotBlank(resource)) {
+            redisClientUtils.delete(PressureStartCache.getResourceKey(resource));
+            failed(resource, "取消压测");
             clearCache(resource, sceneId);
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resource);

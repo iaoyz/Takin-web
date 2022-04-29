@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -91,7 +92,14 @@ public class ApplicationChecker implements StartConditionChecker {
 
     private void checkStatus(StartConditionCheckerContext context) {
         SceneManageWrapperOutput sceneData = context.getSceneData();
-        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus()) || pressureRunning(context)) {
+        Long sceneId = context.getSceneId();
+        boolean flag = false;
+        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus())) {
+            Object uniqueKey = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.UNIQUE_KEY);
+            flag = Objects.isNull(uniqueKey) || !Objects.equals(uniqueKey, context.getUniqueKey());
+        }
+        flag = flag || pressureRunning(context);
+        if (flag) {
             throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
         }
         cacheAssociation(context);
@@ -99,7 +107,7 @@ public class ApplicationChecker implements StartConditionChecker {
 
     private boolean pressureRunning(StartConditionCheckerContext context) {
         String sceneRunningKey = PressureStartCache.getSceneResourceLockingKey(context.getSceneId());
-        return !Boolean.TRUE.equals(redisClientUtils.reentrylockNoExpire(sceneRunningKey, context.getUniqueKey()));
+        return !redisClientUtils.reentryLockNoExpire(sceneRunningKey, context.getUniqueKey());
     }
 
     private void cacheAssociation(StartConditionCheckerContext context) {

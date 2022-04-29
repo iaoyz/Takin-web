@@ -1,19 +1,20 @@
 package io.shulie.takin.adapter.api.entrypoint.pressure;
 
+import java.util.List;
+
 import io.shulie.takin.adapter.api.model.request.pressure.PressureParamModifyReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureParamsReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
-import io.shulie.takin.adapter.api.model.response.pressure.PressureActionResp;
-import io.shulie.takin.adapter.api.model.response.pressure.PressureParamsResponse;
+import io.shulie.takin.cloud.model.response.JobConfig;
 
 public interface PressureTaskApi {
 
-    PressureActionResp start(PressureTaskStartReq req);
+    Long start(PressureTaskStartReq req);
 
-    PressureActionResp stop(PressureTaskStopReq req);
+    String stop(PressureTaskStopReq req);
 
-    PressureActionResp modifyParam(PressureParamModifyReq req);
+    Void modifyParam(PressureParamModifyReq req);
 
-    PressureParamsResponse params(PressureParamsReq req);
+    List<JobConfig> params(PressureParamsReq req);
 }

@@ -23,6 +23,7 @@ public class StartConditionCheckerContext {
     // 临时记录错误信息使用
     private String message;
     private String uniqueKey;
+    private long time = System.currentTimeMillis();
 
     private StartConditionCheckerContext(Long sceneId) {
         this.sceneId = sceneId;

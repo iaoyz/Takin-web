@@ -13,7 +13,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 
 import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
-import io.shulie.takin.adapter.api.model.request.check.ScriptCheckRequest.FileInfo;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
@@ -26,6 +25,8 @@ import io.shulie.takin.web.biz.pojo.response.scriptmanage.PluginConfigDetailResp
 import io.shulie.takin.web.biz.pojo.response.scriptmanage.ScriptManageDeployDetailResponse;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
 import io.shulie.takin.web.biz.service.scriptmanage.ScriptManageService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -182,5 +183,18 @@ public class ScriptChecker implements StartConditionChecker {
         JMX,
         DATA,
         JAR
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class FileInfo {
+        /**
+         * 类型：
+         * 1-脚本
+         * 2-csv
+         * 3-插件jar
+         */
+        private Integer type;
+        private String path;
     }
 }

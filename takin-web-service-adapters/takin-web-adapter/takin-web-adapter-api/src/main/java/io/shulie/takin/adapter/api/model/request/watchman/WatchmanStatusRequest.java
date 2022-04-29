@@ -1,4 +1,4 @@
-package io.shulie.takin.adapter.api.model.request.check;
+package io.shulie.takin.adapter.api.model.request.watchman;
 
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 import lombok.Data;
@@ -8,7 +8,7 @@ import static io.shulie.takin.adapter.api.model.request.resource.ResourceCheckRe
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class EnvCheckRequest extends ContextExt {
+public class WatchmanStatusRequest extends ContextExt {
 
-    private Integer watchmanId = WATCH_MAN_ID;
+    private Long watchmanId = WATCH_MAN_ID;
 }
