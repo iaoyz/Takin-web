@@ -32,20 +32,20 @@ public class CloudResourcesServiceImpl implements CloudResourcesService {
             resource.setResources(doTurnPage(resources, sortField, sortType, currentPage, pageSize));
             int size = resources.size();
             resource.setResourcesAmount(size);
-            Map<String, Integer> collect = resources.stream().collect(Collectors.toMap(CloudResource::getStatus, n -> 1, (n1, n2) -> n1 + 1));
+            Map<Integer, Integer> collect = resources.stream().collect(Collectors.toMap(CloudResource::getStatus, n -> 1, (n1, n2) -> n1 + 1));
             collect.entrySet().forEach(entry -> {
                 switch (entry.getKey()) {
-                    case "initialized":
+                    case 0:
 //                        resource.setInitializedAmount(entry.getValue());
                         //默认全部压测中完成
                         break;
-                    case "Running":
+                    case 1:
                         resource.setAliveAmount(entry.getValue());
                         break;
-                    case "Failed":
+                    case 3:
                         resource.setUnusualAmount(entry.getValue());
                         break;
-                    case "Succeeded":
+                    case 2:
                         resource.setInactiveAmount(entry.getValue());
                 }
             });
