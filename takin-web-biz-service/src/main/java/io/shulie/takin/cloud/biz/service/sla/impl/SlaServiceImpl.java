@@ -5,7 +5,9 @@ import cn.hutool.core.date.DateUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.google.common.collect.Maps;
+import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.dao.scene.manage.TWarnDetailMapper;
+import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneSlaRef;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.WarnDetail;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
@@ -73,7 +75,9 @@ public class SlaServiceImpl implements SlaService {
     @Resource
     private PressureTaskApi pressureTaskApi;
     @Resource
-    SceneSlaRefMapper sceneSlaRefMapper;
+    private SceneSlaRefMapper sceneSlaRefMapper;
+    @Resource
+    private TReportMapper tReportMapper;
 
     @Override
     public Boolean buildWarn(SendMetricsEvent metrics) {
@@ -147,9 +151,10 @@ public class SlaServiceImpl implements SlaService {
 
     @Override
     public void detection(List<SlaInfo> slaInfo) {
-        Set<Object> keys = stringRedisTemplate.opsForHash().keys(SLA_DESTROY_KEY);
-        List keyList = new ArrayList(keys);
         slaInfo.forEach(info -> {
+            Report report = tReportMapper.getReportByTaskId(info.getJobId());
+            Set<Object> keys = stringRedisTemplate.opsForHash().keys(SLA_DESTROY_KEY);
+            List keyList = new ArrayList(keys);
             String ref = info.getRef();
             if (org.apache.commons.lang3.StringUtils.isNoneBlank(ref)) {
                 List<String> list = Arrays.asList(ref.split(","));//拿到引用
@@ -217,7 +222,7 @@ public class SlaServiceImpl implements SlaService {
                             if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(PREFIX_TASK + slaRef.getSceneId()))) {
                                 // 熔断数据也记录到告警明细中
                                 SendMetricsEvent metricsEvent = new SendMetricsEvent();
-//                        metricsEvent.setReportId();
+                                metricsEvent.setReportId(report.getId());
                                 metricsEvent.setTimestamp(System.currentTimeMillis());
                                 WarnDetail warnDetail = buildWarnDetail(conditionMap, businessActivity, metricsEvent, output);
                                 //t_warn_detail
@@ -247,8 +252,8 @@ public class SlaServiceImpl implements SlaService {
                         keyList.remove(id);
                     }
                 }
-                doClean(keyList);
             }
+            doClean(keyList);
         });
     }
 

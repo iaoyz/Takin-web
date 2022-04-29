@@ -134,4 +134,6 @@ public interface TReportMapper {
      * @return -
      */
     int updateReportUserById(@Param("id") Long id, @Param("userId") Long userId);
+
+    Report getReportByTaskId(long jobId);
 }
