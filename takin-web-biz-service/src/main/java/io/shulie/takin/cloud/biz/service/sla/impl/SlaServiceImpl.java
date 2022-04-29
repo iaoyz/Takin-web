@@ -234,7 +234,7 @@ public class SlaServiceImpl implements SlaService {
 //                        slaBean.setBusinessActivity(businessActivityDTO.getBusinessActivityName());
 //                        slaBean.setBindRef(businessActivityDTO.getBindRef());
                                 slaBean.setRule(warnDetail.getWarnContent());
-                                slaDataInput.setReportId(scheduleStopRequest.getTaskId());
+                                slaDataInput.setReportId(report.getId());
                                 slaDataInput.setSlaBean(slaBean);
                                 //更新report
                                 cloudReportService.updateReportSlaData(slaDataInput);
