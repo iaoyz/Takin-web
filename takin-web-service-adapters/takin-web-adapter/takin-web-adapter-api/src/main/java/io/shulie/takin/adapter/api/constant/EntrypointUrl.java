@@ -39,7 +39,7 @@ public class EntrypointUrl {
      * 模块 - 资源
      */
     public final static String MODULE_RESOURCE = "resource";
-    public final static String METHOD_RESOURCE_MACHINE = "resource/example/list";
+    public final static String METHOD_RESOURCE_MACHINE = "/example/list";
     public final static String METHOD_RESOURCE_LOCK = "lock";
     public final static String METHOD_RESOURCE_UNLOCK = "unlock";
     public final static String MODULE_RESOURCE_CHECK = "check";

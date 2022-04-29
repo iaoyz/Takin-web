@@ -33,7 +33,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
         CloudResourcesRequest crr = new CloudResourcesRequest();
         crr.setTaskId(taskId);
         crr.setResourceId(resourceId);
-        List<CloudResource> resources = cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.METHOD_RESOURCE_MACHINE), crr, new TypeReference<ApiResult<List<CloudResource>>>() {
+        List<CloudResource> resources = cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE,EntrypointUrl.METHOD_RESOURCE_MACHINE), crr, new TypeReference<ApiResult<List<CloudResource>>>() {
         }).getData();
         resources.forEach(resource -> {
             String startTime = resource.getStartTime();
