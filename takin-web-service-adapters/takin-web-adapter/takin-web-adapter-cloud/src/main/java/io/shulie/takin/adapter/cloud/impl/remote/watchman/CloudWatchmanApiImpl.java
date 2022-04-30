@@ -2,7 +2,7 @@ package io.shulie.takin.adapter.cloud.impl.remote.watchman;
 
 import javax.annotation.Resource;
 
-import com.alibaba.fastjson.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.watchman.CloudWatchmanApi;

@@ -21,7 +21,7 @@ import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.ext.api.EngineCallExtApi;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
-import io.shulie.takin.web.biz.cache.PressureStartCache;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.web.biz.checker.StartConditionCheckerContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -125,12 +125,8 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         int currentTime = 0;
         boolean checkPass = false;
         String resourceId = context.getResourceId();
-        Object totalPodNumber = redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId),
-            PressureStartCache.RESOURCE_POD_NUM);
-        if (totalPodNumber == null) {
-            return;
-        }
-        String podNumber = String.valueOf(totalPodNumber);
+        String podNumber = String.valueOf(redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId),
+            PressureStartCache.RESOURCE_POD_NUM));
         while (currentTime <= pressureNodeStartExpireTime) {
             Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterKey(resourceId));
             try {
@@ -154,9 +150,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
     }
 
     private void markPressureStatus(boolean success, ResourceContext context) {
-        if (success) {
-
-        } else {
+        if (!success) {
             String k8sPodKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s",
                 context.getSceneId(), context.getReportId());
             String message = String.format("节点没有在设定时间【%s】s内启动，计划启动节点个数【%s】,实际启动节点个数【%s】,"
@@ -168,7 +162,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
             Long reportId = context.getReportId();
             String resourceId = context.getResourceId();
             Long tenantId = context.getTenantId();
-            callStop(sceneId, reportId, resourceId, message, tenantId);
+            callStop(sceneId, reportId, message, tenantId);
             setTryRunTaskInfo(sceneId, reportId, tenantId, message);
         }
     }

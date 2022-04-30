@@ -253,13 +253,4 @@ public interface CloudReportService {
     Integer getReportStatusById(Long reportId);
 
     void updateResourceAssociation(String resourceId, Long pressureTaskId);
-
-
-    /**
-     * 获取报告的基础数据(基础表数据)
-     *
-     * @param resourceId 资源Id
-     * @return 基础表数据
-     */
-    ReportResult getReportBaseInfo(String resourceId);
 }

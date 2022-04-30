@@ -10,7 +10,6 @@ import io.shulie.takin.cloud.constant.enums.JobType;
 import io.shulie.takin.cloud.constant.enums.ThreadGroupType;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 import io.shulie.takin.cloud.model.request.StartRequest;
-import io.swagger.v3.oas.models.security.SecurityScheme.In;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -87,7 +86,7 @@ public class PressureTaskStartReq extends ContextExt {
             SYMBOL_MAP.put(symbol.ordinal(), symbol);
         }
         for (FormulaTarget target : FormulaTarget.values()) {
-            FORMULA_MAP.put(target.ordinal(), target);
+            FORMULA_MAP.put(target.getCode(), target);
         }
     }
 

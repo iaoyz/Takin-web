@@ -92,16 +92,20 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
         for (int i = 0; i < titles.size(); i++) {
             String title = titles.get(i);
             switch (title.toLowerCase()) {
-                case "filesystem":
+                case "Filesystem":
+                case "文件系统":
                     df.setFilesystem(values[i]);
                     break;
-                case "used":
+                case "Used":
+                case "已用":
                     df.setUsed(Long.parseLong(values[i]));
                     break;
-                case "available":
+                case "Available":
+                case "可用":
                     df.setAvailable(Long.parseLong(values[i]));
                     break;
-                case "use%":
+                case "Use%":
+                case "已用%":
                     df.setUseRate(Integer.parseInt(values[i].replace("%", "")));
                     break;
             }

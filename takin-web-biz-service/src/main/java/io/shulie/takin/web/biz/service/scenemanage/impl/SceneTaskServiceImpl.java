@@ -56,7 +56,6 @@ import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.web.biz.cache.PressureStartCache;
 import io.shulie.takin.web.biz.checker.CompositeStartConditionChecker;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
@@ -256,15 +255,10 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         }
         sceneData.setIsAbsoluteScriptPath(FileUtils.isAbsoluteUploadPath(sceneData.getUploadFile(), scriptFilePath));
 
-        // TODO: mock放行
-        //Object resourceId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(param.getSceneId()),
-        //    PressureStartCache.RESOURCE_ID);
-        //if (!Objects.equals(param.getResourceId(), resourceId)
-        //    || !SceneManageStatusEnum.STARTING.getValue().equals(sceneData.getStatus())) {
-        //    // 正在压测中
-        //    throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR,
-        //        "场景，id=" + param.getSceneId() + "还未申请压测资源，请刷新页面！");
-        //}
+        if (!SceneManageStatusEnum.STARTING.getValue().equals(sceneData.getStatus())) {
+            throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR,
+                "场景，id=" + param.getSceneId() + "还未申请压测资源，请刷新页面！");
+        }
         // 记录key 过期时长为压测时长
         redisClientUtils.setString(SceneTaskUtils.getSceneTaskKey(param.getSceneId()),
             DateUtils.getServerTime(),

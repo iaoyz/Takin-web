@@ -2,7 +2,7 @@ package io.shulie.takin.adapter.cloud.impl.remote.common;
 
 import javax.annotation.Resource;
 
-import com.alibaba.fastjson.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 public class CommonInfoApiImpl implements CommonInfoApi {
 
     @Resource
-    CloudApiSenderService cloudApiSenderService;
+    private CloudApiSenderService cloudApiSenderService;
 
     /**
      * 获取cloud配置信息

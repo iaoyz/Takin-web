@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.google.common.collect.Lists;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.cloud.common.utils.JsonPathUtil;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportBusinessActivityDetailMapper;
@@ -25,6 +26,7 @@ import io.shulie.takin.cloud.data.param.report.ReportQueryParam.PressureTypeRela
 import io.shulie.takin.cloud.data.param.report.ReportUpdateConclusionParam;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
 import io.shulie.takin.cloud.data.result.report.ReportResult;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,9 @@ public class ReportDaoImpl implements ReportDao {
 
     @Resource
     private ReportBusinessActivityDetailMapper detailMapper;
+
+    @Resource
+    private RedisClientUtils redisClientUtils;
 
     @Override
     public int insert(ReportInsertParam param) {
@@ -160,6 +165,8 @@ public class ReportDaoImpl implements ReportDao {
     public ReportResult getTempReportBySceneId(Long sceneId) {
         LambdaQueryWrapper<ReportEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReportEntity::getSceneId, sceneId);
+        wrapper.eq(ReportEntity::getId, Long.valueOf(String.valueOf(redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+                PressureStartCache.RESOURCE_ID))));
         wrapper.eq(ReportEntity::getIsDeleted, 0);
         wrapper.orderByDesc(ReportEntity::getId);
         wrapper.last("limit 1");

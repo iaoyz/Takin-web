@@ -1,6 +1,7 @@
 package io.shulie.takin.cloud.biz.service.scene;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -98,11 +99,11 @@ public class SceneTaskEventService {
         List<SceneSlaRefOutput> warningCondition = scene.getWarningCondition();
         if (CollectionUtils.isNotEmpty(warningCondition)) {
             scheduleStartRequest.setWarningCondition(
-                warningCondition.stream().map(this::convertSla).collect(Collectors.toList()));
+                warningCondition.stream().map(this::convertSla).flatMap(Collection::stream).collect(Collectors.toList()));
         }
         List<SceneSlaRefOutput> stopCondition = scene.getStopCondition();
         scheduleStartRequest.setStopCondition(
-            stopCondition.stream().map(this::convertSla).collect(Collectors.toList()));
+            stopCondition.stream().map(this::convertSla).flatMap(Collection::stream).collect(Collectors.toList()));
 
         Map<String, BusinessActivityExt> businessData = Maps.newHashMap();
         Integer tps = CommonUtil.sum(scene.getBusinessActivityConfig(), SceneManageWrapperOutput.SceneBusinessActivityRefOutput::getTargetTPS);
@@ -151,6 +152,7 @@ public class SceneTaskEventService {
         });
         scheduleStartRequest.setDataFile(dataFileList);
         scheduleStartRequest.setFileContinueRead(scene.isContinueRead());
+        scheduleStartRequest.setResourceId(scene.getResourceId());
         Event event = new Event();
         event.setEventName(ScheduleEventConstant.START_SCHEDULE_EVENT);
         event.setExt(scheduleStartRequest);
@@ -232,17 +234,25 @@ public class SceneTaskEventService {
         return index;
     }
 
-    private SlaConfig convertSla(SceneSlaRefOutput sla) {
-        SlaConfig config = new SlaConfig();
-        config.setId(sla.getId());
-        config.setRuleName(sla.getRuleName());
-        config.setStatus(sla.getStatus());
-        config.setEvent(sla.getEvent());
+    private List<SlaConfig> convertSla(SceneSlaRefOutput sla) {
+        String[] businessActivity = sla.getBusinessActivity();
+        List<SlaConfig> configs = new ArrayList<>(businessActivity.length);
+        SlaConfig base = new SlaConfig();
+        base.setId(sla.getId());
+        base.setRuleName(sla.getRuleName());
+        base.setStatus(sla.getStatus());
+        base.setEvent(sla.getEvent());
         RuleBean rule = sla.getRule();
-        config.setIndexInfo(rule.getIndexInfo());
-        config.setCondition(rule.getCondition());
-        config.setDuring(rule.getDuring());
-        config.setTimes(rule.getTimes());
-        return config;
+        base.setIndexInfo(rule.getIndexInfo());
+        base.setCondition(rule.getCondition());
+        base.setDuring(rule.getDuring());
+        base.setTimes(rule.getTimes());
+
+        for (String activity : businessActivity) {
+            SlaConfig config = base.clone();
+            config.setActivity(activity);
+            configs.add(config);
+        }
+        return configs;
     }
 }
