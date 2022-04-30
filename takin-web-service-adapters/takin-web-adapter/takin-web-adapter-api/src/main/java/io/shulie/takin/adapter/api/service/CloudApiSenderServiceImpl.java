@@ -7,10 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.TypeReference;
-
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.net.url.UrlQuery;
@@ -19,6 +15,8 @@ import cn.hutool.http.ContentType;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.http.Method;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 import io.shulie.takin.cloud.model.response.ApiResult;
 import io.shulie.takin.utils.security.MD5Utils;
@@ -151,12 +149,12 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
             // 组装请求路径
             requestUrl = cloudUrl + url;
             // 组装请求体
-            requestBodyString = JSON.toJSONString(request);
+            requestBodyString = new ObjectMapper().writeValueAsString(request);
             // 转换请求体
             requestBody = requestBodyString.getBytes(StandardCharsets.UTF_8);
         } catch (Throwable throwable) {
             log.error("请求Cloud接口失败,POST前置转换失败.\n请求路径:{}.请求参数:{}.", requestUrl, requestBodyString, throwable);
-            throw throwable;
+            throw new RuntimeException(throwable);
         }
         // 发送请求
         return requestApi(context, method, requestUrl, requestBody, responseClass);
@@ -196,21 +194,20 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
             log.debug("请求Cloud接口耗时:{}\n请求路径:{}\n请求参数:{}\n请求结果:{}",
                 (endTime - startTime), url, new String(requestBody), responseBody);
             // 返回接口响应
-            T apiResponse = JSON.parseObject(responseBody, responseClass);
+            T apiResponse = new ObjectMapper().readValue(responseBody, responseClass);
             if (apiResponse == null) {throw new NullPointerException();}
             if (ApiResult.class.equals(apiResponse.getClass())) {
                 ApiResult<?> cloudResult = (ApiResult<?>)apiResponse;
                 // 接口成功
                 if (Boolean.TRUE.equals(cloudResult.isSuccess())) {return apiResponse;}
-                // success == null || success == false
                 else if (cloudResult.getMsg() != null) {throw new RuntimeException(cloudResult.getMsg());}
                 // cloud 回传的 error 信息为空
                 else {throw new RuntimeException("无法展示更多信息,请参照cloud日志");}
             }
             return apiResponse;
-        } catch (JSONException e) {
+        } catch (Exception e) {
             log.error("请求Cloud接口异常-JSON序列化失败。\n请求路径:{}\n请求参数:{}\n请求结果:{}", url, new String(requestBody), responseBody);
-            throw e;
+            throw new RuntimeException(e);
         } catch (Throwable throwable) {
             log.error("请求Cloud接口异常。\n请求路径:{}\n请求参数:{}\n请求结果:{}", url, new String(requestBody), responseBody, throwable);
             throw throwable;
@@ -261,7 +258,7 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
             log.debug("请求Cloud接口耗时:{}\n请求路径:{}\n请求参数:{}\n请求结果:{}",
                 (endTime - startTime), url, StrUtil.format("{}个文件", fileList.length), responseBody);
             // 返回接口响应
-            T apiResponse = JSON.parseObject(responseBody, responseClass);
+            T apiResponse = new ObjectMapper().readValue(responseBody, responseClass);
             if (apiResponse == null) {throw new NullPointerException();}
             if (ApiResult.class.equals(apiResponse.getClass())) {
                 ApiResult<?> cloudResult = (ApiResult<?>)apiResponse;
@@ -273,9 +270,9 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
                 else {throw new RuntimeException("无法展示更多信息,请参照cloud日志");}
             }
             return apiResponse;
-        } catch (JSONException e) {
+        } catch (Exception e) {
             log.error("请求Cloud接口异常-JSON序列化失败。\n请求路径:{}\n请求参数:{}\n请求结果:{}", url, StrUtil.format("{}个文件", fileList.length), responseBody);
-            throw e;
+            throw new RuntimeException(e);
         } catch (Throwable throwable) {
             log.error("请求Cloud接口异常。\n请求路径:{}\n请求参数:{}\n请求结果:{}", url, StrUtil.format("{}个文件", fileList.length), responseBody, throwable);
             throw throwable;

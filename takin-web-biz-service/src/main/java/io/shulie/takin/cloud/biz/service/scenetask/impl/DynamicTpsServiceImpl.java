@@ -48,7 +48,6 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
     private CloudReportService cloudReportService;
     @Resource
     private PressureTaskApi pressureTaskApi;
-    private static final String TPS_FIELD = "tps";
 
     /**
      * 获取动态TPS目标值
@@ -60,7 +59,7 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
         Long sceneId = input.getSceneId();
         ReportOutput report = cloudReportService.selectById(input.getReportId());
         PressureParamsReq req = new PressureParamsReq();
-        req.setTaskId(report.getPressureTaskId());
+        req.setJobId(report.getPressureTaskId());
         req.setRef(getThreadGroupMd5ByXpathMd5(sceneId, input.getXpathMd5()));
         try {
             List<JobConfig> params = pressureTaskApi.params(req);

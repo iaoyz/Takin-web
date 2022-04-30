@@ -8,6 +8,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
+import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
@@ -16,6 +17,7 @@ import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
+import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -212,11 +214,16 @@ public abstract class AbstractIndicators {
         return context;
     }
 
-    protected void callStop(Long sceneId, Long taskId, String resourceId, String message, Long tenantId) {
+    protected void callStop(Long sceneId, Long taskId, String message, Long tenantId) {
         // 汇报失败
         cloudReportService.updateReportFeatures(taskId, ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, message);
         cloudSceneManageService.reportRecord(
             SceneManageStartRecordVO.build(sceneId, taskId, tenantId).success(false).errorMsg(message).build());
+        // 清除 SLA配置 清除PushWindowDataScheduled 删除pod job configMap  生成报告拦截 状态拦截
+        Event event = new Event();
+        event.setEventName("finished");
+        event.setExt(new TaskResult(sceneId, taskId, tenantId));
+        eventCenterTemplate.doEvents(event);
     }
 
     protected void setTryRunTaskInfo(Long sceneId, Long reportId, Long tenantId, String errorMsg) {

@@ -3,8 +3,7 @@ package io.shulie.takin.adapter.api.service;
 import java.io.File;
 import java.util.List;
 
-import com.alibaba.fastjson.TypeReference;
-
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 
 /**

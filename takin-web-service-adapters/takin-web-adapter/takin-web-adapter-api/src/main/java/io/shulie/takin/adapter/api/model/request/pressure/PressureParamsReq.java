@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class PressureParamsReq extends ContextExt {
 
-    private Long taskId;
+    private Long jobId;
     /**
      * 修改的关联节点
      */

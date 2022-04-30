@@ -1,5 +1,4 @@
 package io.shulie.takin.cloud.biz.service.schedule.impl;
-import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,7 +22,9 @@ import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
+import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.config.AppConfig;
+import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
@@ -53,7 +54,6 @@ import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
 import io.shulie.takin.cloud.model.request.StartRequest;
 import io.shulie.takin.cloud.model.request.StartRequest.FileInfo;
 import io.shulie.takin.cloud.model.request.StartRequest.FileInfo.SplitInfo;
-import io.shulie.takin.web.common.enums.script.FileTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -91,6 +91,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     private PressureTaskDAO pressureTaskDAO;
     @Resource
     private EngineConfigService engineConfigService;
+    @Resource
+    private CloudAsyncService cloudAsyncService;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -202,6 +204,10 @@ public class ScheduleServiceImpl implements ScheduleService {
             // 是空的
             log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
             updateReportAssociation(startRequest, pressureTask);
+            ResourceContext context = new ResourceContext();
+            context.setResourceId(String.valueOf(req.getResourceId()));
+            context.setSceneId(sceneId);
+            cloudAsyncService.checkJmeterStartedTask(context);
         } catch (Exception e) {
             // 创建失败
             log.info("场景{},任务{},顾客{}开始启动压测，压测启动失败", sceneId, taskId, customerId);
@@ -259,14 +265,16 @@ public class ScheduleServiceImpl implements ScheduleService {
             info.setType(PressureTaskStartReq.ofGroupType(ext.getType(), ext.getMode()));
             info.setDuration(continuedTime.intValue());
             info.setNumber(ext.getThreadNum());
-            info.setGrowthTime(Long.valueOf(new TimeBean(ext.getRampUp().longValue(),
-                ext.getRampUpUnit()).getSecondTime()).intValue());
+            Integer rampUp = ext.getRampUp();
+            if (Objects.nonNull(rampUp)) {
+                info.setGrowthTime(Long.valueOf(new TimeBean(rampUp.longValue(),
+                    ext.getRampUpUnit()).getSecondTime()).intValue());
+            }
             info.setGrowthStep(ext.getSteps());
             info.setTps(intTps);
             return info;
         }).collect(Collectors.toList());
     }
-
 
     private static void completedSla(PressureTaskStartReq req, ScheduleStartRequestExt request) {
         List<SlaConfig> stopCondition = request.getStopCondition();
@@ -344,7 +352,8 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private static StartRequest.SlaInfo convertSlaConfig(SlaConfig config) {
         StartRequest.SlaInfo info = new StartRequest.SlaInfo();
-        info.setRef(String.valueOf(config.getId()));
+        info.setRef(config.getActivity());
+        info.setAttach(String.valueOf(config.getId()));
         info.setFormulaTarget(PressureTaskStartReq.ofTarget(config.getIndexInfo()));
         info.setFormulaSymbol(PressureTaskStartReq.ofSymbol(config.getCondition()));
         info.setFormulaNumber(config.getDuring().doubleValue());

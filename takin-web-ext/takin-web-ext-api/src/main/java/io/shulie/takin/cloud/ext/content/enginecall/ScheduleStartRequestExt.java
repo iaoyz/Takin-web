@@ -202,8 +202,9 @@ public class ScheduleStartRequestExt extends ScheduleEventRequestExt {
     }
 
     @Data
-    public static class SlaConfig {
+    public static class SlaConfig implements Cloneable {
         private Long id;
+        private String activity;
         private String ruleName;
         private Integer status;
         private String event;
@@ -211,5 +212,14 @@ public class ScheduleStartRequestExt extends ScheduleEventRequestExt {
         private Integer condition;
         private BigDecimal during;
         private Integer times;
+
+        @Override
+        public SlaConfig clone() {
+            try {
+                return (SlaConfig)super.clone();
+            } catch (Exception e) {
+                return null;
+            }
+        }
     }
 }

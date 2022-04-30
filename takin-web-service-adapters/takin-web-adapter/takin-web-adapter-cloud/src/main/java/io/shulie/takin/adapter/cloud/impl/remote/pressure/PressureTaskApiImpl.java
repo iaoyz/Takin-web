@@ -4,8 +4,7 @@ import java.util.List;
 
 import javax.annotation.Resource;
 
-import com.alibaba.fastjson.TypeReference;
-
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureParamModifyReq;
@@ -46,7 +45,7 @@ public class PressureTaskApiImpl implements PressureTaskApi {
 
     @Override
     public List<JobConfig> params(PressureParamsReq req) {
-        return cloudApiSenderService.post(
+        return cloudApiSenderService.get(
             EntrypointUrl.join(EntrypointUrl.MODULE_RRESSURE, EntrypointUrl.METHOD_RRESSURE_PARAMS),
             req, new TypeReference<ApiResult<List<JobConfig>>>() {}).getData();
     }

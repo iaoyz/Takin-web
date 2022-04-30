@@ -1,6 +1,6 @@
 package io.shulie.takin.adapter.cloud.impl.remote.resource;
 
-import com.alibaba.fastjson.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.request.cloud.resources.CloudResourcesRequest;
