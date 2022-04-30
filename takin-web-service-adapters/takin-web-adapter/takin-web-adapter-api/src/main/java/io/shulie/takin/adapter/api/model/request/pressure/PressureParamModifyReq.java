@@ -1,8 +1,8 @@
 package io.shulie.takin.adapter.api.model.request.pressure;
 
-import io.shulie.takin.cloud.constant.enums.ThreadGroupType;
+import io.shulie.takin.adapter.api.constant.ThreadGroupType;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadConfigInfo;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
-import io.shulie.takin.cloud.model.request.StartRequest.ThreadConfigInfo;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

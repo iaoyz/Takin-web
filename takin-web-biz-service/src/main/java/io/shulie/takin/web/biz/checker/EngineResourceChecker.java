@@ -121,7 +121,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             return new CheckResult(type(), CheckStatus.FAIL.ordinal(), resourceId, "未找到启动中的任务");
         }
         int status = Integer.parseInt(String.valueOf(redisStatus));
-        return new CheckResult(type(), status, resourceId, String.valueOf(message));
+        return new CheckResult(type(), status, resourceId, null);
     }
 
     private String lockResource(StartConditionCheckerContext context) {
@@ -155,7 +155,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             UpdateStatusBean.build(context.getSceneId(), context.getReportId(), sceneData.getTenantId())
                 .checkEnum(SceneManageStatusEnum.WAIT, SceneManageStatusEnum.FAILED, SceneManageStatusEnum.STOP,
                     SceneManageStatusEnum.FORCE_STOP)
-                .updateEnum(SceneManageStatusEnum.STARTING).build());
+                .updateEnum(SceneManageStatusEnum.RESOURCE_LOCKING).build());
         initCache(context);
         // cloudAsyncService.checkPodStartedTask(context);
     }
@@ -206,7 +206,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         }
     }
 
-    @IntrestFor(event = PressureStartCache.CHECK_SUCCESS_EVENT)
+    @IntrestFor(event = PressureStartCache.CHECK_SUCCESS_EVENT, order = 0)
     public void callStartSuccess(Event event) {
         ResourceContext ext = (ResourceContext)event.getExt();
         String resourceId = ext.getResourceId();

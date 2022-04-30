@@ -27,7 +27,9 @@ public enum SceneManageStatusEnum {
     FILE_SPLIT_END(8, "文件拆分完成"),
     FAILED(9, "压测失败"),
     // 强制停止两个都停止
-    FORCE_STOP(10, "强制停止");
+    FORCE_STOP(10, "强制停止"),
+    RESOURCE_LOCKING(11, "资源锁定中"),
+    ;
 
     private final Integer value;
     private final String desc;

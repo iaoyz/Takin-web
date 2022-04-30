@@ -92,19 +92,19 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
         for (int i = 0; i < titles.size(); i++) {
             String title = titles.get(i);
             switch (title.toLowerCase()) {
-                case "Filesystem":
+                case "filesystem":
                 case "文件系统":
                     df.setFilesystem(values[i]);
                     break;
-                case "Used":
+                case "used":
                 case "已用":
-                    df.setUsed(Long.parseLong(values[i]));
+                    df.setUsed(values[i]);
                     break;
-                case "Available":
+                case "available":
                 case "可用":
-                    df.setAvailable(Long.parseLong(values[i]));
+                    df.setAvailable(values[i]);
                     break;
-                case "Use%":
+                case "use%":
                 case "已用%":
                     df.setUseRate(Integer.parseInt(values[i].replace("%", "")));
                     break;
@@ -139,8 +139,8 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
     @Data
     private static class DiskInfo {
         private String filesystem;
-        private Long used;
-        private Long available;
+        private String used;
+        private String available;
         private Integer useRate;
     }
 }

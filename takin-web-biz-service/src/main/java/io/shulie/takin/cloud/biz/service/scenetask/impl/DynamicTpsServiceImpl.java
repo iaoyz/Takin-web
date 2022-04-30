@@ -9,10 +9,12 @@ import javax.annotation.Resource;
 import com.alibaba.fastjson.JSON;
 
 import cn.hutool.core.util.StrUtil;
+import io.shulie.takin.adapter.api.constant.ThreadGroupType;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
+import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi.JobConfig;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureParamModifyReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureParamsReq;
-import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadConfigInfo;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskQueryTpsInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskUpdateTpsInput;
 import io.shulie.takin.cloud.biz.output.report.ReportDetailOutput;
@@ -28,8 +30,6 @@ import io.shulie.takin.cloud.common.utils.JmxUtil;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
-import io.shulie.takin.cloud.model.request.StartRequest.ThreadConfigInfo;
-import io.shulie.takin.cloud.model.response.JobConfig;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -126,9 +126,10 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
         req.setRef(md5);
         SceneManageWrapperOutput sceneManage = cloudSceneManageService.getSceneManage(sceneId, null);
         ThreadGroupConfigExt configExt = sceneManage.getThreadGroupConfigMap().get(md5);
-        req.setType(PressureTaskStartReq.ofGroupType(configExt.getType(), configExt.getMode()));
+        req.setType(ThreadGroupType.of(configExt.getType(), configExt.getMode()));
         ThreadConfigInfo info = new ThreadConfigInfo();
         info.setTps(input.getTpsNum().intValue());
+        req.setContext(info);
         pressureTaskApi.modifyParam(req);
     }
 

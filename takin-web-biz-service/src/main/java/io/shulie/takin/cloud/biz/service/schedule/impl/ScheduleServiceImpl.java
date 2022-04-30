@@ -18,9 +18,15 @@ import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
+import io.shulie.takin.adapter.api.constant.FormulaSymbol;
+import io.shulie.takin.adapter.api.constant.FormulaTarget;
+import io.shulie.takin.adapter.api.constant.JobType;
+import io.shulie.takin.adapter.api.constant.ThreadGroupType;
 import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.SlaInfo;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadConfigInfo;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.config.AppConfig;
@@ -64,7 +70,6 @@ import static java.util.stream.Collectors.groupingBy;
 
 /**
  * @author 莫问
- * @date 2020-05-12
  */
 @Service
 @Slf4j
@@ -242,7 +247,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         req.setCallbackUrl(runRequest.getCallbackUrl());
         req.setResourceId(Long.valueOf(request.getResourceId()));
         req.setJvmOptions(runRequest.getMemSetting());
-        req.setType(PressureTaskStartReq.ofJobType(request.getPressureScene()));
+        req.setType(JobType.of(request.getPressureScene()));
         req.setName(String.valueOf(request.getSceneId()));
         req.setSampling(runRequest.getTraceSampling());
         req.setThreadConfig(buildThreadGroup(request));
@@ -254,15 +259,15 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
 
-    private static List<StartRequest.ThreadConfigInfo> buildThreadGroup(ScheduleStartRequestExt requestExt) {
+    private static List<ThreadConfigInfo> buildThreadGroup(ScheduleStartRequestExt requestExt) {
         Long continuedTime = requestExt.getContinuedTime();
         Double tps = requestExt.getTps();
         Integer intTps = Objects.nonNull(tps) ? tps.intValue() : null;
         return requestExt.getThreadGroupConfigMap().entrySet().stream().map(entry -> {
-            StartRequest.ThreadConfigInfo info = new StartRequest.ThreadConfigInfo();
+            ThreadConfigInfo info = new ThreadConfigInfo();
             info.setRef(entry.getKey());
             ThreadGroupConfigExt ext = entry.getValue();
-            info.setType(PressureTaskStartReq.ofGroupType(ext.getType(), ext.getMode()));
+            info.setType(ThreadGroupType.of(ext.getType(), ext.getMode()));
             info.setDuration(continuedTime.intValue());
             info.setNumber(ext.getThreadNum());
             Integer rampUp = ext.getRampUp();
@@ -283,7 +288,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             stopCondition.addAll(waringCondition);
         }
         List<SlaConfig> finalCondition = stopCondition.stream().filter(
-            condition -> Objects.nonNull(PressureTaskStartReq.ofTarget(condition.getIndexInfo()))).collect(
+            condition -> Objects.nonNull(FormulaTarget.of(condition.getIndexInfo()))).collect(
             Collectors.toList());
         if (!CollectionUtils.isEmpty(finalCondition)) {
             req.setSlaConfig(
@@ -350,12 +355,12 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
     }
 
-    private static StartRequest.SlaInfo convertSlaConfig(SlaConfig config) {
-        StartRequest.SlaInfo info = new StartRequest.SlaInfo();
+    private static SlaInfo convertSlaConfig(SlaConfig config) {
+        SlaInfo info = new SlaInfo();
         info.setRef(config.getActivity());
         info.setAttach(String.valueOf(config.getId()));
-        info.setFormulaTarget(PressureTaskStartReq.ofTarget(config.getIndexInfo()));
-        info.setFormulaSymbol(PressureTaskStartReq.ofSymbol(config.getCondition()));
+        info.setFormulaTarget(FormulaTarget.of(config.getIndexInfo()));
+        info.setFormulaSymbol(FormulaSymbol.of(config.getCondition()));
         info.setFormulaNumber(config.getDuring().doubleValue());
         return info;
     }
