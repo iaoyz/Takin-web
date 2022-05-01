@@ -28,12 +28,15 @@ import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
+import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
@@ -80,6 +83,9 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     @Resource
     private ReportDao reportDao;
 
+    @Resource
+    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
+
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
         String resourceId = context.getResourceId();
@@ -98,6 +104,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             request.setMemory(config.getMemorySize().toPlainString());
             request.setNumber(sceneData.getIpNum());
             cloudResourceApi.check(request);
+            pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(context.getTaskId(),
+                PressureTaskStateEnum.CHECKED.ordinal()));
 
             // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
             String resourceId = lockResource(context);
@@ -142,21 +150,26 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             Event event = new Event();
             ResourceContext context = new ResourceContext();
             context.setResourceId(resourceId);
+            context.setPressureTaskId(Long.valueOf(String.valueOf(
+                redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId), PressureStartCache.PRESSURE_TASK_ID))));
             event.setExt(context);
             event.setEventName(PressureStartCache.CHECK_SUCCESS_EVENT);
-            callStartSuccess(event);
+            eventCenterTemplate.doEvents(event);
         }, 15, TimeUnit.SECONDS);
     }
 
     private void afterLocking(StartConditionCheckerContext context) {
         associateResource(context);
+        initCache(context);
         SceneManageWrapperOutput sceneData = context.getSceneData();
         cloudSceneManageService.updateSceneLifeCycle(
             UpdateStatusBean.build(context.getSceneId(), context.getReportId(), sceneData.getTenantId())
                 .checkEnum(SceneManageStatusEnum.WAIT, SceneManageStatusEnum.FAILED, SceneManageStatusEnum.STOP,
                     SceneManageStatusEnum.FORCE_STOP)
                 .updateEnum(SceneManageStatusEnum.RESOURCE_LOCKING).build());
-        initCache(context);
+
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(context.getTaskId(),
+            PressureTaskStateEnum.RESOURCE_LOCKING.ordinal()));
         // cloudAsyncService.checkPodStartedTask(context);
     }
 
@@ -189,8 +202,9 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     }
 
     public static List<String> clearCacheKey(String resourceId, Long sceneId) {
-        return Arrays.asList(PressureStartCache.getResourceKey(resourceId), PressureStartCache.getResourcePodKey(resourceId),
-            PressureStartCache.getResourceJmeterKey(resourceId), PressureStartCache.getSceneResourceKey(sceneId));
+        return Arrays.asList(PressureStartCache.getResourceKey(resourceId), PressureStartCache.getResourcePodSuccessKey(resourceId),
+            PressureStartCache.getResourcePodFaileKey(resourceId), PressureStartCache.getResourceJmeterSuccessKey(resourceId),
+            PressureStartCache.getResourceJmeterFailKey(resourceId), PressureStartCache.getSceneResourceKey(sceneId));
     }
 
     @IntrestFor(event = PressureStartCache.CHECK_FAIL_EVENT, order = 1)
@@ -199,7 +213,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         String resourceId = context.getResourceId();
         if (StringUtils.isNotBlank(resourceId)) {
             redisClientUtils.expire(PressureStartCache.getResourceKey(resourceId), 30);
-            redisClientUtils.expire(PressureStartCache.getResourcePodKey(resourceId), 30);
+            redisClientUtils.expire(PressureStartCache.getResourcePodSuccessKey(resourceId), 30);
+            redisClientUtils.expire(PressureStartCache.getResourcePodFaileKey(resourceId), 30);
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resourceId);
             cloudResourceApi.unLock(request);
@@ -215,13 +230,15 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             redisClientUtils.hmset(resourceKey, PressureStartCache.RESOURCE_STATUS, CheckStatus.SUCCESS.ordinal());
         }
         redisClientUtils.delete(PressureStartCache.getErrorMessageKey(resourceId));
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(ext.getPressureTaskId(),
+            PressureTaskStateEnum.ALIVE.ordinal()));
     }
 
     @IntrestFor(event = PressureStartCache.LACK_POD_RESOURCE_EVENT)
     public void lackPodResource(Event event) {
         log.info("pod resource不足");
         ResourceContext context = (ResourceContext)event.getExt();
-        failed(context.getResourceId(), context.getMessage());
+        failed(context);
 
         Event failEvent = new Event();
         failEvent.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
@@ -229,7 +246,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         eventCenterTemplate.doEvents(failEvent);
     }
 
-    @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 1)
+    @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 0)
     public void callPreStop(Event event) {
         ResourceContext context = (ResourceContext)event.getExt();
         Long sceneId = context.getSceneId();
@@ -242,7 +259,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         }
         if (StringUtils.isNotBlank(resource)) {
             redisClientUtils.delete(PressureStartCache.getResourceKey(resource));
-            failed(resource, "取消压测");
+            failed(context);
             clearCache(resource, sceneId);
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resource);
@@ -257,12 +274,20 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         clearCache(taskResult.getResourceId(), taskResult.getSceneId());
     }
 
-    private void failed(String resourceId, String message) {
+    private void failed(ResourceContext context) {
+        String resourceId = context.getResourceId();
+        String message = context.getMessage();
         String resourceKey = PressureStartCache.getResourceKey(resourceId);
         if (redisClientUtils.hasKey(resourceKey)) {
             redisClientUtils.hmset(resourceKey, PressureStartCache.RESOURCE_STATUS, CheckStatus.FAIL.ordinal());
         }
         redisClientUtils.setString(PressureStartCache.getErrorMessageKey(resourceId), message, 30, TimeUnit.SECONDS);
+
+        Long pressureTaskId = context.getPressureTaskId();
+        if (Objects.nonNull(pressureTaskId)) {
+            pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(pressureTaskId,
+                PressureTaskStateEnum.RESOURCE_LOCK_FAILED.ordinal(), message));
+        }
     }
 
     private void clearCache(String resourceId, Long sceneId) {

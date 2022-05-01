@@ -33,13 +33,28 @@ public abstract class PressureStartCache {
     }
 
     // 启动成功的pod实例名称存入该key
-    public static String getResourcePodKey(String resourceId) {
+    public static String getResourcePodSuccessKey(String resourceId) {
+        return String.format("pressure:resource:pod:%s", resourceId);
+    }
+
+    // 启动成功的pod实例名称存入该key
+    public static String getResourcePodFaileKey(String resourceId) {
         return String.format("pressure:resource:pod:%s", resourceId);
     }
 
     // 启动成功的jmeter实例名称存入该key
-    public static String getResourceJmeterKey(String resourceId) {
-        return String.format("pressure:resource:jmeter:%s", resourceId);
+    public static String getResourceJmeterSuccessKey(String resourceId) {
+        return String.format("pressure:resource:jmeter:success:%s", resourceId);
+    }
+
+    // 启动失败的jmeter实例名称存入该key
+    public static String getResourceJmeterFailKey(String resourceId) {
+        return String.format("pressure:resource:jmeter:fail:%s", resourceId);
+    }
+
+    // 停止的jmeter实例名称存入该key
+    public static String getResourceJmeterStopKey(String resourceId) {
+        return String.format("pressure:resource:jmeter:stop:%s", resourceId);
     }
 
     public static String getSceneResourceLockingKey(Long sceneId) {

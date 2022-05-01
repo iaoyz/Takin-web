@@ -68,6 +68,7 @@ import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageErrorEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
@@ -80,8 +81,10 @@ import io.shulie.takin.cloud.common.utils.UrlUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
+import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.scenemanage.SceneManageCreateOrUpdateParam;
@@ -139,6 +142,8 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
     private TSceneScriptRefMapper tSceneScriptRefMapper;
     @Resource
     private TSceneBusinessActivityRefMapper tSceneBusinessActivityRefMapper;
+    @Resource
+    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
 
     @Value("${script.temp.path}")
     private String scriptTempPath;
@@ -698,9 +703,12 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
             setStatus(SceneManageStatusEnum.FAILED.getValue());
         }};
         // --->update 失败状态
-        sceneManage.setStatus(SceneManageStatusEnum.FAILED.getValue());
         sceneManageDAO.getBaseMapper().updateById(sceneManage);
 
+        // 更新启动中状态异常信息
+        PressureTaskVarietyEntity entity = PressureTaskVarietyEntity.of(recentlyReport.getPressureTaskId(),
+            PressureTaskStateEnum.ALIVE.ordinal(), errorMsg);
+        pressureTaskVarietyDAO.updateMessage(entity);
     }
 
     @Override

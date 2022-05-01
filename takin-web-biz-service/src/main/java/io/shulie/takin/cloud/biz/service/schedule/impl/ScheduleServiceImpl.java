@@ -218,6 +218,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             log.info("场景{},任务{},顾客{}开始启动压测，压测启动失败", sceneId, taskId, customerId);
             cloudSceneManageService.reportRecord(SceneManageStartRecordVO.build(sceneId, taskId, customerId).success(false)
                 .errorMsg("压测启动创建失败，失败原因：" + e.getMessage()).build());
+
         }
     }
 

@@ -212,9 +212,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
     }
 
     private void callStartFailClear(StartConditionCheckerContext context) {
-        if (redisClientUtils.unlock(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()), context.getUniqueKey())) {
-            redisClientUtils.delete(PressureStartCache.getSceneResourceKey(context.getSceneId()));
-        }
+        boolean flag = redisClientUtils.unlock(PressureStartCache.getSceneResourceLockingKey(context.getSceneId()), context.getUniqueKey());
         Long taskId = context.getTaskId();
         if (Objects.nonNull(taskId)) {
             PressureTaskEntity entity = new PressureTaskEntity();
@@ -232,6 +230,9 @@ public class CompositeStartConditionChecker implements InitializingBean {
             result.setMsg(context.getMessage());
             result.setStatus(TaskStatusEnum.FAILED);
             cloudSceneTaskService.handleSceneTaskEvent(result);
+        }
+        if (flag) {
+            redisClientUtils.delete(PressureStartCache.getSceneResourceKey(context.getSceneId()));
         }
     }
 

@@ -7,7 +7,6 @@ import javax.annotation.Resource;
 
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
@@ -39,8 +38,6 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
 
     @Resource
     private SceneManageDAO sceneManageDAO;
-    @Resource
-    private CloudSceneManageService cloudSceneManageService;
     @Resource
     private EventCenterTemplate eventCenterTemplate;
     @Resource
@@ -96,7 +93,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
                 message = "取消压测";
                 break;
             }
-            Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourcePodKey(resourceId));
+            Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourcePodSuccessKey(resourceId));
             try {
                 if (Long.parseLong(podNumber) == startedPod) {
                     checkPass = true;
@@ -128,7 +125,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         String podNumber = String.valueOf(redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId),
             PressureStartCache.RESOURCE_POD_NUM));
         while (currentTime <= pressureNodeStartExpireTime) {
-            Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterKey(resourceId));
+            Long startedPod = redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterSuccessKey(resourceId));
             try {
                 if (Long.parseLong(podNumber) == startedPod) {
                     checkPass = true;
@@ -155,12 +152,11 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
                 context.getSceneId(), context.getReportId());
             String message = String.format("节点没有在设定时间【%s】s内启动，计划启动节点个数【%s】,实际启动节点个数【%s】,"
                 + "导致压测停止", pressureNodeStartExpireTime, context.getPodNumber(),
-                redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterKey(context.getResourceId())));
+                redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterSuccessKey(context.getResourceId())));
             redisClientUtils.hmset(k8sPodKey, SceneTaskRedisConstants.PRESSURE_NODE_START_ERROR, message);
             //修改缓存压测启动状态为失败
             Long sceneId = context.getSceneId();
             Long reportId = context.getReportId();
-            String resourceId = context.getResourceId();
             Long tenantId = context.getTenantId();
             callStop(sceneId, reportId, message, tenantId);
             setTryRunTaskInfo(sceneId, reportId, tenantId, message);

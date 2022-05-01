@@ -90,8 +90,10 @@ import io.shulie.takin.cloud.data.dao.report.ReportBusinessActivityDetailDao;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
+import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneBigFileSliceEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
@@ -179,6 +181,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
     private Long offsetStartTime;
     @Resource
     private RedisClientUtils redisClientUtils;
+    @Resource
+    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
 
     private static final Long KB = 1024L;
     private static final Long MB = KB * 1024;
@@ -309,6 +313,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         ResourceContext context = new ResourceContext();
         context.setSceneId(sceneId);
         context.setResourceId(req.getResourceId());
+        context.setMessage("取消压测");
         Event event = new Event();
         event.setEventName(PressureStartCache.PRE_STOP_EVENT);
         event.setExt(context);
@@ -1045,6 +1050,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         entity.setTenantId(scene.getTenantId());
         entity.setEnvCode(scene.getEnvCode());
         pressureTaskDAO.save(entity);
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(entity.getId(),
+            PressureTaskStateEnum.RESOURCE_LOCKING.ordinal()));
         return entity;
     }
 

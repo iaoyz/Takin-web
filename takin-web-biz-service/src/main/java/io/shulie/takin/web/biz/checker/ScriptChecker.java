@@ -30,6 +30,7 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -46,6 +47,9 @@ public class ScriptChecker implements StartConditionChecker {
     private EnginePluginFilesService enginePluginFilesService;
 
     private static final String SCRIPT_NAME_SUFFIX = "jmx";
+
+    @Value("${script.path}/")
+    private String pathPrefix;
 
     @Override
     public CheckResult check(StartConditionCheckerContext context) {
@@ -77,16 +81,16 @@ public class ScriptChecker implements StartConditionChecker {
     private void checkScriptComplete(SceneManageWrapperOutput sceneData) {
         List<FileInfo> fileInfos = sceneData.getUploadFile().stream()
             .filter(file -> FileTypeBusinessUtil.isScriptOrData(file.getFileType()))
-            .map(file -> new FileInfo(deduceFileType(file), file.getUploadPath())).collect(Collectors.toList());
-        List<EnginePluginRefOutput> enginePlugins = sceneData.getEnginePlugins();
-        if (CollectionUtils.isNotEmpty(enginePlugins)) {
-            List<String> pluginsPath = enginePluginFilesService.findPluginFilesPathByPluginIdAndVersion(enginePlugins);
-            List<FileInfo> plugins = pluginsPath.stream().filter(Objects::nonNull)
-                .map(path -> new FileInfo(FileTypeEnum.JAR.ordinal(), path)).collect(Collectors.toList());
-            if (!CollectionUtils.isEmpty(plugins)) {
-                fileInfos.addAll(plugins);
-            }
-        }
+            .map(file -> new FileInfo(deduceFileType(file), pathPrefix + file.getUploadPath())).collect(Collectors.toList());
+        //List<EnginePluginRefOutput> enginePlugins = sceneData.getEnginePlugins();
+        //if (CollectionUtils.isNotEmpty(enginePlugins)) {
+        //    List<String> pluginsPath = enginePluginFilesService.findPluginFilesPathByPluginIdAndVersion(enginePlugins);
+        //    List<FileInfo> plugins = pluginsPath.stream().filter(Objects::nonNull)
+        //        .map(path -> new FileInfo(FileTypeEnum.JAR.ordinal(), path)).collect(Collectors.toList());
+        //    if (!CollectionUtils.isEmpty(plugins)) {
+        //        fileInfos.addAll(plugins);
+        //    }
+        //}
         checkExists(fileInfos);
     }
 
@@ -100,7 +104,7 @@ public class ScriptChecker implements StartConditionChecker {
                 }
             }
         });
-        if (CollectionUtils.isEmpty(errorMessage)) {
+        if (!CollectionUtils.isEmpty(errorMessage)) {
             throw new TakinCloudException(TakinCloudExceptionEnum.SCENE_JMX_FILE_CHECK_ERROR,
                 StringUtils.join(errorMessage, ","));
         }
@@ -147,7 +151,7 @@ public class ScriptChecker implements StartConditionChecker {
 
     private boolean checkOutJmx(SceneScriptRefOutput uploadFile) {
         if (Objects.nonNull(uploadFile) && StringUtils.isNotBlank(uploadFile.getUploadPath())) {
-            String fileMd5 = MD5Utils.getInstance().getMD5(new File(uploadFile.getUploadPath()));
+            String fileMd5 = MD5Utils.getInstance().getMD5(new File(pathPrefix + uploadFile.getUploadPath()));
             return StringUtils.isBlank(uploadFile.getFileMd5()) || uploadFile.getFileMd5().equals(fileMd5);
         }
         return false;
