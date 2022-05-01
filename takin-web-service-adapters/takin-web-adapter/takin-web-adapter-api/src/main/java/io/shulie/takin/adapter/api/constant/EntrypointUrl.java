@@ -25,15 +25,13 @@ public class EntrypointUrl {
 
 
     /**
-     * 模块 - 引擎
+     * 模块 - 回调
      */
-    private final static String MODULE_ENGINE = "engine";
-    /**
-     * 模块 - 引擎回调
-     */
-    public final static String MODULE_ENGINE_CALLBACK = MODULE_ENGINE + "/callback";
+    public final static String MODULE_CALLBACK = "callback";
     // 改的的话需要调整ee中的agentInterceptor
     public final static String METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY = "";
+    public final static String CALL_BACK_PATH = EntrypointUrl.join("api" + EntrypointUrl.MODULE_CALLBACK,
+        EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY);
 
     /**
      * 模块 - 资源

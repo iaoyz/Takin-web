@@ -30,9 +30,6 @@ public class PressureTaskCallbackEntity {
     @TableField(value = "type")
     private String type;
 
-    @TableField(value = "status")
-    private Integer status;
-
     @TableField(value = "source")
     private String source;
 

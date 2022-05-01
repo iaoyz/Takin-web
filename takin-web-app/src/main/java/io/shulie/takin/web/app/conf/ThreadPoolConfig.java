@@ -1,9 +1,11 @@
 package io.shulie.takin.web.app.conf;
 
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -11,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import com.alibaba.ttl.threadpool.TtlExecutors;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -362,4 +365,26 @@ public class ThreadPoolConfig {
             new ThreadPoolExecutor.AbortPolicy());
     }
 
+    /**
+     * cloud回调命令处理线程池
+     */
+    @Bean(name = "cloudCallbackThreadPool")
+    public ExecutorService agentCloudCallbackThreadPool() {
+        final int coreSize = Runtime.getRuntime().availableProcessors();
+        ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("cloud-callback-%d").build();
+        return TtlExecutors.getTtlExecutorService(
+            new ThreadPoolExecutor(coreSize, coreSize * 2, 0, TimeUnit.SECONDS, new LinkedBlockingQueue<>(5000),
+                nameThreadFactory, new WaitingRejectedExecutionHandler()));
+    }
+
+    private static class WaitingRejectedExecutionHandler implements RejectedExecutionHandler {
+
+        @SneakyThrows
+        @Override
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+            if (!executor.isShutdown()) {
+                executor.getQueue().put(r);
+            }
+        }
+    }
 }

@@ -1,4 +1,4 @@
-package io.shulie.takin.cloud.biz.notify;
+package io.shulie.takin.cloud.biz.notify.processor.jmeter;
 
 import java.util.Date;
 import java.util.Objects;
@@ -9,6 +9,9 @@ import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
+import io.shulie.takin.cloud.biz.notify.CallbackType;
+import io.shulie.takin.cloud.biz.notify.CloudNotifyProcessor;
+import io.shulie.takin.cloud.biz.notify.NotifyContext;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
@@ -23,15 +26,14 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
-import io.shulie.takin.common.beans.response.ResponseResult;
-import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
+import io.shulie.takin.eventcenter.Event;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class PressureStartNotifyProcessor extends AbstractIndicators implements CloudNotifyProcessor {
+public class PressureStartNotifyProcessor extends AbstractIndicators implements CloudNotifyProcessor<PressureStartNotifyParam> {
 
     private static final String STARTED_FIRST_JMETER = "pressure:resource:jmeter:first:start:%s";
 
@@ -57,31 +59,35 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
     private PressureTaskVarietyDAO pressureTaskVarietyDAO;
 
     @Override
-    public String type() {
-        return "pressure";
+    public CallbackType type() {
+        return CallbackType.JMETER_START;
     }
 
     @Override
-    public ResponseResult<?> process(NotifyContext context) {
-        JmeterStatus status = JmeterStatus.of(context.getStatus());
-        if (Objects.isNull(status)) {
-            return ResponseResult.success();
-        }
-        switch (status) {
-            case START_SUCCESS:
-                processStartSuccess(context);
-                break;
-            case START_FAIL:
-                processStartFail(context);
-                break;
-            case STOP:
-                processStopped(context);
-                break;
-            default:
-                break;
-        }
-        return ResponseResult.success();
+    public void process(PressureStartNotifyParam param) {
+
     }
+
+    //public ResponseResult<?> process(PressureStartNotifyParam param) {
+    //    JmeterStatus status = JmeterStatus.of(context.getStatus());
+    //    if (Objects.isNull(status)) {
+    //        return ResponseResult.success();
+    //    }
+    //    switch (status) {
+    //        case START_SUCCESS:
+    //            processStartSuccess(context);
+    //            break;
+    //        case START_FAIL:
+    //            processStartFail(context);
+    //            break;
+    //        case STOP:
+    //            processStopped(context);
+    //            break;
+    //        default:
+    //            break;
+    //    }
+    //    return ResponseResult.success();
+    //}
 
     private void processStartSuccess(NotifyContext context) {
         String resourceId = context.getResourceId();
@@ -92,13 +98,15 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         if (resourceContext == null) {
             return;
         }
-        redisClientUtils.setSetValue(PressureStartCache.getResourceJmeterSuccessKey(context.getResourceId()), context.getPodId());
+        redisClientUtils.setSetValue(PressureStartCache.getResourceJmeterSuccessKey(context.getResourceId()),
+            context.getPodId());
         Long tenantId = resourceContext.getTenantId();
         Long sceneId = resourceContext.getSceneId();
         Long reportId = resourceContext.getReportId();
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         setMin(engineName + ScheduleConstants.FIRST_SIGN, context.getTime().getTime());
-        if (Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(String.format(STARTED_FIRST_JMETER, resourceId), 1))) {
+        if (Boolean.TRUE.equals(
+            redisTemplate.opsForValue().setIfAbsent(String.format(STARTED_FIRST_JMETER, resourceId), 1))) {
             cloudSceneManageService.updateSceneLifeCycle(UpdateStatusBean.build(sceneId, reportId, tenantId)
                 .checkEnum(SceneManageStatusEnum.PRESSURE_NODE_RUNNING)
                 .updateEnum(SceneManageStatusEnum.ENGINE_RUNNING)
@@ -131,7 +139,8 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         if (resourceContext == null) {
             return;
         }
-        Long stoppedCount = redisClientUtils.setSetValueAndReturnCount(PressureStartCache.getResourceJmeterStopKey(resourceId),
+        Long stoppedCount = redisClientUtils.setSetValueAndReturnCount(
+            PressureStartCache.getResourceJmeterStopKey(resourceId),
             context.getPodId());
         long time = context.getTime().getTime();
         Long tenantId = resourceContext.getTenantId();
@@ -139,7 +148,8 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         Long reportId = resourceContext.getReportId();
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         String taskKey = getPressureTaskKey(sceneId, reportId, tenantId);
-        if (Objects.equals(stoppedCount, redisClientUtils.getSetSize(PressureStartCache.getResourcePodSuccessKey(resourceId)))) {
+        if (Objects.equals(stoppedCount,
+            redisClientUtils.getSetSize(PressureStartCache.getResourcePodSuccessKey(resourceId)))) {
             setLast(last(taskKey), ScheduleConstants.LAST_SIGN);
             setMax(engineName + ScheduleConstants.LAST_SIGN, time);
             // 删除临时标识
@@ -162,7 +172,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         eventCenterTemplate.doEvents(event);
     }
 
-    private void cacheTryRunTaskStatus(ResourceContext context , SceneRunTaskStatusEnum status) {
+    private void cacheTryRunTaskStatus(ResourceContext context, SceneRunTaskStatusEnum status) {
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
         Long tenantId = context.getTenantId();
@@ -209,24 +219,5 @@ public class PressureStartNotifyProcessor extends AbstractIndicators implements 
         result.setSceneId(sceneId);
         event.setExt(result);
         eventCenterTemplate.doEvents(event);
-    }
-
-    public enum JmeterStatus {
-        START_SUCCESS,
-        // TODO：不一定可以收集到
-        START_FAIL,
-        STOP;
-
-        public static JmeterStatus of(Integer status) {
-            if (Objects.isNull(status)) {
-                return null;
-            }
-            for (JmeterStatus value : values()) {
-                if (value.ordinal() == status) {
-                    return value;
-                }
-            }
-            return null;
-        }
     }
 }

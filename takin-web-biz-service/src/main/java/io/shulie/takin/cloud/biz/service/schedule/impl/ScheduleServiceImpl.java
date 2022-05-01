@@ -200,9 +200,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .updateEnum(SceneManageStatusEnum.JOB_CREATING)
                 .build());
 
-        request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
-            EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
-                EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
+        request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(), EntrypointUrl.CALL_BACK_PATH));
         PressureTaskStartReq req = buildStartReq(request);
         try {
             Long pressureTask = pressureTaskApi.start(req);
