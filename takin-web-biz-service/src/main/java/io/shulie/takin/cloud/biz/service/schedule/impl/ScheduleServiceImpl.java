@@ -178,9 +178,10 @@ public class ScheduleServiceImpl implements ScheduleService {
     public void stopSchedule(ScheduleStopRequestExt request) {
         log.info("停止调度, 请求数据：{}", request);
         ScheduleRecord scheduleRecord = tScheduleRecordMapper.getScheduleByTaskId(request.getTaskId());
-        if (scheduleRecord != null) {
+        Long pressureTaskId = request.getPressureTaskId();
+        if (scheduleRecord != null && Objects.nonNull(pressureTaskId)) {
             PressureTaskStopReq req = new PressureTaskStopReq();
-            req.setTaskId(request.getPressureTaskId());
+            req.setJobId(pressureTaskId);
             pressureTaskApi.stop(req);
         }
 

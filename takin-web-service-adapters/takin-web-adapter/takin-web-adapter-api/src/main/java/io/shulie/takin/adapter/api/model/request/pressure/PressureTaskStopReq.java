@@ -8,5 +8,5 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class PressureTaskStopReq extends ContextExt {
 
-    private Long taskId;
+    private Long jobId;
 }
