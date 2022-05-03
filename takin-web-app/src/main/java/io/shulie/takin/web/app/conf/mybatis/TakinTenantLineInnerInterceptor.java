@@ -93,6 +93,8 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         "t_schedule_record_engine_plugins_ref",
         "t_strategy_config",
         "t_warn_detail",
+        "t_pressure_task_variety",
+        "t_pressure_task_callback",
     };
 
     private String[] tableArrWithoutEnvCode = new String[] {
@@ -143,6 +145,8 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         "t_strategy_config",
         "t_warn_detail",
         "t_scene_jmeterlog_upload",
+        "t_pressure_task_variety",
+        "t_pressure_task_callback",
     };
 
     private String[] tableArrWithoutUserId = new String[] {
@@ -193,6 +197,8 @@ public class TakinTenantLineInnerInterceptor extends TenantLineInnerInterceptor 
         "t_strategy_config",
         "t_warn_detail",
         "t_scene_jmeterlog_upload",
+        "t_pressure_task_variety",
+        "t_pressure_task_callback",
     };
 
     /**

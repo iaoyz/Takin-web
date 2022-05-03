@@ -12,6 +12,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.google.common.collect.Lists;
+import com.google.errorprone.annotations.Var;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
@@ -119,6 +120,12 @@ public class ReportDaoImpl implements ReportDao {
     public ReportResult getRecentlyReport(Long sceneId) {
         LambdaQueryWrapper<ReportEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReportEntity::getSceneId, sceneId);
+
+        Object reportId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+                PressureStartCache.REPORT_ID);
+        if (Objects.nonNull(reportId)) {
+            wrapper.eq(ReportEntity::getId, Long.valueOf(String.valueOf(reportId)));
+        }
         wrapper.orderByDesc(ReportEntity::getId);
         wrapper.last("limit 1");
         List<ReportEntity> entities = reportMapper.selectList(wrapper);
@@ -165,8 +172,13 @@ public class ReportDaoImpl implements ReportDao {
     public ReportResult getTempReportBySceneId(Long sceneId) {
         LambdaQueryWrapper<ReportEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReportEntity::getSceneId, sceneId);
-        wrapper.eq(ReportEntity::getId, Long.valueOf(String.valueOf(redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
-                PressureStartCache.RESOURCE_ID))));
+
+        Object reportId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.REPORT_ID);
+        if (Objects.nonNull(reportId)) {
+            wrapper.eq(ReportEntity::getId, Long.valueOf(String.valueOf(reportId)));
+        }
+
         wrapper.eq(ReportEntity::getIsDeleted, 0);
         wrapper.orderByDesc(ReportEntity::getId);
         wrapper.last("limit 1");

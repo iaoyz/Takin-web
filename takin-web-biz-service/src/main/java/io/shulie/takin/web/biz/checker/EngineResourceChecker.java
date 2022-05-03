@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
@@ -19,8 +18,10 @@ import io.shulie.takin.adapter.api.model.request.resource.ResourceUnLockRequest;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
+import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
+import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
@@ -28,21 +29,26 @@ import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
+import io.shulie.takin.cloud.common.constants.ReportConstants;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
+import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
+import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
+import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
-import io.shulie.takin.cloud.data.util.PressureStartCache;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 
@@ -52,33 +58,28 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
 
     @Resource
     private StrategyConfigService strategyConfigService;
-
     @Resource
     private CloudResourceApi cloudResourceApi;
-
     @Resource
     private CloudSceneManageService cloudSceneManageService;
-
     @Resource
     private CloudSceneTaskService cloudSceneTaskService;
-
     @Resource
     private RedisClientUtils redisClientUtils;
-
-    @Value("${pressure.node.start.expireTime:30}")
-    private Integer pressureNodeStartExpireTime;
-
     @Resource
     private AppConfig appConfig;
-
     @Resource
     private CloudAsyncService cloudAsyncService;
-
     @Resource
     private PressureTaskDAO pressureTaskDAO;
-
     @Resource
     private ReportDao reportDao;
+    @Resource
+    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
+    @Resource
+    private CloudReportService cloudReportService;
+    @Resource
+    private SceneManageDAO sceneManageDAO;
 
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
@@ -98,12 +99,13 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             request.setMemory(config.getMemorySize().toPlainString());
             request.setNumber(sceneData.getIpNum());
             cloudResourceApi.check(request);
+            pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(context.getTaskId(),
+                PressureTaskStateEnum.CHECKED.ordinal()));
 
             // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
             String resourceId = lockResource(context);
             context.setResourceId(resourceId);
             afterLocking(context);
-            refresh(resourceId);
             return getResourceStatus(resourceId);
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
@@ -116,12 +118,12 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             return new CheckResult(type(), CheckStatus.FAIL.ordinal(), String.valueOf(message));
         }
         String statusKey = PressureStartCache.getResourceKey(resourceId);
-        Object redisStatus = redisClientUtils.hmget(statusKey, PressureStartCache.RESOURCE_STATUS);
+        Object redisStatus = redisClientUtils.hmget(statusKey, PressureStartCache.CHECK_STATUS);
         if (redisStatus == null) {
             return new CheckResult(type(), CheckStatus.FAIL.ordinal(), resourceId, "未找到启动中的任务");
         }
         int status = Integer.parseInt(String.valueOf(redisStatus));
-        return new CheckResult(type(), status, resourceId, String.valueOf(message));
+        return new CheckResult(type(), status, resourceId, null);
     }
 
     private String lockResource(StartConditionCheckerContext context) {
@@ -131,48 +133,36 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         request.setCpu(strategy.getCpuNum());
         request.setMemory(strategy.getMemorySize());
         request.setNumber(sceneData.getIpNum());
-        request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(),
-            EntrypointUrl.join(EntrypointUrl.MODULE_ENGINE_CALLBACK,
-                EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY)));
+        request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(), EntrypointUrl.CALL_BACK_PATH));
         return cloudResourceApi.lock(request);
-    }
-
-    private void refresh(String resourceId) {
-        Executors.newScheduledThreadPool(1).schedule(() -> {
-            Event event = new Event();
-            ResourceContext context = new ResourceContext();
-            context.setResourceId(resourceId);
-            event.setExt(context);
-            event.setEventName(PressureStartCache.CHECK_SUCCESS_EVENT);
-            callStartSuccess(event);
-        }, 15, TimeUnit.SECONDS);
     }
 
     private void afterLocking(StartConditionCheckerContext context) {
         associateResource(context);
+        initCache(context);
         SceneManageWrapperOutput sceneData = context.getSceneData();
         cloudSceneManageService.updateSceneLifeCycle(
             UpdateStatusBean.build(context.getSceneId(), context.getReportId(), sceneData.getTenantId())
                 .checkEnum(SceneManageStatusEnum.WAIT, SceneManageStatusEnum.FAILED, SceneManageStatusEnum.STOP,
                     SceneManageStatusEnum.FORCE_STOP)
-                .updateEnum(SceneManageStatusEnum.STARTING).build());
-        initCache(context);
-        // cloudAsyncService.checkPodStartedTask(context);
+                .updateEnum(SceneManageStatusEnum.RESOURCE_LOCKING).build());
+
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(context.getTaskId(),
+            PressureTaskStateEnum.RESOURCE_LOCKING.ordinal()));
+         cloudAsyncService.checkPodStartedTask(context);
     }
 
     private void initCache(StartConditionCheckerContext context) {
         SceneManageWrapperOutput sceneData = context.getSceneData();
         // 缓存资源锁定状态和pod数
         Map<String, Object> param = new HashMap<>(32);
-        param.put(PressureStartCache.RESOURCE_STATUS, CheckStatus.PENDING.ordinal());
+        param.put(PressureStartCache.CHECK_STATUS, CheckStatus.PENDING.ordinal());
+        param.put(PressureStartCache.TASK_STATUS, PressureTaskStateEnum.RESOURCE_LOCKING.ordinal());
         param.put(PressureStartCache.RESOURCE_POD_NUM, sceneData.getIpNum());
-        param.put(PressureStartCache.RESOURCE_END_TIME, System.currentTimeMillis() + pressureNodeStartExpireTime * 1000);
         param.put(PressureStartCache.TENANT_ID, sceneData.getTenantId());
         param.put(PressureStartCache.ENV_CODE, sceneData.getEnvCode());
         param.put(PressureStartCache.SCENE_ID, String.valueOf(sceneData.getId()));
-        param.put(PressureStartCache.JMETER_STOP, 0);
-        param.put(PressureStartCache.HEARTBEAT_TIME, 0);
-        param.put(PressureStartCache.PRESSURE_TASK_ID, context.getTaskId());
+        param.put(PressureStartCache.TASK_ID, context.getTaskId());
         param.put(PressureStartCache.REPORT_ID, context.getReportId());
         param.put(PressureStartCache.UNIQUE_KEY, context.getUniqueKey());
         redisClientUtils.hmset(PressureStartCache.getResourceKey(context.getResourceId()), param);
@@ -189,8 +179,25 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     }
 
     public static List<String> clearCacheKey(String resourceId, Long sceneId) {
-        return Arrays.asList(PressureStartCache.getResourceKey(resourceId), PressureStartCache.getResourcePodKey(resourceId),
-            PressureStartCache.getResourceJmeterKey(resourceId), PressureStartCache.getSceneResourceKey(sceneId));
+        return Arrays.asList(PressureStartCache.getResourceKey(resourceId),
+            PressureStartCache.getResourcePodSuccessKey(resourceId),
+            PressureStartCache.getPodHeartbeatKey(sceneId),
+            PressureStartCache.getResourceJmeterSuccessKey(resourceId),
+            PressureStartCache.getResourceJmeterFailKey(resourceId),
+            PressureStartCache.getResourceJmeterStopKey(resourceId),
+            PressureStartCache.getJmeterHeartbeatKey(sceneId),
+            PressureStartCache.getSceneResourceLockingKey(sceneId),
+            PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.getScenePreStopKey(sceneId, resourceId),
+            PressureStartCache.getStopFlag(sceneId, resourceId),
+            PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.getFlowDebugKey(sceneId),
+            PressureStartCache.getInspectKey(sceneId),
+            PressureStartCache.getTryRunKey(sceneId),
+            PressureStartCache.getErrorMessageKey(resourceId),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId))
+        );
     }
 
     @IntrestFor(event = PressureStartCache.CHECK_FAIL_EVENT, order = 1)
@@ -199,37 +206,79 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         String resourceId = context.getResourceId();
         if (StringUtils.isNotBlank(resourceId)) {
             redisClientUtils.expire(PressureStartCache.getResourceKey(resourceId), 30);
-            redisClientUtils.expire(PressureStartCache.getResourcePodKey(resourceId), 30);
+            redisClientUtils.expire(PressureStartCache.getResourcePodSuccessKey(resourceId), 30);
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resourceId);
             cloudResourceApi.unLock(request);
         }
     }
 
-    @IntrestFor(event = PressureStartCache.CHECK_SUCCESS_EVENT)
+    @IntrestFor(event = PressureStartCache.CHECK_SUCCESS_EVENT, order = 0)
     public void callStartSuccess(Event event) {
         ResourceContext ext = (ResourceContext)event.getExt();
         String resourceId = ext.getResourceId();
         String resourceKey = PressureStartCache.getResourceKey(resourceId);
         if (redisClientUtils.hasKey(resourceKey)) {
-            redisClientUtils.hmset(resourceKey, PressureStartCache.RESOURCE_STATUS, CheckStatus.SUCCESS.ordinal());
+            redisClientUtils.hmset(resourceKey, PressureStartCache.CHECK_STATUS, CheckStatus.SUCCESS.ordinal());
+            redisClientUtils.hmset(resourceKey, PressureStartCache.TASK_STATUS, PressureTaskStateEnum.STARTING.ordinal());
         }
         redisClientUtils.delete(PressureStartCache.getErrorMessageKey(resourceId));
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(ext.getPressureTaskId(),
+            PressureTaskStateEnum.STARTING.ordinal()));
     }
 
-    @IntrestFor(event = PressureStartCache.LACK_POD_RESOURCE_EVENT)
-    public void lackPodResource(Event event) {
-        log.info("pod resource不足");
-        ResourceContext context = (ResourceContext)event.getExt();
-        failed(context.getResourceId(), context.getMessage());
-
-        Event failEvent = new Event();
-        failEvent.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
-        failEvent.setExt(context);
-        eventCenterTemplate.doEvents(failEvent);
+    @IntrestFor(event = PressureStartCache.STOP)
+    public void callStop(Event event) {
+        StopEventSource source = (StopEventSource)event.getExt();
+        ResourceContext context = source.getContext();
+        if (source.isCheckStep()) {
+            // 检测失败
+            context.setMessage(source.getMessage());
+            failed(context);
+            Event failEvent = new Event();
+            failEvent.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
+            failEvent.setExt(context);
+            eventCenterTemplate.doEvents(failEvent);
+        } else {
+            Long reportId = context.getReportId();
+            Long sceneId = context.getSceneId();
+            String message = source.getMessage();
+            //修改缓存压测启动状态为失败
+            setTryRunTaskInfo(sceneId, reportId, context.getTenantId(), message);
+            updatePressureTask(context);
+            cloudReportService.updateReportFeatures(reportId, ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, message);
+            // 状态 更新 失败状态
+            SceneManageEntity sceneManage = new SceneManageEntity() {{
+                setId(sceneId);
+                setLastPtTime(new Date());
+                setUpdateTime(new Date());
+                setStatus(SceneManageStatusEnum.FAILED.getValue());
+            }};
+            // --->update 失败状态
+            sceneManageDAO.getBaseMapper().updateById(sceneManage);
+        }
     }
 
-    @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 1)
+    private void updatePressureTask(ResourceContext context) {
+        Long taskId = context.getTaskId();
+        PressureTaskEntity entity = pressureTaskDAO.selectById(taskId);
+        if (entity.getStatus() == PressureTaskStateEnum.STARTING.ordinal()) { // 启动中
+            PressureTaskVarietyEntity variety = PressureTaskVarietyEntity.of(taskId,
+                PressureTaskStateEnum.STARTING.ordinal(), context.getMessage());
+            pressureTaskVarietyDAO.updateMessage(variety);
+        }
+        entity = new PressureTaskEntity();
+        entity.setId(taskId);
+        entity.setStatus(PressureTaskStateEnum.STOPPING.ordinal());
+        entity.setGmtUpdate(new Date());
+        pressureTaskDAO.updateById(entity);
+
+        PressureTaskVarietyEntity variety = PressureTaskVarietyEntity.of(taskId,
+            PressureTaskStateEnum.STARTING.ordinal());
+        pressureTaskVarietyDAO.save(variety);
+    }
+
+    @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 0)
     public void callPreStop(Event event) {
         ResourceContext context = (ResourceContext)event.getExt();
         Long sceneId = context.getSceneId();
@@ -242,7 +291,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         }
         if (StringUtils.isNotBlank(resource)) {
             redisClientUtils.delete(PressureStartCache.getResourceKey(resource));
-            failed(resource, "取消压测");
+            failed(context);
             clearCache(resource, sceneId);
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resource);
@@ -250,19 +299,49 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         }
     }
 
-    @IntrestFor(event = "finished")
+    @IntrestFor(event = PressureStartCache.START_FAIL)
+    public void callStartFail(Event event) {
+        ResourceContext context = (ResourceContext)event.getExt();
+        Long taskId = context.getTaskId();
+        PressureTaskEntity entity = new PressureTaskEntity();
+        entity.setId(taskId);
+        entity.setStatus(PressureTaskStateEnum.STOPPING.ordinal());
+        entity.setGmtUpdate(new Date());
+        pressureTaskDAO.save(entity);
+
+        PressureTaskVarietyEntity variety = PressureTaskVarietyEntity.of(taskId,
+            PressureTaskStateEnum.STARTING.ordinal(), context.getMessage());
+        pressureTaskVarietyDAO.updateMessage(variety);
+
+        variety.setStatus(PressureTaskStateEnum.STOPPING.ordinal());
+        variety.setMessage(null);
+        pressureTaskVarietyDAO.save(variety);
+    }
+
+    @IntrestFor(event = PressureStartCache.PRESSURE_END)
     public void clearResourceCache(Event event) {
         log.info("删除resource缓存");
         TaskResult taskResult = (TaskResult)event.getExt();
-        clearCache(taskResult.getResourceId(), taskResult.getSceneId());
+        Long sceneId = taskResult.getSceneId();
+        clearCache(taskResult.getResourceId(), sceneId);
+        redisClientUtils.setString(PressureStartCache.getSceneFinishKey(sceneId), "1", 15, TimeUnit.SECONDS);
     }
 
-    private void failed(String resourceId, String message) {
+    private void failed(ResourceContext context) {
+        String resourceId = context.getResourceId();
+        String message = context.getMessage();
         String resourceKey = PressureStartCache.getResourceKey(resourceId);
         if (redisClientUtils.hasKey(resourceKey)) {
-            redisClientUtils.hmset(resourceKey, PressureStartCache.RESOURCE_STATUS, CheckStatus.FAIL.ordinal());
+            redisClientUtils.hmset(resourceKey, PressureStartCache.CHECK_STATUS, CheckStatus.FAIL.ordinal());
+            redisClientUtils.hmset(resourceKey, PressureStartCache.TASK_STATUS, PressureTaskStateEnum.RESOURCE_LOCK_FAILED.ordinal());
         }
         redisClientUtils.setString(PressureStartCache.getErrorMessageKey(resourceId), message, 30, TimeUnit.SECONDS);
+
+        Long pressureTaskId = context.getPressureTaskId();
+        if (Objects.nonNull(pressureTaskId)) {
+            pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(pressureTaskId,
+                PressureTaskStateEnum.RESOURCE_LOCK_FAILED.ordinal(), message));
+        }
     }
 
     private void clearCache(String resourceId, Long sceneId) {

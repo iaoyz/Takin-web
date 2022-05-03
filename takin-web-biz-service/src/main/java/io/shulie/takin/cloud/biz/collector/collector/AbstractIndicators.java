@@ -7,18 +7,17 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
-import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
-import io.shulie.takin.cloud.common.bean.task.TaskResult;
-import io.shulie.takin.cloud.data.util.PressureStartCache;
+import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
-import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
+import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -204,26 +203,18 @@ public abstract class AbstractIndicators {
         }
         ResourceContext context = new ResourceContext();
         context.setResourceKey(resourceKey);
+        context.setResourceId(resourceId);
         context.setSceneId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.SCENE_ID))));
         context.setReportId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.REPORT_ID))));
         context.setTenantId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TENANT_ID))));
-        context.setEndTime(Long.valueOf(String.valueOf(resource.get(PressureStartCache.RESOURCE_END_TIME))));
-        context.setStatus(String.valueOf(resource.get(PressureStartCache.RESOURCE_STATUS)));
-        context.setHeartbeatTime(Long.valueOf(String.valueOf(resource.get(PressureStartCache.HEARTBEAT_TIME))));
-        context.setPressureTaskId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.PRESSURE_TASK_ID))));
+        context.setCheckStatus(String.valueOf(resource.get(PressureStartCache.CHECK_STATUS)));
+        context.setTaskStatus(String.valueOf(resource.get(PressureStartCache.TASK_STATUS)));
+        context.setTaskId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TASK_ID))));
+        Object pressureTaskId = resource.get(PressureStartCache.PRESSURE_TASK_ID);
+        if (Objects.nonNull(pressureTaskId)) {
+            context.setPressureTaskId(Long.valueOf(String.valueOf(pressureTaskId)));
+        }
         return context;
-    }
-
-    protected void callStop(Long sceneId, Long taskId, String message, Long tenantId) {
-        // 汇报失败
-        cloudReportService.updateReportFeatures(taskId, ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, message);
-        cloudSceneManageService.reportRecord(
-            SceneManageStartRecordVO.build(sceneId, taskId, tenantId).success(false).errorMsg(message).build());
-        // 清除 SLA配置 清除PushWindowDataScheduled 删除pod job configMap  生成报告拦截 状态拦截
-        Event event = new Event();
-        event.setEventName("finished");
-        event.setExt(new TaskResult(sceneId, taskId, tenantId));
-        eventCenterTemplate.doEvents(event);
     }
 
     protected void setTryRunTaskInfo(Long sceneId, Long reportId, Long tenantId, String errorMsg) {
@@ -236,34 +227,35 @@ public abstract class AbstractIndicators {
         sceneTaskService.stop(sceneId);
     }
 
-    protected boolean heartbeatTimeout(String resourceId) {
+    protected void callStopEventIfNecessary(String resourceId, String message) {
         ResourceContext resourceContext = getResourceContext(resourceId);
-        if (resourceContext == null) {
-            return false;
+        String curStatus;
+        if (resourceContext != null && Objects.nonNull(curStatus = resourceContext.getCheckStatus())
+            && redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(resourceContext.getSceneId(), resourceId), "1")) {
+            boolean isCheckStep = !curStatus.equals(String.valueOf(CheckStatus.SUCCESS.ordinal()));
+            Event event = new Event();
+            event.setEventName(PressureStartCache.STOP);
+            StopEventSource source = new StopEventSource();
+            source.setCheckStep(isCheckStep);
+            source.setMessage(message);
+            source.setContext(resourceContext);
+            event.setExt(source);
+            eventCenterTemplate.doEvents(event);
         }
-        Long heartbeatTime = resourceContext.getHeartbeatTime();
-        long now = System.currentTimeMillis();
-        if (Objects.isNull(heartbeatTime) || heartbeatTime == 0 || heartbeatTime + heartbeatTimeout <= now) {
-            String resourceKey = PressureStartCache.getResourceKey(resourceId);
-            if (redisClientUtils.hasKey(resourceKey)) {
-                redisClientUtils.hmset(resourceKey, PressureStartCache.HEARTBEAT_TIME, now);
-            }
-            return false;
-        }
-        return true;
     }
 
     @Data
     public static class ResourceContext {
         private Long sceneId;
         private Long reportId;
+        private Long taskId;
         private Long pressureTaskId;
         private String resourceId;
         private Long tenantId;
         private Long podNumber;
-        private Long endTime;
         private String resourceKey;
-        private String status;
+        private String checkStatus;
+        private String taskStatus;
         private Long heartbeatTime;
         private String uniqueKey;
 

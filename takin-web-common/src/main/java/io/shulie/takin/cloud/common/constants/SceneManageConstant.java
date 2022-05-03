@@ -101,9 +101,4 @@ public class SceneManageConstant {
      * <p>运行中</p>
      */
     public static String SCENE_TASK_JOB_STATUS_RUNNING = "running";
-    /**
-     * 压测任务状态
-     * <p>运行失败</p>
-     */
-    public static String SCENE_TASK_JOB_STATUS_FAILED = "failed";
 }

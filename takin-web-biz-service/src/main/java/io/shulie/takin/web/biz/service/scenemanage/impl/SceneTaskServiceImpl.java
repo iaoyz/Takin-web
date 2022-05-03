@@ -255,7 +255,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         }
         sceneData.setIsAbsoluteScriptPath(FileUtils.isAbsoluteUploadPath(sceneData.getUploadFile(), scriptFilePath));
 
-        if (!SceneManageStatusEnum.STARTING.getValue().equals(sceneData.getStatus())) {
+        if (!SceneManageStatusEnum.RESOURCE_LOCKING.getValue().equals(sceneData.getStatus())) {
             throw new TakinWebException(TakinWebExceptionEnum.SCENE_START_STATUS_ERROR,
                 "场景，id=" + param.getSceneId() + "还未申请压测资源，请刷新页面！");
         }

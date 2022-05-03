@@ -4,6 +4,8 @@ import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 
 public interface PressureTaskDAO {
 
+    PressureTaskEntity selectById(Long id);
+
     void deleteById(Long taskId);
 
     void save(PressureTaskEntity entity);

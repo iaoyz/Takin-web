@@ -8,7 +8,6 @@ import io.shulie.takin.adapter.api.model.request.resource.ResourceCheckRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceLockRequest;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceUnLockRequest;
 import io.shulie.takin.adapter.api.model.response.cloud.resources.CloudResource;
-import io.shulie.takin.adapter.api.model.response.resource.ResourceUnLockResponse;
 import io.shulie.takin.adapter.api.service.CloudApiSenderService;
 import io.shulie.takin.cloud.model.response.ApiResult;
 import lombok.extern.slf4j.Slf4j;
@@ -76,7 +75,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
         try {
             cloudApiSenderService.get(
                     EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE, EntrypointUrl.METHOD_RESOURCE_UNLOCK),
-                    request, new TypeReference<ApiResult<ResourceUnLockResponse>>() {
+                    request, new TypeReference<ApiResult<Long>>() {
                     }).getData();
         } catch (Exception e) {
             log.error("释放资源异常", e);

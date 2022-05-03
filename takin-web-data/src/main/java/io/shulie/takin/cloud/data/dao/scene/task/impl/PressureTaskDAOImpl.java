@@ -17,6 +17,11 @@ public class PressureTaskDAOImpl implements PressureTaskDAO {
     private PressureTaskMapper pressureTaskMapper;
 
     @Override
+    public PressureTaskEntity selectById(Long id) {
+        return pressureTaskMapper.selectById(id);
+    }
+
+    @Override
     public void deleteById(Long taskId) {
         PressureTaskEntity entity = new PressureTaskEntity();
         entity.setId(taskId);

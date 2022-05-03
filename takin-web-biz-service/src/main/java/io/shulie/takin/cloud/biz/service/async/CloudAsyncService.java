@@ -16,6 +16,12 @@ public interface CloudAsyncService {
 
     void checkJmeterStartedTask(ResourceContext context);
 
+    @Async("checkStartedPodPool")
+    void checkJmeterHeartbeatTask(ResourceContext context);
+
+    @Async("checkStartedPodPool")
+    void checkPodHeartbeatTask(ResourceContext context);
+
     /**
      * 更新场景运行状态
      *
