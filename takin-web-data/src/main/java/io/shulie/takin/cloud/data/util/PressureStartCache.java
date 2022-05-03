@@ -26,7 +26,6 @@ public abstract class PressureStartCache {
     public static final String PRE_STOP_EVENT = "pre_stop";
     public static final String UNLOCK_FLOW = "unlock_flow";
     public static final String STOP = "stop";
-    public static final String START_FAIL = "start_fail";
     public static final String PRESSURE_END = "pressure_end";
 
     public static String getResourceKey(String resourceId) {
