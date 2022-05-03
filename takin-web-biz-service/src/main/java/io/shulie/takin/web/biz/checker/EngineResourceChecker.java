@@ -208,6 +208,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     public void callStop(Event event) {
         StopEventSource source = (StopEventSource)event.getExt();
         ResourceContext context = source.getContext();
+        //修改缓存压测启动状态为失败
+        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), source.getMessage());
         if (source.isCheckStep()) {
             // 检测失败
             context.setMessage(source.getMessage());
@@ -220,8 +222,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             Long reportId = context.getReportId();
             Long sceneId = context.getSceneId();
             String message = source.getMessage();
-            //修改缓存压测启动状态为失败
-            setTryRunTaskInfo(sceneId, reportId, context.getTenantId(), message);
             cloudReportService.updateReportFeatures(reportId, ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, message);
             // 状态 更新 失败状态
             SceneManageEntity sceneManage = new SceneManageEntity() {{
