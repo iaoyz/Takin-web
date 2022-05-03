@@ -1,5 +1,10 @@
 package io.shulie.takin.cloud.data.util;
 
+import java.util.Arrays;
+import java.util.List;
+
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
+
 public abstract class PressureStartCache {
 
     // 缓存
@@ -81,11 +86,15 @@ public abstract class PressureStartCache {
     }
 
     public static String getPodStartFirstKey(String resourceId) {
-        return String.format("pressure:resource:pod:first:%s", resourceId);
+        return String.format("pressure:resource:start:pod:first:%s", resourceId);
     }
 
     public static String getJmeterStartFirstKey(String resourceId) {
-        return String.format("pressure:resource:jmeter:first:%s", resourceId);
+        return String.format("pressure:resource:start:jmeter:first:%s", resourceId);
+    }
+
+    public static String getJmeterStopFirstKey(String resourceId) {
+        return String.format("pressure:resource:stop:jmeter:first:%s", resourceId);
     }
 
     public static String getFlowDebugKey(Long sceneId) {
@@ -98,5 +107,30 @@ public abstract class PressureStartCache {
 
     public static String getTryRunKey(Long sceneId) {
         return String.format("pressure:scene:try_run:%s", sceneId);
+    }
+
+    public static List<String> clearCacheKey(String resourceId, Long sceneId) {
+        return Arrays.asList(PressureStartCache.getResourceKey(resourceId),
+            PressureStartCache.getResourcePodSuccessKey(resourceId),
+            PressureStartCache.getPodHeartbeatKey(sceneId),
+            PressureStartCache.getPodStartFirstKey(resourceId),
+            PressureStartCache.getResourceJmeterSuccessKey(resourceId),
+            PressureStartCache.getResourceJmeterFailKey(resourceId),
+            PressureStartCache.getResourceJmeterStopKey(resourceId),
+            PressureStartCache.getJmeterHeartbeatKey(sceneId),
+            PressureStartCache.getJmeterStartFirstKey(resourceId),
+            PressureStartCache.getJmeterStopFirstKey(resourceId),
+            PressureStartCache.getSceneResourceLockingKey(sceneId),
+            PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.getScenePreStopKey(sceneId, resourceId),
+            PressureStartCache.getStopFlag(sceneId, resourceId),
+            PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.getFlowDebugKey(sceneId),
+            PressureStartCache.getInspectKey(sceneId),
+            PressureStartCache.getTryRunKey(sceneId),
+            PressureStartCache.getErrorMessageKey(resourceId),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId))
+        );
     }
 }

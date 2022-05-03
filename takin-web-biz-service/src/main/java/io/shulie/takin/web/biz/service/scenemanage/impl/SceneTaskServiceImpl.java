@@ -384,7 +384,6 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         SceneManageIdReq req = new SceneManageIdReq();
         req.setId(param.getSceneId());
         WebPluginUtils.fillCloudUserData(req);
-        //TODO 调用cloud转为web
         ResponseResult<SceneActionResp> response = sceneTaskApi.checkTask(req);
         if (!response.getSuccess()) {
             throw new TakinWebException(ExceptionCode.SCENE_STOP_ERROR, response.getError());

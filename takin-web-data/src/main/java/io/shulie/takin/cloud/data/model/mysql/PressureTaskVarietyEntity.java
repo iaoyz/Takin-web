@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import lombok.Data;
 
 @Data
@@ -27,14 +28,14 @@ public class PressureTaskVarietyEntity {
     @TableField(value = "gmt_create")
     private Date gmtCreate;
 
-    public static PressureTaskVarietyEntity of(Long taskId, Integer status) {
+    public static PressureTaskVarietyEntity of(Long taskId, PressureTaskStateEnum status) {
         PressureTaskVarietyEntity entity = new PressureTaskVarietyEntity();
         entity.setTaskId(taskId);
-        entity.setStatus(status);
+        entity.setStatus(status.ordinal());
         return entity;
     }
 
-    public static PressureTaskVarietyEntity of(Long taskId, Integer status, String message) {
+    public static PressureTaskVarietyEntity of(Long taskId, PressureTaskStateEnum status, String message) {
         PressureTaskVarietyEntity entity = PressureTaskVarietyEntity.of(taskId, status);
         entity.setMessage(message);
         return entity;
