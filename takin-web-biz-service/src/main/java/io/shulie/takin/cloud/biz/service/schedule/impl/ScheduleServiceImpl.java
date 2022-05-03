@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -31,6 +32,7 @@ import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.T
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.config.AppConfig;
+import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
@@ -42,6 +44,7 @@ import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
 import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
@@ -106,6 +109,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     private RedisClientUtils redisClientUtils;
     @Resource
     private CloudSceneTaskService cloudSceneTaskService;
+    @Resource(name = "stopScheduleThreadPool")
+    private ScheduledThreadPoolExecutor stopScheduleThreadPool;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -183,6 +188,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             PressureTaskStopReq req = new PressureTaskStopReq();
             req.setJobId(pressureTaskId);
             pressureTaskApi.stop(req);
+            stopScheduleThreadPool.schedule(new SceneStopThread(request), 3, TimeUnit.MINUTES);
         }
 
     }
@@ -383,5 +389,29 @@ public class ScheduleServiceImpl implements ScheduleService {
         notify.setTenantId(request.getRequest().getTenantId());
         notify.setStatus("started");
         cloudSceneTaskService.taskResultNotify(notify);
+    }
+
+    /**
+     * 场景强制停止
+     */
+    public class SceneStopThread implements Runnable {
+
+        private final ScheduleStopRequestExt request;
+
+        public SceneStopThread(ScheduleStopRequestExt request) {
+            this.request = request;
+        }
+
+        @Override
+        public void run() {
+            // 查看场景状态
+            SceneManageQueryOptions options = new SceneManageQueryOptions();
+            options.setIncludeBusinessActivity(true);
+            SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(request.getSceneId(), options);
+            if (!SceneManageStatusEnum.WAIT.getValue().equals(dto.getStatus())) {
+                // 触发强制停止
+                cloudReportService.forceFinishReport(request.getTaskId());
+            }
+        }
     }
 }
