@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@JsonTypeName("101")
+@JsonTypeName("102")
 public class PodStopNotifyParam extends CloudNotifyParam {
 
     private ResourceExample data;

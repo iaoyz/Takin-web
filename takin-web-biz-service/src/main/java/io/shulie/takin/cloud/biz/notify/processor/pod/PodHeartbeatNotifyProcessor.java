@@ -1,4 +1,4 @@
-package io.shulie.takin.cloud.biz.notify.processor.jmeter;
+package io.shulie.takin.cloud.biz.notify.processor.pod;
 
 import javax.annotation.Resource;
 
@@ -11,25 +11,25 @@ import io.shulie.takin.cloud.model.callback.basic.JobExample;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PressureHeartbeatNotifyProcessor extends AbstractIndicators
-    implements CloudNotifyProcessor<PressureHeartbeatNotifyParam> {
+public class PodHeartbeatNotifyProcessor extends AbstractIndicators
+    implements CloudNotifyProcessor<PodHeartbeatNotifyParam> {
 
     @Resource
     private RedisClientUtils redisClientUtils;
 
     @Override
-    public void process(PressureHeartbeatNotifyParam param) {
+    public void process(PodHeartbeatNotifyParam param) {
         JobExample data = param.getData();
         ResourceContext resourceContext = getResourceContext(String.valueOf(data.getResourceId()));
         if (resourceContext != null) {
             String podId = String.valueOf(data.getJobExampleId());
-            redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(resourceContext.getSceneId()), podId,
+            redisClientUtils.hmset(PressureStartCache.getPodHeartbeatKey(resourceContext.getSceneId()), podId,
                 System.currentTimeMillis());
         }
     }
 
     @Override
     public CallbackType type() {
-        return CallbackType.JMETER_HEARTBEAT;
+        return CallbackType.RESOURCE_EXAMPLE_HEARTBEAT;
     }
 }

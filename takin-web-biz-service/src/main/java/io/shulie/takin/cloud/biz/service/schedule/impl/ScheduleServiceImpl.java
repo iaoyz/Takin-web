@@ -264,7 +264,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         Integer intTps = Objects.nonNull(tps) ? tps.intValue() : null;
         return requestExt.getThreadGroupConfigMap().entrySet().stream().map(entry -> {
             ThreadConfigInfo info = new ThreadConfigInfo();
-            info.setRef(entry.getKey());
+            String key = entry.getKey();
+            info.setRef(key);
             ThreadGroupConfigExt ext = entry.getValue();
             info.setType(ThreadGroupType.of(ext.getType(), ext.getMode()));
             info.setDuration(continuedTime.intValue());
@@ -297,17 +298,15 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private static void completedMetrics(PressureTaskStartReq req, ScheduleStartRequestExt requestExt) {
         Map<String, BusinessActivityExt> businessData = requestExt.getBusinessData();
-        if (!CollectionUtils.isEmpty(businessData)) {
-            req.setMetricsConfig(businessData.values().stream().map(value -> {
-                StartRequest.MetricsInfo metrics = new StartRequest.MetricsInfo();
-                metrics.setRef(value.getBindRef());
-                metrics.setTps(value.getTps().doubleValue());
-                metrics.setRt(value.getRt().doubleValue());
-                metrics.setSuccessRate(value.getSa().doubleValue());
-                metrics.setSa(value.getSa().doubleValue());
-                return metrics;
-            }).collect(Collectors.toList()));
-        }
+        req.setMetricsConfig(businessData.values().stream().map(value -> {
+            StartRequest.MetricsInfo metrics = new StartRequest.MetricsInfo();
+            metrics.setRef(value.getBindRef());
+            metrics.setTps(value.getTps().doubleValue());
+            metrics.setRt(value.getRt().doubleValue());
+            metrics.setSuccessRate(value.getSa().doubleValue());
+            metrics.setSa(value.getSa().doubleValue());
+            return metrics;
+        }).collect(Collectors.toList()));
     }
 
     private static void completedFile(PressureTaskStartReq req, ScheduleStartRequestExt requestExt) {

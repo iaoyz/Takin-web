@@ -3,6 +3,7 @@ package io.shulie.takin.web.biz.checker;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -19,16 +20,17 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.TaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
@@ -37,7 +39,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
+import org.springframework.util.CollectionUtils;
 
 @Slf4j
 @Component
@@ -135,7 +137,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
 
     private void completeByCache(StartConditionCheckerContext context) {
         String resourceId = context.getResourceId();
-        Object taskId = redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId), PressureStartCache.PRESSURE_TASK_ID);
+        Object taskId = redisClientUtils.hmget(PressureStartCache.getResourceKey(resourceId), PressureStartCache.TASK_ID);
         if (Objects.nonNull(taskId)) {
             context.setTaskId(Long.valueOf(String.valueOf(taskId)));
         }
@@ -184,17 +186,20 @@ public class CompositeStartConditionChecker implements InitializingBean {
         context.setSceneId(sceneId);
         context.setResourceId(resourceContext.getResourceId());
         context.setMessage("取消压测");
-        Object reportId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.REPORT_ID);
-        if (Objects.nonNull(reportId)) {
-            context.setReportId(Long.valueOf(String.valueOf(reportId)));
-        }
-        Object taskId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.PRESSURE_TASK_ID);
-        if (Objects.nonNull(taskId)) {
-            context.setTaskId(Long.valueOf(String.valueOf(taskId)));
-        }
-        Object uniqueKey = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.UNIQUE_KEY);
-        if (Objects.nonNull(uniqueKey)) {
-            context.setUniqueKey(String.valueOf(uniqueKey));
+        Map<Object, Object> sceneResource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId));
+        if (!CollectionUtils.isEmpty(sceneResource)) {
+            Object reportId = sceneResource.get(PressureStartCache.REPORT_ID);
+            if (Objects.nonNull(reportId)) {
+                context.setReportId(Long.valueOf(String.valueOf(reportId)));
+            }
+            Object taskId = sceneResource.get(PressureStartCache.TASK_ID);
+            if (Objects.nonNull(taskId)) {
+                context.setTaskId(Long.valueOf(String.valueOf(taskId)));
+            }
+            Object uniqueKey = sceneResource.get(PressureStartCache.UNIQUE_KEY);
+            if (Objects.nonNull(uniqueKey)) {
+                context.setUniqueKey(String.valueOf(uniqueKey));
+            }
         }
         callStartFailClear(context);
     }
@@ -217,6 +222,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
         if (Objects.nonNull(taskId)) {
             PressureTaskEntity entity = new PressureTaskEntity();
             entity.setId(context.getTaskId());
+            entity.setStatus(PressureTaskStateEnum.RESOURCE_LOCK_FAILED.ordinal());
             entity.setExceptionMsg(context.getMessage());
             entity.setIsDeleted(1);
             entity.setGmtUpdate(new Date());

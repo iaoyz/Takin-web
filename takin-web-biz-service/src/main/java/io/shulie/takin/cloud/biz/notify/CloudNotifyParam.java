@@ -11,6 +11,7 @@ import io.shulie.takin.cloud.biz.notify.processor.jmeter.PressureHeartbeatNotify
 import io.shulie.takin.cloud.biz.notify.processor.jmeter.PressureStartNotifyParam;
 import io.shulie.takin.cloud.biz.notify.processor.jmeter.PressureStopNotifyParam;
 import io.shulie.takin.cloud.biz.notify.processor.pod.PodErrorNotifyParam;
+import io.shulie.takin.cloud.biz.notify.processor.pod.PodHeartbeatNotifyParam;
 import io.shulie.takin.cloud.biz.notify.processor.pod.PodStartNotifyParam;
 import io.shulie.takin.cloud.biz.notify.processor.pod.PodStopNotifyParam;
 import io.shulie.takin.cloud.biz.notify.processor.sla.SlaNotifyParam;
@@ -19,6 +20,7 @@ import lombok.Data;
 @Data
 @JsonTypeInfo(use = Id.NAME, property = "type", visible = true)
 @JsonSubTypes({
+    @JsonSubTypes.Type(value = PodHeartbeatNotifyParam.class, name = "100"),
     @JsonSubTypes.Type(value = PodStartNotifyParam.class, name = "101"),
     @JsonSubTypes.Type(value = PodStopNotifyParam.class, name = "102"),
     @JsonSubTypes.Type(value = PodErrorNotifyParam.class, name = "103"),

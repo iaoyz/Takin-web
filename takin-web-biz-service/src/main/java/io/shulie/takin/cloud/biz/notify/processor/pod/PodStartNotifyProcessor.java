@@ -7,6 +7,7 @@ import javax.annotation.Resource;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.notify.CallbackType;
 import io.shulie.takin.cloud.biz.notify.CloudNotifyProcessor;
+import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.model.callback.basic.ResourceExample;
@@ -16,8 +17,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class PodStartNotifyProcessor extends AbstractIndicators implements CloudNotifyProcessor<PodStartNotifyParam> {
 
+    private static final String STARTED_FIRST_POD = "pressure:resource:pod:first:%s";
+
     @Resource
     private RedisClientUtils redisClientUtils;
+
+    @Resource
+    private CloudAsyncService cloudAsyncService;
 
     @Override
     public CallbackType type() {
@@ -27,21 +33,27 @@ public class PodStartNotifyProcessor extends AbstractIndicators implements Cloud
     @Override
     public void process(PodStartNotifyParam context) {
         ResourceExample data = context.getData();
-        ResourceContext resourceContext = getResourceContext(String.valueOf(data.getResourceId()));
+        String resourceId = String.valueOf(data.getResourceId());
+        ResourceContext resourceContext = getResourceContext(resourceId);
         if (resourceContext != null) {
-            String curStatus = resourceContext.getStatus();
-            if (Objects.nonNull(curStatus) && curStatus.equals(String.valueOf(CheckStatus.PENDING.ordinal()))) {
-                processStartSuccess(data);
+            if (!redisClientUtils.hasKey(
+                RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(resourceContext.getSceneId(), resourceId)))) {
+                String curStatus = resourceContext.getCheckStatus();
+                if (Objects.nonNull(curStatus) && curStatus.equals(String.valueOf(CheckStatus.PENDING.ordinal()))) {
+                    processStartSuccess(data, resourceContext);
+                }
             }
         }
     }
 
     // 增加pod实例数
-    private void processStartSuccess(ResourceExample context) {
+    private void processStartSuccess(ResourceExample context, ResourceContext resourceContext) {
         String resourceId = String.valueOf(context.getResourceId());
-        if (!redisClientUtils.hasKey(PressureStartCache.getResourceJmeterFailKey(resourceId))) {
-            redisClientUtils.setSetValue(PressureStartCache.getResourcePodSuccessKey(resourceId),
-                String.valueOf(context.getResourceExampleId()));
+        String podId = String.valueOf(context.getResourceExampleId());
+        redisClientUtils.setSetValue(PressureStartCache.getResourcePodSuccessKey(resourceId), podId);
+        if (Boolean.TRUE.equals(
+            redisTemplate.opsForValue().setIfAbsent(String.format(STARTED_FIRST_POD, resourceId), podId))) {
+            cloudAsyncService.checkPodHeartbeatTask(resourceContext);
         }
     }
 }

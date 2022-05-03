@@ -31,7 +31,7 @@ import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
-import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
+import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.input.scenemanage.EnginePluginInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneInspectInput;
@@ -133,7 +133,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @Slf4j
-public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
+public class CloudSceneTaskServiceImpl extends AbstractIndicators implements CloudSceneTaskService {
     @Resource
     private ReportDao reportDao;
     @Resource
@@ -258,8 +258,8 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         sceneData.setResourceId(report.getResourceId());
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());
-
         initActivity(sceneData, report);
+        notifyStart(report);
         // 报告已经完成，则退出
         if (report.getStatus() == ReportConstants.FINISH_STATUS) {
             //失败状态
@@ -312,12 +312,21 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         }
         ResourceContext context = new ResourceContext();
         context.setSceneId(sceneId);
-        context.setResourceId(req.getResourceId());
+        String resourceId = req.getResourceId();
+        if (StringUtils.isBlank(resourceId)) {
+            Object resource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+                PressureStartCache.RESOURCE_ID);
+            if (Objects.nonNull(resource)) {
+                resourceId = String.valueOf(resource);
+            }
+        }
+        context.setResourceId(resourceId);
         context.setMessage("取消压测");
         Event event = new Event();
         event.setEventName(PressureStartCache.PRE_STOP_EVENT);
         event.setExt(context);
         eventCenterTemplate.doEvents(event);
+        redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "1");
         return 1;
     }
 
@@ -1176,7 +1185,7 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         //初始化业务活动
         cloudSceneManageService.updateSceneLifeCycle(
             UpdateStatusBean.build(scene.getId(), report.getId(), scene.getCustomId())
-                .checkEnum(SceneManageStatusEnum.WAIT, SceneManageStatusEnum.FAILED, SceneManageStatusEnum.STOP, SceneManageStatusEnum.FORCE_STOP)
+                .checkEnum(SceneManageStatusEnum.RESOURCE_LOCKING)
                 .updateEnum(SceneManageStatusEnum.STARTING).build());
         Long reportId = report.getId();
         scene.getBusinessActivityConfig().forEach(activity -> {
@@ -1226,5 +1235,16 @@ public class CloudSceneTaskServiceImpl implements CloudSceneTaskService {
         if (redisClientUtils.hasKey(inspectKey)) {
             startTask(JsonHelper.json2Bean(inspectKey, SceneTaskStartInput.class));
         }
+    }
+
+    // 压测启动中
+    public void notifyStart(ReportResult report) {
+        Long taskId = report.getTaskId();
+        PressureTaskEntity entity = new PressureTaskEntity();
+        entity.setId(taskId);
+        entity.setStatus(PressureTaskStateEnum.STARTING.ordinal());
+        entity.setGmtUpdate(new Date());
+        pressureTaskDAO.updateById(entity);
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, PressureTaskStateEnum.STARTING.ordinal()));
     }
 }

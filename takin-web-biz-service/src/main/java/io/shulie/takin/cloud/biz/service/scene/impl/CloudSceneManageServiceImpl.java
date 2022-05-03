@@ -47,6 +47,7 @@ import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.common.UploadFileDTO;
 import io.shulie.takin.adapter.api.model.request.scenemanage.CloudUpdateSceneFileRequest;
 import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
+import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneBusinessActivityRefInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageQueryInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageWrapperInput;
@@ -81,14 +82,13 @@ import io.shulie.takin.cloud.common.utils.UrlUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
-import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.scenemanage.SceneManageCreateOrUpdateParam;
 import io.shulie.takin.cloud.data.result.report.ReportResult;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.api.AssetExtApi;
 import io.shulie.takin.cloud.ext.content.asset.AssetBillExt;
 import io.shulie.takin.cloud.ext.content.enginecall.PtConfigExt;
@@ -97,6 +97,8 @@ import io.shulie.takin.cloud.ext.content.response.Response;
 import io.shulie.takin.cloud.ext.content.script.ScriptParseExt;
 import io.shulie.takin.cloud.ext.content.script.ScriptVerityExt;
 import io.shulie.takin.cloud.ext.content.script.ScriptVerityRespExt;
+import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.EventCenterTemplate;
 import io.shulie.takin.plugin.framework.core.PluginManager;
 import io.shulie.takin.utils.PathFormatForTest;
 import io.shulie.takin.utils.file.FileManagerHelper;
@@ -143,7 +145,7 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
     @Resource
     private TSceneBusinessActivityRefMapper tSceneBusinessActivityRefMapper;
     @Resource
-    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
+    private EventCenterTemplate eventCenterTemplate;
 
     @Value("${script.temp.path}")
     private String scriptTempPath;
@@ -705,10 +707,16 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
         // --->update 失败状态
         sceneManageDAO.getBaseMapper().updateById(sceneManage);
 
-        // 更新启动中状态异常信息
-        PressureTaskVarietyEntity entity = PressureTaskVarietyEntity.of(recentlyReport.getPressureTaskId(),
-            PressureTaskStateEnum.ALIVE.ordinal(), errorMsg);
-        pressureTaskVarietyDAO.updateMessage(entity);
+        // 触发启动失败事件
+        Event event = new Event();
+        event.setEventName(PressureStartCache.START_FAIL);
+        ResourceContext context = new ResourceContext();
+        context.setSceneId(sceneId);
+        context.setTaskId(recentlyReport.getTaskId());
+        context.setReportId(recentlyReport.getId());
+        context.setResourceId(recentlyReport.getResourceId());
+        context.setMessage(errorMsg);
+        eventCenterTemplate.doEvents(event);
     }
 
     @Override

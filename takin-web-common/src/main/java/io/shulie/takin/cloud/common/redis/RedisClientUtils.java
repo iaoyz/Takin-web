@@ -103,7 +103,15 @@ public class RedisClientUtils {
         return "1".equals(stringRedisTemplate.execute(reentryLockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
     }
 
-    private String getLockPrefix(String key) {
+    public boolean lockNoExpire(String key, String value) {
+        return Boolean.TRUE.equals(stringRedisTemplate.execute((RedisCallback<Boolean>)connection -> {
+            Boolean bl = connection.set(getLockPrefix(key).getBytes(), value.getBytes(), Expiration.persistent(),
+                RedisStringCommands.SetOption.SET_IF_ABSENT);
+            return Boolean.TRUE.equals(bl);
+        }));
+    }
+
+    public static String getLockPrefix(String key) {
         return String.format("LOCK:%s", key);
     }
 

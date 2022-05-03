@@ -3,26 +3,26 @@ package io.shulie.takin.cloud.data.util;
 public abstract class PressureStartCache {
 
     // 缓存
-    public static final String RESOURCE_STATUS = "status";
-    public static final String RESOURCE_POD_NUM = "podNum";
-    public static final String RESOURCE_END_TIME = "endTime";
+    public static final String CHECK_STATUS = "check_status";
+    public static final String TASK_STATUS = "task_status";
+    public static final String RESOURCE_POD_NUM = "pod_num";
     public static final String TENANT_ID = "tenant_id";
     public static final String ENV_CODE = "env_code";
     public static final String SCENE_ID = "scene_id";
     public static final String REPORT_ID = "report_id";
-    public static final String PRESSURE_TASK_ID = "pressure_task_id";
-    public static final String JMETER_STARTED = "jmeter_started";
-    public static final String JMETER_STOP = "jmeter_stopped";
-    public static final String HEARTBEAT_TIME = "heartbeat_time";
-    public static final String RESOURCE_ID = "resourceId";
+    public static final String TASK_ID = "task_id";
+    public static final String RESOURCE_ID = "resource_Id";
     public static final String UNIQUE_KEY = "unique_key";
+    public static final String PRESSURE_TASK_ID = "pressure_task_id";
 
     // 事件
     public static final String CHECK_FAIL_EVENT = "check_failed";
     public static final String CHECK_SUCCESS_EVENT = "check_success";
-    public static final String LACK_POD_RESOURCE_EVENT = "lack_pod_resource";
     public static final String PRE_STOP_EVENT = "pre_stop";
     public static final String UNLOCK_FLOW = "unlock_flow";
+    public static final String STOP = "stop";
+    public static final String START_FAIL = "start_fail";
+    public static final String PRESSURE_END = "pressure_end";
 
     public static String getResourceKey(String resourceId) {
         return String.format("pressure:resource:locking:%s", resourceId);
@@ -34,11 +34,6 @@ public abstract class PressureStartCache {
 
     // 启动成功的pod实例名称存入该key
     public static String getResourcePodSuccessKey(String resourceId) {
-        return String.format("pressure:resource:pod:%s", resourceId);
-    }
-
-    // 启动成功的pod实例名称存入该key
-    public static String getResourcePodFaileKey(String resourceId) {
         return String.format("pressure:resource:pod:%s", resourceId);
     }
 
@@ -67,6 +62,22 @@ public abstract class PressureStartCache {
 
     public static String getScenePreStopKey(Long sceneId, String resourceId) {
         return String.format("pressure:scene:pre_stop:%s:%s", sceneId, resourceId);
+    }
+
+    public static String getSceneFinishKey(Long sceneId) {
+        return String.format("pressure:scene:finish:%s", sceneId);
+    }
+
+    public static String getStopFlag(Long sceneId, String resourceId) {
+        return String.format("pressure:scene:stop:%s:%s", sceneId, resourceId);
+    }
+
+    public static String getJmeterHeartbeatKey(Long sceneId) {
+        return String.format("pressure:scene:heartbeat:jmeter:%s", sceneId);
+    }
+
+    public static String getPodHeartbeatKey(Long sceneId) {
+        return String.format("pressure:scene:heartbeat:pod:%s", sceneId);
     }
 
     public static String getFlowDebugKey(Long sceneId) {

@@ -113,7 +113,7 @@ public class ApplicationChecker implements StartConditionChecker {
     private void cacheAssociation(StartConditionCheckerContext context) {
         Map<String, Object> param = new HashMap<>(4);
         param.put(PressureStartCache.REPORT_ID, context.getReportId());
-        param.put(PressureStartCache.PRESSURE_TASK_ID, context.getTaskId());
+        param.put(PressureStartCache.TASK_ID, context.getTaskId());
         param.put(PressureStartCache.UNIQUE_KEY, context.getUniqueKey());
         redisClientUtils.hmset(PressureStartCache.getSceneResourceKey(context.getSceneId()), param);
     }
