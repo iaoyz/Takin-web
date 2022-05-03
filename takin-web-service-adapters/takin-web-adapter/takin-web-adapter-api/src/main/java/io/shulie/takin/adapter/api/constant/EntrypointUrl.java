@@ -56,4 +56,5 @@ public class EntrypointUrl {
      */
     public final static String MODULE_WATCHMAN = "watchman";
     public final static String MATHOD_WATCHMAN_STATUS = "status";
+    public final static String MATHOD_WATCHMAN_RESOURCE = "resource";
 }
