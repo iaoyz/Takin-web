@@ -182,10 +182,12 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         return Arrays.asList(PressureStartCache.getResourceKey(resourceId),
             PressureStartCache.getResourcePodSuccessKey(resourceId),
             PressureStartCache.getPodHeartbeatKey(sceneId),
+            PressureStartCache.getPodStartFirstKey(resourceId),
             PressureStartCache.getResourceJmeterSuccessKey(resourceId),
             PressureStartCache.getResourceJmeterFailKey(resourceId),
             PressureStartCache.getResourceJmeterStopKey(resourceId),
             PressureStartCache.getJmeterHeartbeatKey(sceneId),
+            PressureStartCache.getJmeterStartFirstKey(resourceId),
             PressureStartCache.getSceneResourceLockingKey(sceneId),
             PressureStartCache.getSceneResourceKey(sceneId),
             PressureStartCache.getScenePreStopKey(sceneId, resourceId),
@@ -278,7 +280,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         pressureTaskVarietyDAO.save(variety);
     }
 
-    @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 0)
+    @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 1)
     public void callPreStop(Event event) {
         ResourceContext context = (ResourceContext)event.getExt();
         Long sceneId = context.getSceneId();

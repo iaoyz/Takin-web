@@ -80,6 +80,14 @@ public abstract class PressureStartCache {
         return String.format("pressure:scene:heartbeat:pod:%s", sceneId);
     }
 
+    public static String getPodStartFirstKey(String resourceId) {
+        return String.format("pressure:resource:pod:first:%s", resourceId);
+    }
+
+    public static String getJmeterStartFirstKey(String resourceId) {
+        return String.format("pressure:resource:jmeter:first:%s", resourceId);
+    }
+
     public static String getFlowDebugKey(Long sceneId) {
         return String.format("pressure:scene:flow_debug:%s", sceneId);
     }
