@@ -32,8 +32,6 @@ import org.springframework.stereotype.Component;
 public class PressureStartNotifyProcessor extends AbstractIndicators
     implements CloudNotifyProcessor<PressureStartNotifyParam> {
 
-    private static final String STARTED_FIRST_JMETER = "pressure:resource:jmeter:first:%s";
-
     @Resource
     private RedisClientUtils redisClientUtils;
 
@@ -80,7 +78,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
             String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
             setMin(engineName + ScheduleConstants.FIRST_SIGN, context.getTime().getTime());
             if (Boolean.TRUE.equals(
-                redisTemplate.opsForValue().setIfAbsent(String.format(STARTED_FIRST_JMETER, resourceId), podId))) {
+                redisTemplate.opsForValue().setIfAbsent(PressureStartCache.getJmeterStartFirstKey(resourceId), podId))) {
                 cloudSceneManageService.updateSceneLifeCycle(UpdateStatusBean.build(sceneId, reportId, tenantId)
                     .checkEnum(SceneManageStatusEnum.PRESSURE_NODE_RUNNING)
                     .updateEnum(SceneManageStatusEnum.ENGINE_RUNNING)

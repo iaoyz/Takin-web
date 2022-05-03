@@ -17,8 +17,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class PodStartNotifyProcessor extends AbstractIndicators implements CloudNotifyProcessor<PodStartNotifyParam> {
 
-    private static final String STARTED_FIRST_POD = "pressure:resource:pod:first:%s";
-
     @Resource
     private RedisClientUtils redisClientUtils;
 
@@ -52,7 +50,7 @@ public class PodStartNotifyProcessor extends AbstractIndicators implements Cloud
         String podId = String.valueOf(context.getResourceExampleId());
         redisClientUtils.setSetValue(PressureStartCache.getResourcePodSuccessKey(resourceId), podId);
         if (Boolean.TRUE.equals(
-            redisTemplate.opsForValue().setIfAbsent(String.format(STARTED_FIRST_POD, resourceId), podId))) {
+            redisTemplate.opsForValue().setIfAbsent(PressureStartCache.getPodStartFirstKey(resourceId), podId))) {
             cloudAsyncService.checkPodHeartbeatTask(resourceContext);
         }
     }

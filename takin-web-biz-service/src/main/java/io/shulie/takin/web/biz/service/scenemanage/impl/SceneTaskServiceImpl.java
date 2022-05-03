@@ -394,7 +394,6 @@ public class SceneTaskServiceImpl implements SceneTaskService {
             WebPluginUtils.traceTenantAppKey(), WebPluginUtils.traceEnvCode(),
             String.format(WebRedisKeyConstant.PTING_APPLICATION_KEY, resp.getReportId()));
         redisClientUtils.del(redisKey);
-        //TODO 调用cloud转为web
         return sceneTaskApi.stopTask(req);
     }
 

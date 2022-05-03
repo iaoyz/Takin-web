@@ -320,14 +320,19 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
                 resourceId = String.valueOf(resource);
             }
         }
-        context.setResourceId(resourceId);
-        context.setMessage("取消压测");
-        Event event = new Event();
-        event.setEventName(PressureStartCache.PRE_STOP_EVENT);
-        event.setExt(context);
-        eventCenterTemplate.doEvents(event);
-        redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "1");
-        return 1;
+        if (redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "1")) {
+            context.setResourceId(resourceId);
+            context.setMessage("取消压测");
+            Event event = new Event();
+            event.setEventName(PressureStartCache.PRE_STOP_EVENT);
+            event.setExt(context);
+            eventCenterTemplate.doEvents(event);
+        }
+        if (SceneManageStatusEnum.ifFree(sceneManage.getStatus())
+            || Objects.equals(SceneManageStatusEnum.RESOURCE_LOCKING.getValue(), sceneManage.getStatus())) {
+            return 1;
+        }
+        return 2;
     }
 
     @Override
