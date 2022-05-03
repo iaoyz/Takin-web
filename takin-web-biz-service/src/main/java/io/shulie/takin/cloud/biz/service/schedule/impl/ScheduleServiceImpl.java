@@ -211,8 +211,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .build());
 
         request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(), EntrypointUrl.CALL_BACK_PATH));
-        PressureTaskStartReq req = buildStartReq(request);
         try {
+            PressureTaskStartReq req = buildStartReq(request);
             notifyTaskResult(request);
             Long pressureTask = pressureTaskApi.start(req);
             // 是空的
@@ -324,12 +324,15 @@ public class ScheduleServiceImpl implements ScheduleService {
         FileInfo script = new FileInfo();
         script.setUri(requestExt.getScriptPath());
         req.setScriptFile(script);
-        Map<Integer, List<DataFile>> fileTypeMap = requestExt.getDataFile().stream()
-            .filter(file -> FileTypeBusinessUtil.isData(file.getFileType()))
-            .collect(groupingBy(DataFile::getFileType));
-        if (!CollectionUtils.isEmpty(fileTypeMap)) {
-            req.setData(fileTypeMap.values().stream().flatMap(Collection::stream)
-                .map(ScheduleServiceImpl::convertFile).collect(Collectors.toList()));
+        List<DataFile> dataFile = requestExt.getDataFile();
+        if (!CollectionUtils.isEmpty(dataFile)) {
+            Map<Integer, List<DataFile>> fileTypeMap = dataFile.stream()
+                .filter(file -> FileTypeBusinessUtil.isData(file.getFileType()))
+                .collect(groupingBy(DataFile::getFileType));
+            if (!CollectionUtils.isEmpty(fileTypeMap)) {
+                req.setData(fileTypeMap.values().stream().flatMap(Collection::stream)
+                    .map(ScheduleServiceImpl::convertFile).collect(Collectors.toList()));
+            }
         }
         List<String> enginePluginsFilePath = requestExt.getEnginePluginsFilePath();
         if (!CollectionUtils.isEmpty(enginePluginsFilePath)) {

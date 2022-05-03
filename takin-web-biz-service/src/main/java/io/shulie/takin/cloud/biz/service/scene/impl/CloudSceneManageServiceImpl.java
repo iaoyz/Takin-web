@@ -709,7 +709,7 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
 
         // 触发启动失败事件
         Event event = new Event();
-        event.setEventName(PressureStartCache.START_FAIL);
+        event.setEventName(PressureStartCache.PRESSURE_END);
         ResourceContext context = new ResourceContext();
         context.setSceneId(sceneId);
         context.setTaskId(recentlyReport.getTaskId());

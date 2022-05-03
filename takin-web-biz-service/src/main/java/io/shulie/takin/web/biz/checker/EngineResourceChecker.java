@@ -258,23 +258,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         }
     }
 
-    @IntrestFor(event = PressureStartCache.START_FAIL)
-    public void callStartFail(Event event) {
-        ResourceContext context = (ResourceContext)event.getExt();
-        Long taskId = context.getTaskId();
-        PressureTaskEntity entity = new PressureTaskEntity();
-        entity.setId(taskId);
-        entity.setStatus(PressureTaskStateEnum.STOPPING.ordinal());
-        entity.setGmtUpdate(new Date());
-        pressureTaskDAO.updateById(entity);
-
-        pressureTaskVarietyDAO.updateMessage(PressureTaskVarietyEntity.of(taskId,
-            PressureTaskStateEnum.STARTING, context.getMessage()));
-
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId,
-            PressureTaskStateEnum.STOPPING));
-    }
-
     @IntrestFor(event = PressureStartCache.PRESSURE_END)
     public void clearResourceCache(Event event) {
         log.info("删除resource缓存");
