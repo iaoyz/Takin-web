@@ -232,6 +232,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             }};
             // --->update 失败状态
             sceneManageDAO.getBaseMapper().updateById(sceneManage);
+            //试跑失败，停掉pod
+            cloudSceneTaskService.stop(sceneId);
         }
     }
 

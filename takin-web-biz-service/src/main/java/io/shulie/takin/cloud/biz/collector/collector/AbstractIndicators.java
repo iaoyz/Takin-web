@@ -223,8 +223,6 @@ public abstract class AbstractIndicators {
         redisClientUtils.hmset(tryRunTaskKey,
             SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.FAILED.getText());
         redisClientUtils.hmset(tryRunTaskKey, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
-        //试跑失败，停掉pod
-        sceneTaskService.stop(sceneId);
     }
 
     protected void callStopEventIfNecessary(String resourceId, String message) {
