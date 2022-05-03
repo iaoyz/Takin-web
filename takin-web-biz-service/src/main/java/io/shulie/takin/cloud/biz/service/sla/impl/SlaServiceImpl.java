@@ -246,7 +246,7 @@ public class SlaServiceImpl implements SlaService {
                                 //更新report
                                 cloudReportService.updateReportSlaData(slaDataInput);
                                 PressureTaskStopReq req = new PressureTaskStopReq();
-                                req.setTaskId(scheduleStopRequest.getTaskId());
+                                req.setJobId(scheduleStopRequest.getTaskId());
                                 //触发停止
                                 pressureTaskApi.stop(req);
                                 log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
@@ -323,7 +323,7 @@ public class SlaServiceImpl implements SlaService {
                         //更新report
                         cloudReportService.updateReportSlaData(slaDataInput);
                         PressureTaskStopReq req = new PressureTaskStopReq();
-                        req.setTaskId(scheduleStopRequest.getTaskId());
+                        req.setJobId(scheduleStopRequest.getTaskId());
                         //触发停止
                         pressureTaskApi.stop(req);
                         log.warn("【SLA】成功发送压测任务终止事件，并记录sla熔断数据");
