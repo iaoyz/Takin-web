@@ -20,6 +20,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.google.common.collect.Lists;
 import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
@@ -320,16 +321,22 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
                 resourceId = String.valueOf(resource);
             }
         }
-        if (redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "1")) {
-            context.setResourceId(resourceId);
-            context.setMessage("取消压测");
-            Event event = new Event();
-            event.setEventName(PressureStartCache.PRE_STOP_EVENT);
-            event.setExt(context);
-            eventCenterTemplate.doEvents(event);
-        }
         if (SceneManageStatusEnum.ifFree(sceneManage.getStatus())
             || Objects.equals(SceneManageStatusEnum.RESOURCE_LOCKING.getValue(), sceneManage.getStatus())) {
+
+            if (redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "1")) {
+                context.setResourceId(resourceId);
+                context.setMessage("取消压测");
+                Event event = new Event();
+                event.setEventName(PressureStartCache.PRE_STOP_EVENT);
+                event.setExt(context);
+                eventCenterTemplate.doEvents(event);
+            }
+            sceneManageDAO.getBaseMapper().update(
+                null,
+                Wrappers.lambdaUpdate(SceneManageEntity.class)
+                    .set(SceneManageEntity::getStatus, 0)
+                    .eq(SceneManageEntity::getId, sceneId));
             return 1;
         }
         return 2;
@@ -1064,8 +1071,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         entity.setTenantId(scene.getTenantId());
         entity.setEnvCode(scene.getEnvCode());
         pressureTaskDAO.save(entity);
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(entity.getId(),
-            PressureTaskStateEnum.RESOURCE_LOCKING.ordinal()));
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(entity.getId(), PressureTaskStateEnum.RESOURCE_LOCKING));
         return entity;
     }
 
@@ -1250,6 +1256,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         entity.setStatus(PressureTaskStateEnum.STARTING.ordinal());
         entity.setGmtUpdate(new Date());
         pressureTaskDAO.updateById(entity);
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, PressureTaskStateEnum.STARTING.ordinal()));
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, PressureTaskStateEnum.STARTING));
     }
 }

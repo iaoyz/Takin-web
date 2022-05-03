@@ -16,6 +16,7 @@ import com.alibaba.fastjson.JSON;
 
 import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
+import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.constant.FormulaSymbol;
@@ -35,6 +36,7 @@ import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
+import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleEventService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
@@ -45,8 +47,10 @@ import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CommonUtil;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.content.enginecall.BusinessActivityExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleInitParamExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleRunRequest;
@@ -98,6 +102,10 @@ public class ScheduleServiceImpl implements ScheduleService {
     private EngineConfigService engineConfigService;
     @Resource
     private CloudAsyncService cloudAsyncService;
+    @Resource
+    private RedisClientUtils redisClientUtils;
+    @Resource
+    private CloudSceneTaskService cloudSceneTaskService;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -171,11 +179,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         log.info("停止调度, 请求数据：{}", request);
         ScheduleRecord scheduleRecord = tScheduleRecordMapper.getScheduleByTaskId(request.getTaskId());
         if (scheduleRecord != null) {
-            // 增加中断
-            String scheduleName = ScheduleConstants.getScheduleName(request.getSceneId(), request.getTaskId(), request.getTenantId());
-            stringRedisTemplate.opsForValue().set(
-                ScheduleConstants.INTERRUPT_POD + scheduleName,
-                Boolean.TRUE.toString(), 1, TimeUnit.DAYS);
             PressureTaskStopReq req = new PressureTaskStopReq();
             req.setTaskId(request.getPressureTaskId());
             pressureTaskApi.stop(req);
@@ -203,6 +206,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(), EntrypointUrl.CALL_BACK_PATH));
         PressureTaskStartReq req = buildStartReq(request);
         try {
+            notifyTaskResult(request);
             Long pressureTask = pressureTaskApi.start(req);
             // 是空的
             log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
@@ -367,5 +371,16 @@ public class ScheduleServiceImpl implements ScheduleService {
         String resourceId = startRequest.getResourceId();
         cloudReportService.updateResourceAssociation(resourceId, pressureTaskId);
         pressureTaskDAO.updateResourceAssociation(resourceId, pressureTaskId);
+        redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId), PressureStartCache.PRESSURE_TASK_ID, pressureTaskId);
+        redisClientUtils.hmset(PressureStartCache.getSceneResourceKey(startRequest.getSceneId()),
+            PressureStartCache.PRESSURE_TASK_ID, pressureTaskId);
+    }
+    private void notifyTaskResult(ScheduleRunRequest request) {
+        SceneTaskNotifyParam notify = new SceneTaskNotifyParam();
+        notify.setSceneId(request.getRequest().getSceneId());
+        notify.setTaskId(request.getRequest().getTaskId());
+        notify.setTenantId(request.getRequest().getTenantId());
+        notify.setStatus("started");
+        cloudSceneTaskService.taskResultNotify(notify);
     }
 }

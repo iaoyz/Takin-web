@@ -200,29 +200,14 @@ public class SceneTaskEventService {
                 result.setStatus(TaskStatusEnum.STARTED);
                 event.setEventName("started");
                 // 扩展配置
-                Map<String, Object> extendMap = Maps.newHashMap();
-                SceneManageQueryOptions options = new SceneManageQueryOptions();
-                options.setIncludeBusinessActivity(true);
-                SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(param.getSceneId(), options);
-                if (dto != null && CollectionUtils.isNotEmpty(dto.getBusinessActivityConfig())) {
-                    extendMap.put("businessActivityCount", dto.getBusinessActivityConfig().size());
-                    extendMap.put("businessActivityBindRef", dto.getBusinessActivityConfig().stream()
-                        .map(SceneManageWrapperOutput.SceneBusinessActivityRefOutput::getBindRef)
-                        .filter(StringUtils::isNoneBlank)
-                        .map(String::trim).distinct().collect(Collectors.toList()));
-                }
-                result.setExtendMap(extendMap);
-                String key = ScheduleConstants.getFileSplitQueue(param.getSceneId(), param.getTaskId(),
-                    param.getTenantId());
+                String key = ScheduleConstants.getFileSplitQueue(param.getSceneId(), param.getTaskId(), param.getTenantId());
                 index = stringRedisTemplate.opsForList().leftPop(key);
-
             } else if ("failed".equals(param.getStatus())) {
                 result.setStatus(TaskStatusEnum.FAILED);
                 event.setEventName("failed");
             } else {
                 isNotify = false;
             }
-
             if (isNotify) {
                 event.setExt(result);
                 eventCenterTemplate.doEvents(event);

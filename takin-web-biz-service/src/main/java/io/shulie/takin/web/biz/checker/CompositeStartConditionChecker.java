@@ -170,7 +170,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
         ResourceContext ext = (ResourceContext)event.getExt();
         StartConditionCheckerContext context = new StartConditionCheckerContext();
         context.setSceneId(ext.getSceneId());
-        context.setTaskId(ext.getPressureTaskId());
+        context.setTaskId(ext.getTaskId());
         context.setReportId(ext.getReportId());
         context.setMessage(ext.getMessage());
         context.setUniqueKey(ext.getUniqueKey());
@@ -185,7 +185,7 @@ public class CompositeStartConditionChecker implements InitializingBean {
         StartConditionCheckerContext context = new StartConditionCheckerContext();
         context.setSceneId(sceneId);
         context.setResourceId(resourceContext.getResourceId());
-        context.setMessage("取消压测");
+        context.setMessage(resourceContext.getMessage());
         Map<Object, Object> sceneResource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId));
         if (!CollectionUtils.isEmpty(sceneResource)) {
             Object reportId = sceneResource.get(PressureStartCache.REPORT_ID);
@@ -199,6 +199,13 @@ public class CompositeStartConditionChecker implements InitializingBean {
             Object uniqueKey = sceneResource.get(PressureStartCache.UNIQUE_KEY);
             if (Objects.nonNull(uniqueKey)) {
                 context.setUniqueKey(String.valueOf(uniqueKey));
+            }
+            String resourceId = context.getResourceId();
+            if (StringUtils.isBlank(resourceId)) {
+                Object resource = sceneResource.get(PressureStartCache.RESOURCE_ID);
+                if (Objects.nonNull(uniqueKey)) {
+                    context.setResourceId(String.valueOf(resource));
+                }
             }
         }
         callStartFailClear(context);

@@ -31,7 +31,7 @@ public class PressureTaskApiImpl implements PressureTaskApi {
 
     @Override
     public String stop(PressureTaskStopReq req) {
-        return cloudApiSenderService.post(
+        return cloudApiSenderService.get(
             EntrypointUrl.join(EntrypointUrl.MODULE_RRESSURE, EntrypointUrl.METHOD_RRESSURE_STOP),
             req, new TypeReference<ApiResult<String>>() {}).getData();
     }

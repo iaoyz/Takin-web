@@ -16,6 +16,7 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
@@ -103,6 +104,8 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
     }
 
     private void notifyStart(ResourceContext context, long startTime) {
+        redisClientUtils.hmset(PressureStartCache.getResourceKey(context.getResourceId()), PressureStartCache.TASK_STATUS,
+            PressureTaskStateEnum.STARTING.ordinal());
         cloudAsyncService.checkJmeterHeartbeatTask(context);
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
