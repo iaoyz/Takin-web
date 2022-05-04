@@ -16,7 +16,6 @@ import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneSlaRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
-import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleEventConstant;
@@ -34,6 +33,7 @@ import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -54,6 +54,10 @@ public class SceneTaskEventService {
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private EnginePluginFilesService enginePluginFilesService;
+    @Value("${data.path}")
+    private String nfsDir;
+    @Value("${script.path}")
+    private String scriptPath;
 
     @IntrestFor(event = "failed")
     public void failed(Event event) {
@@ -136,11 +140,11 @@ public class SceneTaskEventService {
         List<ScheduleStartRequestExt.DataFile> dataFileList = new ArrayList<>();
         scene.getUploadFile().forEach(file -> {
             if (file.getFileType() == 0) {
-                scheduleStartRequest.setScriptPath(file.getUploadPath());
+                scheduleStartRequest.setScriptPath(reWritePathIfNecessary(file.getUploadPath()));
             } else {
                 ScheduleStartRequestExt.DataFile dataFile = new ScheduleStartRequestExt.DataFile();
                 dataFile.setName(file.getFileName());
-                dataFile.setPath(file.getUploadPath());
+                dataFile.setPath(reWritePathIfNecessary(file.getUploadPath()));
                 dataFile.setSplit(file.getIsSplit() != null && file.getIsSplit() == 1);
                 dataFile.setOrdered(file.getIsOrderSplit() != null && file.getIsOrderSplit() == 1);
                 dataFile.setRefId(file.getId());
@@ -239,5 +243,19 @@ public class SceneTaskEventService {
             configs.add(config);
         }
         return configs;
+    }
+
+    private String reWritePathIfNecessary(String filePath) {
+        String prefix = scriptPath.replaceAll(nfsDir, "");
+        if (StringUtils.isBlank(prefix)) {
+            return filePath;
+        }
+        if (prefix.startsWith("/")) {
+            prefix = prefix.substring(1);
+        }
+        if (!prefix.endsWith("/")) {
+            prefix += "/";
+        }
+        return prefix + filePath;
     }
 }
