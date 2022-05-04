@@ -9,7 +9,6 @@ public abstract class PressureStartCache {
 
     // 缓存
     public static final String CHECK_STATUS = "check_status";
-    public static final String TASK_STATUS = "task_status";
     public static final String RESOURCE_POD_NUM = "pod_num";
     public static final String TENANT_ID = "tenant_id";
     public static final String ENV_CODE = "env_code";

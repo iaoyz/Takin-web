@@ -104,8 +104,6 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
     }
 
     private void notifyStart(ResourceContext context, long startTime) {
-        redisClientUtils.hmset(PressureStartCache.getResourceKey(context.getResourceId()), PressureStartCache.TASK_STATUS,
-            PressureTaskStateEnum.STARTING.ordinal());
         cloudAsyncService.checkJmeterHeartbeatTask(context);
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
