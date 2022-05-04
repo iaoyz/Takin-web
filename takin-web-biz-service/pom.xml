@@ -274,7 +274,14 @@
             <groupId>io.shulie.takin</groupId>
             <artifactId>takin-web-eventcenter</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>jaxen</groupId>
+            <artifactId>jaxen</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.afterturn</groupId>
+            <artifactId>easypoi-base</artifactId>
+        </dependency>
     </dependencies>
 
 
