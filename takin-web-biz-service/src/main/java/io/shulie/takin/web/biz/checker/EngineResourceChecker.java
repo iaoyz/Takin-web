@@ -43,6 +43,7 @@ import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -281,7 +282,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     }
 
     private void fillContextIfNecessary(StartConditionCheckerContext context) {
-        if (context.getSceneData() == null) {
+        if (Objects.isNull(context.getSceneData())) {
             SceneManageQueryOptions options = new SceneManageQueryOptions();
             options.setIncludeBusinessActivity(true);
             options.setIncludeScript(true);
@@ -289,6 +290,11 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             context.setSceneData(sceneManage);
             context.setSceneId(sceneManage.getId());
             context.setTenantId(sceneManage.getTenantId());
+        }
+        if (Objects.isNull(context.getInput())) {
+            SceneTaskStartInput input = new SceneTaskStartInput();
+            input.setOperateId(WebPluginUtils.traceUserId());
+            context.setInput(input);
         }
     }
 
