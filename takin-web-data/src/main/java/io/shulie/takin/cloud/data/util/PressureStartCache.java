@@ -17,14 +17,14 @@ public abstract class PressureStartCache {
     public static final String TASK_ID = "task_id";
     public static final String RESOURCE_ID = "resource_Id";
     public static final String UNIQUE_KEY = "unique_key";
-    public static final String PRESSURE_TASK_ID = "pressure_task_id";
+    public static final String JOB_ID = "pressure_task_id";
 
     // 事件
     public static final String CHECK_FAIL_EVENT = "check_failed";
     public static final String CHECK_SUCCESS_EVENT = "check_success";
     public static final String PRE_STOP_EVENT = "pre_stop";
     public static final String UNLOCK_FLOW = "unlock_flow";
-    public static final String STOP = "stop";
+    public static final String START_FAILED = "start_fail";
     public static final String PRESSURE_END = "pressure_end";
 
     public static String getResourceKey(String resourceId) {

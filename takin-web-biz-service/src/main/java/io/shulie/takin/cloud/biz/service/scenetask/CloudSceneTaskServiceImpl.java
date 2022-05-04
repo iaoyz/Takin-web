@@ -324,7 +324,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         if (SceneManageStatusEnum.ifFree(sceneManage.getStatus())
             || Objects.equals(SceneManageStatusEnum.RESOURCE_LOCKING.getValue(), sceneManage.getStatus())) {
 
-            if (redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "1")) {
+            if (redisClientUtils.lock(PressureStartCache.getStopFlag(sceneId, resourceId), "1")) {
                 context.setResourceId(resourceId);
                 context.setMessage("取消压测");
                 Event event = new Event();
@@ -1071,7 +1071,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         entity.setTenantId(scene.getTenantId());
         entity.setEnvCode(scene.getEnvCode());
         pressureTaskDAO.save(entity);
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(entity.getId(), PressureTaskStateEnum.RESOURCE_LOCKING));
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(entity.getId(), PressureTaskStateEnum.INITIALIZED));
         return entity;
     }
 
@@ -1250,12 +1250,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
 
     // 压测启动中
     public void notifyStart(ReportResult report) {
-        Long taskId = report.getTaskId();
-        PressureTaskEntity entity = new PressureTaskEntity();
-        entity.setId(taskId);
-        entity.setStatus(PressureTaskStateEnum.STARTING.ordinal());
-        entity.setGmtUpdate(new Date());
-        pressureTaskDAO.updateById(entity);
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, PressureTaskStateEnum.STARTING));
+        pressureTaskDAO.updateStatus(report.getTaskId(), PressureTaskStateEnum.STARTING);
     }
 }

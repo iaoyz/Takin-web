@@ -1,6 +1,5 @@
 package io.shulie.takin.cloud.biz.notify.processor.jmeter;
 
-import java.util.Date;
 import java.util.Objects;
 
 import javax.annotation.Resource;
@@ -89,20 +88,13 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
             pressureTaskVarietyDAO.updateMessage(PressureTaskVarietyEntity.of(taskId,
                 PressureTaskStateEnum.STARTING, context.getMessage()));
         }
-        entity = new PressureTaskEntity();
-        entity.setId(taskId);
-        entity.setStatus(PressureTaskStateEnum.STOPPING.ordinal());
-        entity.setGmtUpdate(new Date());
-        pressureTaskDAO.updateById(entity);
-
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, PressureTaskStateEnum.STOPPING));
+        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.STOPPING);
     }
 
     private void notifyEnd(ResourceContext context, PressureStopNotifyParam param) {
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
         Long tenantId = context.getTenantId();
-        String resourceId = context.getResourceId();
         log.info("场景[{}]压测任务已完成,更新结束时间{}", sceneId, reportId);
         // 刷新任务状态的Redis缓存
         taskStatusCache.cacheStatus(sceneId, reportId, SceneRunTaskStatusEnum.ENDED);
@@ -117,17 +109,14 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
         Event event = new Event();
         event.setEventName("finished");
         TaskResult result = new TaskResult(sceneId, reportId, tenantId);
-        result.setResourceId(resourceId);
+        result.setResourceId(context.getResourceId());
         event.setExt(result);
         eventCenterTemplate.doEvents(event);
 
         // 清理缓存
-        TaskResult otherResult = new TaskResult(sceneId, reportId, tenantId);
-        otherResult.setResourceId(resourceId);
-        otherResult.setPressureTaskId(context.getTaskId());
         Event otherEvent = new Event();
         otherEvent.setEventName(PressureStartCache.PRESSURE_END);
-        otherEvent.setExt(otherResult);
+        otherEvent.setExt(context);
         eventCenterTemplate.doEvents(otherEvent);
     }
 

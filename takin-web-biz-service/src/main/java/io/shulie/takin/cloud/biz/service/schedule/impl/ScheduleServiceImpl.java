@@ -19,7 +19,6 @@ import com.pamirs.takin.cloud.entity.dao.schedule.TScheduleRecordMapper;
 import com.pamirs.takin.cloud.entity.domain.entity.schedule.ScheduleRecord;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
 import com.pamirs.takin.cloud.entity.domain.vo.scenemanage.SceneManageStartRecordVO;
-import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.constant.FormulaSymbol;
 import io.shulie.takin.adapter.api.constant.FormulaTarget;
 import io.shulie.takin.adapter.api.constant.JobType;
@@ -42,7 +41,6 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleEventService;
 import io.shulie.takin.cloud.biz.service.schedule.ScheduleService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
-import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
@@ -210,14 +208,14 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .updateEnum(SceneManageStatusEnum.JOB_CREATING)
                 .build());
 
-        request.setCallbackUrl(DataUtils.mergeUrl(appConfig.getConsole(), EntrypointUrl.CALL_BACK_PATH));
+        request.setCallbackUrl(appConfig.getCallbackUrl());
         try {
             PressureTaskStartReq req = buildStartReq(request);
             notifyTaskResult(request);
-            Long pressureTask = pressureTaskApi.start(req);
+            Long jobId = pressureTaskApi.start(req);
             // 是空的
             log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
-            updateReportAssociation(startRequest, pressureTask);
+            updateReportAssociation(startRequest, jobId);
             ResourceContext context = new ResourceContext();
             context.setResourceId(String.valueOf(req.getResourceId()));
             context.setSceneId(sceneId);
@@ -377,13 +375,13 @@ public class ScheduleServiceImpl implements ScheduleService {
         return info;
     }
 
-    private void updateReportAssociation(ScheduleStartRequestExt startRequest, Long pressureTaskId) {
+    private void updateReportAssociation(ScheduleStartRequestExt startRequest, Long jobId) {
         String resourceId = startRequest.getResourceId();
-        cloudReportService.updateResourceAssociation(resourceId, pressureTaskId);
-        pressureTaskDAO.updateResourceAssociation(resourceId, pressureTaskId);
-        redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId), PressureStartCache.PRESSURE_TASK_ID, pressureTaskId);
+        cloudReportService.updateResourceAssociation(resourceId, jobId);
+        pressureTaskDAO.updateResourceAssociation(resourceId, jobId);
+        redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId), PressureStartCache.JOB_ID, jobId);
         redisClientUtils.hmset(PressureStartCache.getSceneResourceKey(startRequest.getSceneId()),
-            PressureStartCache.PRESSURE_TASK_ID, pressureTaskId);
+            PressureStartCache.JOB_ID, jobId);
     }
     private void notifyTaskResult(ScheduleRunRequest request) {
         SceneTaskNotifyParam notify = new SceneTaskNotifyParam();

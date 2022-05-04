@@ -30,7 +30,7 @@ public class EntrypointUrl {
     public final static String MODULE_CALLBACK = "callback";
     // 改的的话需要调整ee中的agentInterceptor
     public final static String METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY = "";
-    public final static String CALL_BACK_PATH = EntrypointUrl.join("api" + EntrypointUrl.MODULE_CALLBACK,
+    public final static String CALL_BACK_PATH = EntrypointUrl.join("api", EntrypointUrl.MODULE_CALLBACK,
         EntrypointUrl.METHOD_ENGINE_CALLBACK_TASK_RESULT_NOTIFY);
 
     /**

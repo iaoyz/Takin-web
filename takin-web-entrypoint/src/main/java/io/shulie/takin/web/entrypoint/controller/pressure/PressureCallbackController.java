@@ -39,7 +39,7 @@ public class PressureCallbackController {
         if (processor != null) {
             cloudCallbackThreadPool.execute(() -> processor.process(param));
         }
-        return ResponseResult.success();
+        return ResponseResult.success("SUCCESS");
     }
 
     @PostConstruct
