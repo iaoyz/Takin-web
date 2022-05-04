@@ -25,7 +25,6 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.sla.SlaService;
 import io.shulie.takin.cloud.biz.utils.SlaUtil;
 import io.shulie.takin.cloud.common.bean.collector.SendMetricsEvent;
-import io.shulie.takin.cloud.common.bean.collector.SlaInfo;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.sla.AchieveModel;
 import io.shulie.takin.cloud.common.constants.Constants;
@@ -40,6 +39,7 @@ import io.shulie.takin.cloud.data.result.scenemanage.SceneManageWrapperResult;
 import io.shulie.takin.cloud.data.result.scenemanage.SceneSlaRefResult;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleStopRequestExt;
 import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
+import io.shulie.takin.cloud.model.callback.Sla;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
@@ -155,10 +155,10 @@ public class SlaServiceImpl implements SlaService {
     }
 
     @Override
-    public void detection(List<SlaInfo> slaInfo) {
+    public void detection(List<Sla.SlaInfo> slaInfo) {
         Set<Object> keys = stringRedisTemplate.opsForHash().keys(SLA_DESTROY_KEY);
         List keyList = new ArrayList(keys);
-        for (SlaInfo info : slaInfo) {
+        for (Sla.SlaInfo info : slaInfo) {
             Report report = tReportMapper.getReportByTaskId(info.getJobId());
             String ref = info.getRef();
             if (org.apache.commons.lang3.StringUtils.isNoneBlank(ref)) {

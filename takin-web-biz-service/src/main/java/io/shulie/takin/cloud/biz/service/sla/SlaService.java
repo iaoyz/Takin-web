@@ -1,7 +1,7 @@
 package io.shulie.takin.cloud.biz.service.sla;
 
 import io.shulie.takin.cloud.common.bean.collector.SendMetricsEvent;
-import io.shulie.takin.cloud.common.bean.collector.SlaInfo;
+import io.shulie.takin.cloud.model.callback.Sla;
 
 import java.util.List;
 
@@ -32,5 +32,5 @@ public interface SlaService {
      */
     void cacheData(Long sceneId);
 
-    void detection(List<SlaInfo> slaInfo);
+    void detection(List<Sla.SlaInfo> slaInfo);
 }

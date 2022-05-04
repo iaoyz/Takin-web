@@ -1,7 +1,6 @@
 package io.shulie.takin.web.entrypoint.controller.cloud.sla;
 
 import io.shulie.takin.cloud.biz.service.sla.SlaService;
-import io.shulie.takin.cloud.common.bean.collector.SlaInfo;
 import io.swagger.annotations.Api;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,8 +18,4 @@ public class SLAController {
     @Autowired
     private SlaService slaService;
 
-    @GetMapping("/push")
-    public void detection(@RequestParam(value = "slaInfo") List<SlaInfo> slaInfo) {
-        slaService.detection(slaInfo);
-    }
 }

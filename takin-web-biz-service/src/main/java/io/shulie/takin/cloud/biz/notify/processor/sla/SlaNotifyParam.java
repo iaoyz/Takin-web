@@ -5,9 +5,11 @@ import io.shulie.takin.cloud.model.callback.Sla.SlaInfo;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class SlaNotifyParam extends CloudNotifyParam {
 
-    private SlaInfo data;
+    private List<SlaInfo> data;
 }
