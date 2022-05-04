@@ -704,6 +704,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         StartConditionCheckerContext context = StartConditionCheckerContext.of(sceneManageId);
         CheckResult checkResult = engineResourceChecker.check(context);
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
+            redisClientUtils.del(tryRunKey);
             throw new RuntimeException(checkResult.getMessage());
         }
         sceneTryRunTaskStartOutput.setSceneId(sceneManageId);
@@ -1226,7 +1227,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         ResourceContext context = (ResourceContext)event.getExt();
         String tryRunKey = PressureStartCache.getTryRunKey(context.getSceneId());
         if (redisClientUtils.hasKey(tryRunKey)) {
-            startTask(JsonHelper.json2Bean(redisClientUtils.getString(tryRunKey), SceneTaskStartInput.class));
+            String tryRun = redisClientUtils.getString(tryRunKey);
+            redisClientUtils.del(tryRunKey);
+            startTask(JsonHelper.json2Bean(tryRun, SceneTaskStartInput.class));
         }
     }
 
@@ -1235,7 +1238,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         ResourceContext context = (ResourceContext)event.getExt();
         String flowDebugKey = PressureStartCache.getFlowDebugKey(context.getSceneId());
         if (redisClientUtils.hasKey(flowDebugKey)) {
-            startTask(JsonHelper.json2Bean(flowDebugKey, SceneTaskStartInput.class));
+            String flowDebug = redisClientUtils.getString(flowDebugKey);
+            redisClientUtils.del(flowDebugKey);
+            startTask(JsonHelper.json2Bean(flowDebug, SceneTaskStartInput.class));
         }
     }
 
@@ -1244,7 +1249,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         ResourceContext context = (ResourceContext)event.getExt();
         String inspectKey = PressureStartCache.getInspectKey(context.getSceneId());
         if (redisClientUtils.hasKey(inspectKey)) {
-            startTask(JsonHelper.json2Bean(inspectKey, SceneTaskStartInput.class));
+            String inspect = redisClientUtils.getString(inspectKey);
+            redisClientUtils.del(inspectKey);
+            startTask(JsonHelper.json2Bean(inspect, SceneTaskStartInput.class));
         }
     }
 
