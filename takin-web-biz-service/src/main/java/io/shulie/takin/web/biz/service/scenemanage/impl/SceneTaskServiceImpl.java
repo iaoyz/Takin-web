@@ -49,12 +49,17 @@ import io.shulie.takin.adapter.api.model.response.scenemanage.SceneManageWrapper
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneActionResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneJobStateResp;
 import io.shulie.takin.adapter.api.model.response.scenetask.SceneTaskAdjustTpsResp;
+import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
+import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.EventCenterTemplate;
 import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.web.biz.checker.CompositeStartConditionChecker;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
@@ -121,7 +126,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-public class SceneTaskServiceImpl implements SceneTaskService {
+public class SceneTaskServiceImpl extends AbstractIndicators implements SceneTaskService {
 
     public static final String PRESSURE_REPORT_ID_SCENE_PREFIX = "pressure:reportId:scene:";
 
@@ -175,6 +180,9 @@ public class SceneTaskServiceImpl implements SceneTaskService {
 
     @Resource
     private CloudSceneManageService cloudSceneManageService;
+
+    @Resource
+    private EventCenterTemplate eventCenterTemplate;
 
     /**
      * 是否是预发环境
@@ -305,6 +313,7 @@ public class SceneTaskServiceImpl implements SceneTaskService {
             startResult = cloudTaskApi.start(sceneTaskStartReq);
         } catch (Exception e) {
             log.error("takin-cloud启动压测场景返回错误，id={}", param.getSceneId(), e);
+            notifyStartFail(param.getSceneId(), e.getMessage());
             throw new TakinWebException(TakinWebExceptionEnum.SCENE_THIRD_PARTY_ERROR, e.getMessage(), e);
         }
         // 缓存 报告id
@@ -790,5 +799,24 @@ public class SceneTaskServiceImpl implements SceneTaskService {
         int status = existsPending ? CheckStatus.PENDING.ordinal() : CheckStatus.SUCCESS.ordinal();
         return CheckResultVo.builder().sceneName(sceneManage.getPressureTestSceneName())
             .podNumber(sceneManage.getIpNum()).status(status).resourceId(resource).checkList(webResultList).build();
+    }
+
+    private void notifyStartFail(Long sceneId, String message) {
+
+        Object resource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.RESOURCE_ID);
+        if (Objects.nonNull(resource)) {
+            ResourceContext context = getResourceContext(String.valueOf(resource));
+            if (Objects.nonNull(context)) {
+                Event event = new Event();
+                event.setEventName(PressureStartCache.START_FAILED);
+                StopEventSource source = new StopEventSource();
+                source.setMessage(message);
+                source.setContext(context);
+                source.setStarted(false);
+                event.setExt(source);
+                eventCenterTemplate.doEvents(event);
+            }
+        }
     }
 }

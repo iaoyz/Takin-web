@@ -26,6 +26,7 @@ import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
+import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
@@ -34,7 +35,6 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
@@ -73,8 +73,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     private PressureTaskDAO pressureTaskDAO;
     @Resource
     private ReportDao reportDao;
-    @Resource
-    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
     @Resource
     private CloudReportService cloudReportService;
     @Resource
@@ -154,7 +152,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
 
     private void initCache(StartConditionCheckerContext context) {
         SceneManageWrapperOutput sceneData = context.getSceneData();
-        // 缓存资源锁定状态和pod数
         Map<String, Object> param = new HashMap<>(32);
         param.put(PressureStartCache.CHECK_STATUS, CheckStatus.PENDING.ordinal());
         param.put(PressureStartCache.RESOURCE_POD_NUM, sceneData.getIpNum());
@@ -165,8 +162,13 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         param.put(PressureStartCache.REPORT_ID, context.getReportId());
         param.put(PressureStartCache.UNIQUE_KEY, context.getUniqueKey());
         redisClientUtils.hmset(PressureStartCache.getResourceKey(context.getResourceId()), param);
-        redisClientUtils.hmset(PressureStartCache.getSceneResourceKey(sceneData.getId()),
-            PressureStartCache.RESOURCE_ID, context.getResourceId());
+
+        Map<String, Object> sceneParam = new HashMap<>(4);
+        sceneParam.put(PressureStartCache.REPORT_ID, context.getReportId());
+        sceneParam.put(PressureStartCache.TASK_ID, context.getTaskId());
+        sceneParam.put(PressureStartCache.RESOURCE_ID, context.getResourceId());
+        sceneParam.put(PressureStartCache.UNIQUE_KEY, context.getUniqueKey());
+        redisClientUtils.hmset(PressureStartCache.getSceneResourceKey(sceneData.getId()), sceneParam);
     }
 
     private StrategyConfigExt getStrategy() {
@@ -188,6 +190,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             request.setResourceId(resourceId);
             cloudResourceApi.unLock(request);
         }
+        releaseFlow(context.getReportId());
     }
 
     @IntrestFor(event = PressureStartCache.CHECK_SUCCESS_EVENT, order = 0)
@@ -218,6 +221,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             clearCache(resource, sceneId);
             unLockResource(context.getResourceId());
         }
+        releaseFlow(context.getReportId());
     }
 
     @IntrestFor(event = PressureStartCache.START_FAILED)
@@ -262,6 +266,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         sceneManageDAO.getBaseMapper().updateById(sceneManage);
         pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE);
         unLockResource(context.getResourceId());
+        releaseFlow(context.getReportId());
     }
 
 
@@ -336,6 +341,18 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             pressureTaskApi.stop(req);
         } catch (Exception e) {
             log.error("压力引擎停止异常", e);
+        }
+    }
+
+    //释放流量
+    private void releaseFlow(Long reportId) {
+        if (Objects.nonNull(reportId)) {
+            Event flowEvent = new Event();
+            flowEvent.setEventName(PressureStartCache.UNLOCK_FLOW);
+            TaskResult taskResult = new TaskResult();
+            taskResult.setTaskId(reportId);
+            flowEvent.setExt(taskResult);
+            eventCenterTemplate.doEvents(flowEvent);
         }
     }
 
