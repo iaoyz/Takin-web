@@ -17,7 +17,6 @@ import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
@@ -49,8 +48,6 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
     private RedisClientUtils redisClientUtils;
     @Resource
     private PressureTaskDAO pressureTaskDAO;
-    @Resource
-    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
 
     /**
      * 压力节点 启动时间超时
