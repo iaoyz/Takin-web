@@ -1,5 +1,6 @@
 package io.shulie.takin.cloud.data.dao.scene.task;
 
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
 
 public interface PressureTaskDAO {
@@ -17,4 +18,6 @@ public interface PressureTaskDAO {
     void updateByReportId(PressureTaskEntity entity);
 
     PressureTaskEntity queryByResourceId(String resourceId);
+
+    void updateStatus(Long taskId, PressureTaskStateEnum state);
 }

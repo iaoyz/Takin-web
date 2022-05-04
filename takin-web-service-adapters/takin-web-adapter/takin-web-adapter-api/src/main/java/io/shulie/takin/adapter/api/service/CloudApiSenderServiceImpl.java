@@ -302,13 +302,9 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
     }
 
     // 填充请求头
-    private static final String USER_ID = "user-id";
-    private static final String ENV_CODE = "env-code";
-    private static final String TENANT_ID = "tenant-id";
-    private static final String FILTER_SQL = "filterSql";
-    private static final String TENANT_CODE = "tenant-code";
-    private static final String USER_APP_KEY = "user-app-key";
-    private static final String TENANT_APP_KEY = "tenant-app-key";
+    public static final String ENV_CODE = "envCode";
+    public static final String USER_APP_KEY = "userAppKey";
+    public static final String TENANT_APP_KEY = "tenantAppKey";
 
     /**
      * 获取请求头信息
@@ -318,10 +314,6 @@ public class CloudApiSenderServiceImpl implements CloudApiSenderService {
     private Map<String, String> getDataTrace(ContextExt context,String url,byte[] body) {
         Map<String,String> headMap =  new HashMap<String, String>(4) {{
             put(ENV_CODE, context.getEnvCode());
-            put(FILTER_SQL, context.getFilterSql());
-            put(TENANT_CODE, context.getTenantCode());
-            put(USER_ID, String.valueOf(context.getUserId()));
-            put(TENANT_ID, String.valueOf(context.getTenantId()));
             put(USER_APP_KEY, String.valueOf(context.getUserAppKey()));
             put(TENANT_APP_KEY, String.valueOf(context.getUserAppKey()));
         }};

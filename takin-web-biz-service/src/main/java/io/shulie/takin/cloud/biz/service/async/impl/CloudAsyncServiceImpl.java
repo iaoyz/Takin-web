@@ -1,6 +1,5 @@
 package io.shulie.takin.cloud.biz.service.async.impl;
 
-import java.util.Date;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -19,8 +18,6 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
-import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
-import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
@@ -240,7 +237,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         resourceContext.setSceneId(sceneId);
         resourceContext.setReportId(reportId);
         resourceContext.setTenantId(tenantId);
-        resourceContext.setPressureTaskId(context.getTaskId());
+        resourceContext.setJobId(context.getTaskId());
         resourceContext.setUniqueKey(context.getUniqueKey());
         if (success) {
             Event event = new Event();
@@ -254,14 +251,9 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
     }
 
     private void markJmeterStarted(ResourceContext context) {
-        PressureTaskEntity entity = new PressureTaskEntity();
         Long taskId = context.getTaskId();
-        entity.setId(taskId);
-        entity.setStatus(PressureTaskStateEnum.PRESSURING.ordinal());
-        entity.setGmtUpdate(new Date());
-        pressureTaskDAO.updateById(entity);
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, PressureTaskStateEnum.ALIVE));
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, PressureTaskStateEnum.PRESSURING));
+        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.ALIVE);
+        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.PRESSURING);
     }
 
     private boolean isSceneFinished(Long sceneId) {

@@ -53,6 +53,7 @@ import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageQueryInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneManageWrapperInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneScriptRefInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneSlaRefInput;
+import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageListOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneBusinessActivityRefOutput;
@@ -69,7 +70,6 @@ import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.enums.PressureModeEnum;
-import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageErrorEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
@@ -709,13 +709,17 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
 
         // 触发启动失败事件
         Event event = new Event();
-        event.setEventName(PressureStartCache.PRESSURE_END);
+        event.setEventName(PressureStartCache.START_FAILED);
+        StopEventSource source = new StopEventSource();
         ResourceContext context = new ResourceContext();
         context.setSceneId(sceneId);
         context.setTaskId(recentlyReport.getTaskId());
         context.setReportId(recentlyReport.getId());
         context.setResourceId(recentlyReport.getResourceId());
-        context.setMessage(errorMsg);
+        source.setContext(context);
+        source.setMessage(errorMsg);
+        source.setStarted(false);
+        event.setExt(source);
         eventCenterTemplate.doEvents(event);
     }
 

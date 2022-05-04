@@ -12,6 +12,5 @@ public class StopEventSource {
 
     private ResourceContext context;
     private String message;
-    private boolean isCheckStep;
-    private boolean callStop;
+    private boolean started;
 }

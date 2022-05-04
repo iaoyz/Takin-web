@@ -17,7 +17,6 @@ import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
-import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -209,9 +208,10 @@ public abstract class AbstractIndicators {
         context.setTenantId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TENANT_ID))));
         context.setCheckStatus(String.valueOf(resource.get(PressureStartCache.CHECK_STATUS)));
         context.setTaskId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TASK_ID))));
-        Object pressureTaskId = resource.get(PressureStartCache.PRESSURE_TASK_ID);
-        if (Objects.nonNull(pressureTaskId)) {
-            context.setPressureTaskId(Long.valueOf(String.valueOf(pressureTaskId)));
+        context.setUniqueKey(String.valueOf(resource.get(PressureStartCache.UNIQUE_KEY)));
+        Object jobId = resource.get(PressureStartCache.JOB_ID);
+        if (Objects.nonNull(jobId)) {
+            context.setJobId(Long.valueOf(String.valueOf(jobId)));
         }
         return context;
     }
@@ -225,19 +225,15 @@ public abstract class AbstractIndicators {
     }
 
     protected void callStopEventIfNecessary(String resourceId, String message) {
-        ResourceContext resourceContext = getResourceContext(resourceId);
-        String curStatus;
-        if (resourceContext != null && Objects.nonNull(curStatus = resourceContext.getCheckStatus())
-            && redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(resourceContext.getSceneId(), resourceId), "1")) {
-            boolean isCheckStep = !curStatus.equals(String.valueOf(CheckStatus.SUCCESS.ordinal()));
-            Long startedJmeter = redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterSuccessKey(resourceId));
+        ResourceContext context = getResourceContext(resourceId);
+        if (context != null
+            && redisClientUtils.lock(PressureStartCache.getStopFlag(context.getSceneId(), resourceId), "1")) {
             Event event = new Event();
-            event.setEventName(PressureStartCache.STOP);
+            event.setEventName(PressureStartCache.START_FAILED);
             StopEventSource source = new StopEventSource();
-            source.setCheckStep(isCheckStep);
             source.setMessage(message);
-            source.setContext(resourceContext);
-            source.setCallStop(startedJmeter != null && startedJmeter > 0);
+            source.setContext(context);
+            source.setStarted(Objects.nonNull(context.getJobId()));
             event.setExt(source);
             eventCenterTemplate.doEvents(event);
         }
@@ -248,7 +244,7 @@ public abstract class AbstractIndicators {
         private Long sceneId;
         private Long reportId;
         private Long taskId;
-        private Long pressureTaskId;
+        private Long jobId;
         private String resourceId;
         private Long tenantId;
         private Long podNumber;
@@ -258,5 +254,6 @@ public abstract class AbstractIndicators {
         private String uniqueKey;
 
         private String message;
+        private boolean isEnd;
     }
 }
