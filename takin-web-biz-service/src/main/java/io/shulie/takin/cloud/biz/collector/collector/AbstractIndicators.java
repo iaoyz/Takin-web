@@ -208,7 +208,6 @@ public abstract class AbstractIndicators {
         context.setReportId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.REPORT_ID))));
         context.setTenantId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TENANT_ID))));
         context.setCheckStatus(String.valueOf(resource.get(PressureStartCache.CHECK_STATUS)));
-        context.setTaskStatus(String.valueOf(resource.get(PressureStartCache.TASK_STATUS)));
         context.setTaskId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.TASK_ID))));
         Object pressureTaskId = resource.get(PressureStartCache.PRESSURE_TASK_ID);
         if (Objects.nonNull(pressureTaskId)) {
@@ -231,12 +230,14 @@ public abstract class AbstractIndicators {
         if (resourceContext != null && Objects.nonNull(curStatus = resourceContext.getCheckStatus())
             && redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(resourceContext.getSceneId(), resourceId), "1")) {
             boolean isCheckStep = !curStatus.equals(String.valueOf(CheckStatus.SUCCESS.ordinal()));
+            Long startedJmeter = redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterSuccessKey(resourceId));
             Event event = new Event();
             event.setEventName(PressureStartCache.STOP);
             StopEventSource source = new StopEventSource();
             source.setCheckStep(isCheckStep);
             source.setMessage(message);
             source.setContext(resourceContext);
+            source.setCallStop(startedJmeter != null && startedJmeter > 0);
             event.setExt(source);
             eventCenterTemplate.doEvents(event);
         }
@@ -253,7 +254,6 @@ public abstract class AbstractIndicators {
         private Long podNumber;
         private String resourceKey;
         private String checkStatus;
-        private String taskStatus;
         private Long heartbeatTime;
         private String uniqueKey;
 

@@ -254,9 +254,6 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
     }
 
     private void markJmeterStarted(ResourceContext context) {
-        redisClientUtils.hmset(PressureStartCache.getResourceKey(context.getResourceId()),
-            PressureStartCache.TASK_STATUS, PressureTaskStateEnum.PRESSURING.ordinal());
-
         PressureTaskEntity entity = new PressureTaskEntity();
         Long taskId = context.getTaskId();
         entity.setId(taskId);

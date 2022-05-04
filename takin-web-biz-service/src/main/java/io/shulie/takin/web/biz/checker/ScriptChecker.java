@@ -82,15 +82,6 @@ public class ScriptChecker implements StartConditionChecker {
         List<FileInfo> fileInfos = sceneData.getUploadFile().stream()
             .filter(file -> FileTypeBusinessUtil.isScriptOrData(file.getFileType()))
             .map(file -> new FileInfo(deduceFileType(file), pathPrefix + file.getUploadPath())).collect(Collectors.toList());
-        //List<EnginePluginRefOutput> enginePlugins = sceneData.getEnginePlugins();
-        //if (CollectionUtils.isNotEmpty(enginePlugins)) {
-        //    List<String> pluginsPath = enginePluginFilesService.findPluginFilesPathByPluginIdAndVersion(enginePlugins);
-        //    List<FileInfo> plugins = pluginsPath.stream().filter(Objects::nonNull)
-        //        .map(path -> new FileInfo(FileTypeEnum.JAR.ordinal(), path)).collect(Collectors.toList());
-        //    if (!CollectionUtils.isEmpty(plugins)) {
-        //        fileInfos.addAll(plugins);
-        //    }
-        //}
         checkExists(fileInfos);
     }
 

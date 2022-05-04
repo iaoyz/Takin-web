@@ -155,7 +155,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         // 缓存资源锁定状态和pod数
         Map<String, Object> param = new HashMap<>(32);
         param.put(PressureStartCache.CHECK_STATUS, CheckStatus.PENDING.ordinal());
-        param.put(PressureStartCache.TASK_STATUS, PressureTaskStateEnum.RESOURCE_LOCKING.ordinal());
         param.put(PressureStartCache.RESOURCE_POD_NUM, sceneData.getIpNum());
         param.put(PressureStartCache.TENANT_ID, sceneData.getTenantId());
         param.put(PressureStartCache.ENV_CODE, sceneData.getEnvCode());
@@ -198,7 +197,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         String resourceKey = PressureStartCache.getResourceKey(resourceId);
         if (redisClientUtils.hasKey(resourceKey)) {
             redisClientUtils.hmset(resourceKey, PressureStartCache.CHECK_STATUS, CheckStatus.SUCCESS.ordinal());
-            redisClientUtils.hmset(resourceKey, PressureStartCache.TASK_STATUS, PressureTaskStateEnum.STARTING.ordinal());
         }
         redisClientUtils.delete(PressureStartCache.getErrorMessageKey(resourceId));
         pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(ext.getTaskId(), PressureTaskStateEnum.STARTING));
@@ -233,7 +231,20 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             // --->update 失败状态
             sceneManageDAO.getBaseMapper().updateById(sceneManage);
             //试跑失败，停掉pod
-            cloudSceneTaskService.stop(sceneId);
+            if (source.isCallStop()) {
+                cloudSceneTaskService.stop(sceneId);
+            } else {
+                Long taskId = context.getTaskId();
+                PressureTaskEntity entity = new PressureTaskEntity();
+                entity.setId(taskId);
+                entity.setStatus(PressureTaskStateEnum.INACTIVE.ordinal());
+                entity.setGmtUpdate(new Date());
+                pressureTaskDAO.updateById(entity);
+
+                pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId,
+                    PressureTaskStateEnum.INACTIVE, source.getMessage()));
+                clearCache(context.getResourceId(), sceneId);
+            }
         }
     }
 
@@ -280,7 +291,6 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         String resourceKey = PressureStartCache.getResourceKey(resourceId);
         if (redisClientUtils.hasKey(resourceKey)) {
             redisClientUtils.hmset(resourceKey, PressureStartCache.CHECK_STATUS, CheckStatus.FAIL.ordinal());
-            redisClientUtils.hmset(resourceKey, PressureStartCache.TASK_STATUS, PressureTaskStateEnum.RESOURCE_LOCK_FAILED.ordinal());
         }
         redisClientUtils.setString(PressureStartCache.getErrorMessageKey(resourceId), message, 30, TimeUnit.SECONDS);
 
