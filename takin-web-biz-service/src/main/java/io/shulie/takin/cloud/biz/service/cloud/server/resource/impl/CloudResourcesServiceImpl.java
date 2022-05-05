@@ -96,6 +96,12 @@ public class CloudResourcesServiceImpl implements CloudResourcesService {
                 case "hostIp":
                     String h1 = r1.getHostIp();
                     String h2 = r2.getHostIp();
+                    if (StringUtils.isBlank(h1)) {
+                        h1 = "";
+                    }
+                    if (StringUtils.isBlank(h2)) {
+                        h2 = "";
+                    }
                     if (StringUtils.equals("asc", sortType)) {
                         return h1.compareTo(h2);
                     } else {
@@ -106,6 +112,12 @@ public class CloudResourcesServiceImpl implements CloudResourcesService {
                     Integer s2 = cache.get(r2.getStatus());
                     String host1 = r1.getHostIp();
                     String host2 = r2.getHostIp();
+                    if (StringUtils.isBlank(host1)) {
+                        host1 = "";
+                    }
+                    if (StringUtils.isBlank(host2)) {
+                        host2 = "";
+                    }
                     if (StringUtils.equals("desc", sortType)) {
                         if (s1 > s2) {
                             return -1;
