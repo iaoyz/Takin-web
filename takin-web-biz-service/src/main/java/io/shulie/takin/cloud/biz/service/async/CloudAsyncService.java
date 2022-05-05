@@ -28,5 +28,5 @@ public interface CloudAsyncService {
      * @param sceneId  场景主键
      * @param reportId 报告主键
      */
-    void updateSceneRunningStatus(Long sceneId, Long reportId, Long customerId);
+    void updateSceneRunningStatus(Long sceneId, Long reportId, String resourceId);
 }

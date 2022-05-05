@@ -90,13 +90,12 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
     private void cacheTryRunTaskStatus(ResourceContext context) {
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
-        Long tenantId = context.getTenantId();
         taskStatusCache.cacheStatus(sceneId, reportId, SceneRunTaskStatusEnum.RUNNING);
         Report report = tReportMapper.selectByPrimaryKey(reportId);
         if (Objects.nonNull(report) && !Objects.equals(report.getPressureType(), PressureSceneEnum.FLOW_DEBUG.getCode())
             && !Objects.equals(report.getPressureType(), PressureSceneEnum.INSPECTION_MODE.getCode())
             && SceneRunTaskStatusEnum.RUNNING.getCode() == SceneRunTaskStatusEnum.RUNNING.getCode()) {
-            cloudAsyncService.updateSceneRunningStatus(sceneId, reportId, tenantId);
+            cloudAsyncService.updateSceneRunningStatus(sceneId, reportId, context.getResourceId());
         }
     }
 

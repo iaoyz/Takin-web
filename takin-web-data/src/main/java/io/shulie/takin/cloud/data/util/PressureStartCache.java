@@ -62,10 +62,6 @@ public abstract class PressureStartCache {
         return String.format("pressure:scene:pre_stop:%s:%s", sceneId, resourceId);
     }
 
-    public static String getSceneFinishKey(Long sceneId) {
-        return String.format("pressure:scene:finish:%s", sceneId);
-    }
-
     public static String getStopFlag(Long sceneId, String resourceId) {
         return String.format("pressure:scene:stop:%s:%s", sceneId, resourceId);
     }
