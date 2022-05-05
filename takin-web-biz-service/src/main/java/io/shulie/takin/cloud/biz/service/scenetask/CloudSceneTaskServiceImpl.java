@@ -30,9 +30,11 @@ import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivity
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneFileReadPosition;
 import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
+import io.shulie.takin.adapter.api.entrypoint.pressure.PressureTaskApi;
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
+import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
 import io.shulie.takin.adapter.api.model.request.resource.ResourceUnLockRequest;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
@@ -61,7 +63,6 @@ import io.shulie.takin.cloud.biz.output.scenetask.SceneTaskStartCheckOutput.File
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTaskStopOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTryRunTaskStartOutput;
 import io.shulie.takin.cloud.biz.output.scenetask.SceneTryRunTaskStatusOutput;
-import io.shulie.takin.cloud.biz.service.engine.EngineService;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
@@ -71,7 +72,6 @@ import io.shulie.takin.cloud.biz.utils.DataUtils;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
-import io.shulie.takin.cloud.common.constants.PressureInstanceRedisKey;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.constants.SceneManageConstant;
 import io.shulie.takin.cloud.common.constants.SceneStartCheckConstants;
@@ -152,8 +152,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     @Resource
     private ReportMapper reportMapper;
     @Resource
-    private EngineService engineService;
-    @Resource
     private CloudReportService cloudReportService;
     @Resource
     private PluginManager pluginManager;
@@ -198,6 +196,8 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     private PressureTaskVarietyDAO pressureTaskVarietyDAO;
     @Resource
     private CloudResourceApi cloudResourceApi;
+    @Resource
+    private PressureTaskApi pressureTaskApi;
 
     private static final Long KB = 1024L;
     private static final Long MB = KB * 1024;
@@ -627,10 +627,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
                 return r;
             }
 
-            String jobName = ScheduleConstants.getScheduleName(report.getSceneId(), reportId, report.getTenantId());
-            String engineInstanceRedisKey = PressureInstanceRedisKey.getEngineInstanceRedisKey(report.getSceneId(),
-                reportId, report.getTenantId());
-            engineService.deleteJob(jobName, engineInstanceRedisKey);
+            PressureTaskStopReq request = new PressureTaskStopReq();
+            request.setJobId(report.getPressureTaskId());
+            pressureTaskApi.stop(request);
 
             // 触发强制停止
             if (isNeedFinishReport && ReportConstants.INIT_STATUS == (report.getStatus())
