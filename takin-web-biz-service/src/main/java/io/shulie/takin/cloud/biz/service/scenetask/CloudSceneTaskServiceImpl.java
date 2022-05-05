@@ -285,6 +285,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             //失败状态
             JSONObject jb = JSON.parseObject(report.getFeatures());
             sceneAction.setMsg(Arrays.asList(jb.getString(ReportConstants.PRESSURE_MSG).split(",")));
+            applyFinish(sceneId);
             return sceneAction;
         }
         //设置缓存，用以检查压测场景启动状态
@@ -829,11 +830,10 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             if (null == account || account.getBalance().compareTo(sceneData.getEstimateFlow()) < 0) {
                 throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "压测流量不足！");
             }
-            frozenAccountFlow(input, null, sceneData);
         }
 
-        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus())) {
-            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
+        if (!SceneManageStatusEnum.RESOURCE_LOCKING.getValue().equals(sceneData.getStatus())) {
+            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为资源已锁定状态！");
         }
         //检测脚本文件是否有变更
         SceneScriptRefOutput scriptRefOutput = sceneData.getUploadFile().stream().filter(Objects::nonNull)
@@ -1443,5 +1443,17 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         Long sceneId = report.getSceneId();
         redisClientUtils.del(PressureStartCache.getTryRunKey(sceneId),
             PressureStartCache.getFlowDebugKey(sceneId), PressureStartCache.getInspectKey(sceneId));
+    }
+
+    private void applyFinish(Long sceneId) {
+        Object resourceId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.RESOURCE_ID);
+        ResourceContext context = new ResourceContext();
+        context.setSceneId(sceneId);
+        context.setResourceId(String.valueOf(resourceId));
+        Event event = new Event();
+        event.setEventName(PressureStartCache.PRESSURE_END);
+        event.setExt(context);
+        eventCenterTemplate.doEvents(event);
     }
 }

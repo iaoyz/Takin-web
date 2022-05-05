@@ -76,7 +76,7 @@ public class ApplicationChecker implements StartConditionChecker {
     private void doCheck(StartConditionCheckerContext context) {
         this.checkStatus(context);
         this.checkSwitch();
-        //this.checkBusinessActivity(context);
+        this.checkBusinessActivity(context);
     }
 
     private void checkSwitch() {
