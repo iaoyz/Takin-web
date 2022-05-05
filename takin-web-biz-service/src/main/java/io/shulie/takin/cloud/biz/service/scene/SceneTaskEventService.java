@@ -176,6 +176,7 @@ public class SceneTaskEventService {
         scheduleStopRequest.setTenantId(reportResult.getTenantId());
         scheduleStopRequest.setPressureTaskId(reportResult.getTaskId());
         scheduleStopRequest.setJobId(reportResult.getPressureTaskId());
+        scheduleStopRequest.setResourceId(reportResult.getResourceId());
         Event event = new Event();
         event.setEventName(ScheduleEventConstant.STOP_SCHEDULE_EVENT);
         event.setExt(scheduleStopRequest);

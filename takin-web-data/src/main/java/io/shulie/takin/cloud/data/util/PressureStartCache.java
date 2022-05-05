@@ -40,48 +40,52 @@ public abstract class PressureStartCache {
         return String.format("pressure:resource:pod:%s", resourceId);
     }
 
-    // 启动成功的jmeter实例名称存入该key
+    // 启动成功的jmeter实例名称存入该key,stop 时会移除
     public static String getResourceJmeterSuccessKey(String resourceId) {
         return String.format("pressure:resource:jmeter:%s", resourceId);
     }
 
-    // 停止的jmeter实例名称存入该key
-    public static String getResourceJmeterStopKey(String resourceId) {
-        return String.format("pressure:resource:jmeter:stop:%s", resourceId);
-    }
-
+    // 场景启动锁，保证场景不能同时启动多次
     public static String getSceneResourceLockingKey(Long sceneId) {
         return String.format("pressure:scene:locking:%s", sceneId);
     }
 
+    // 场景Id为key保存的相关信息
     public static String getSceneResourceKey(Long sceneId) {
         return String.format("pressure:scene:resource:%s", sceneId);
     }
 
+    // 场景提前取消压测标识
     public static String getScenePreStopKey(Long sceneId, String resourceId) {
         return String.format("pressure:scene:pre_stop:%s:%s", sceneId, resourceId);
     }
 
+    // 压测停止标识：jmeter异常、pod异常、jmeter启动超时、pod启动超时、jmeter心跳超时、pod心跳超时
     public static String getStopFlag(Long sceneId, String resourceId) {
         return String.format("pressure:scene:stop:%s:%s", sceneId, resourceId);
     }
 
+    // jmeter心跳时间
     public static String getJmeterHeartbeatKey(Long sceneId) {
         return String.format("pressure:scene:heartbeat:jmeter:%s", sceneId);
     }
 
+    // pod心跳时间
     public static String getPodHeartbeatKey(Long sceneId) {
         return String.format("pressure:scene:heartbeat:pod:%s", sceneId);
     }
 
+    // 第一个启动的pod id
     public static String getPodStartFirstKey(String resourceId) {
         return String.format("pressure:resource:start:pod:first:%s", resourceId);
     }
 
+    // 第一个启动的jmeter id
     public static String getJmeterStartFirstKey(String resourceId) {
         return String.format("pressure:resource:start:jmeter:first:%s", resourceId);
     }
 
+    // 第一个异常的jmeter id
     public static String getJmeterErrorFirstKey(String resourceId) {
         return String.format("pressure:resource:stop:jmeter:first:%s", resourceId);
     }
@@ -104,7 +108,6 @@ public abstract class PressureStartCache {
             PressureStartCache.getPodHeartbeatKey(sceneId),
             PressureStartCache.getPodStartFirstKey(resourceId),
             PressureStartCache.getResourceJmeterSuccessKey(resourceId),
-            PressureStartCache.getResourceJmeterStopKey(resourceId),
             PressureStartCache.getJmeterHeartbeatKey(sceneId),
             PressureStartCache.getJmeterStartFirstKey(resourceId),
             PressureStartCache.getSceneResourceLockingKey(sceneId),
