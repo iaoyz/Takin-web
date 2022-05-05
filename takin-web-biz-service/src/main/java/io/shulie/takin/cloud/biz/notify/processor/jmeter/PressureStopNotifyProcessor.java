@@ -90,12 +90,6 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
         result.setResourceId(context.getResourceId());
         event.setExt(result);
         eventCenterTemplate.doEvents(event);
-
-        // 清理缓存
-        Event otherEvent = new Event();
-        otherEvent.setEventName(PressureStartCache.PRESSURE_END);
-        otherEvent.setExt(context);
-        eventCenterTemplate.doEvents(otherEvent);
     }
 
     @Override

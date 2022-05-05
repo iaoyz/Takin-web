@@ -46,6 +46,7 @@ import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivityDetail;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.WarnDetail;
 import io.shulie.takin.cloud.biz.cloudserver.ReportConverter;
+import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.input.report.UpdateReportConclusionInput;
 import io.shulie.takin.cloud.biz.input.report.UpdateReportSlaDataInput;
 import io.shulie.takin.cloud.biz.input.report.WarnCreateInput;
@@ -84,6 +85,7 @@ import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateConclusionParam;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
 import io.shulie.takin.cloud.data.result.report.ReportResult;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.api.AssetExtApi;
 import io.shulie.takin.cloud.ext.content.asset.AssetInvoiceExt;
 import io.shulie.takin.cloud.ext.content.asset.RealAssectBillExt;
@@ -108,6 +110,7 @@ import io.shulie.takin.adapter.api.model.response.report.ReportTrendResp;
 import io.shulie.takin.adapter.api.model.response.report.ScriptNodeTreeResp;
 import io.shulie.takin.adapter.api.model.response.scenemanage.BusinessActivitySummaryBean;
 import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.EventCenterTemplate;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.plugin.framework.core.PluginManager;
 import io.shulie.takin.utils.json.JsonHelper;
@@ -152,6 +155,8 @@ public class CloudReportServiceImpl implements CloudReportService {
     SceneTaskEventService sceneTaskEventService;
     @Resource
     TReportBusinessActivityDetailMapper tReportBusinessActivityDetailMapper;
+    @Resource
+    private EventCenterTemplate eventCenterTemplate;
 
     @Value("${report.aggregation.interval}")
     private String reportAggregationInterval;
@@ -693,6 +698,7 @@ public class CloudReportServiceImpl implements CloudReportService {
                 UpdateStatusBean.build(reportResult.getSceneId(), reportResult.getId(), reportResult.getTenantId())
                     .checkEnum(SceneManageStatusEnum.ENGINE_RUNNING,
                         SceneManageStatusEnum.STOP).updateEnum(SceneManageStatusEnum.WAIT).build());
+            pressureEnd(reportResult);
             return true;
         }
         if (checkReportError(reportResult)) {
@@ -732,6 +738,7 @@ public class CloudReportServiceImpl implements CloudReportService {
                 UpdateStatusBean.build(reportResult.getSceneId(), reportResult.getId(), reportResult.getTenantId())
                     .checkEnum(SceneManageStatusEnum.ENGINE_RUNNING,
                         SceneManageStatusEnum.STOP).updateEnum(SceneManageStatusEnum.WAIT).build());
+            pressureEnd(reportResult);
         }
         //报告结束应该放在场景之后
         reportDao.finishReport(reportId);
@@ -753,7 +760,7 @@ public class CloudReportServiceImpl implements CloudReportService {
         cloudSceneManageService.updateSceneLifeCycle(UpdateStatusBean.build(reportResult.getSceneId(), reportResult.getId(),
                 reportResult.getTenantId())
             .checkEnum(SceneManageStatusEnum.getAll()).updateEnum(SceneManageStatusEnum.FORCE_STOP).build());
-
+        pressureEnd(reportResult);
     }
 
     /**
@@ -1123,6 +1130,16 @@ public class CloudReportServiceImpl implements CloudReportService {
                 UpdateStatusBean.build(reportResult.getSceneId(), reportResult.getId(), reportResult.getTenantId())
                     .checkEnum(
                         SceneManageStatusEnum.STOP).updateEnum(SceneManageStatusEnum.WAIT).build());
+            // 清理缓存
+            Event otherEvent = new Event();
+            otherEvent.setEventName(PressureStartCache.PRESSURE_END);
+
+            ResourceContext context = new ResourceContext();
+            context.setSceneId(reportResult.getSceneId());
+            context.setResourceId(reportResult.getResourceId());
+            context.setReportId(reportResult.getId());
+            otherEvent.setExt(context);
+            eventCenterTemplate.doEvents(otherEvent);
         }
 
     }
@@ -1601,5 +1618,16 @@ public class CloudReportServiceImpl implements CloudReportService {
     @Override
     public void updateResourceAssociation(String resourceId, Long pressureTaskId) {
         reportDao.updateResourceAssociation(resourceId, pressureTaskId);
+    }
+
+    private void pressureEnd(ReportResult reportResult) {
+        Event event = new Event();
+        event.setEventName(PressureStartCache.PRESSURE_END);
+        ResourceContext context = new ResourceContext();
+        context.setSceneId(reportResult.getSceneId());
+        context.setResourceId(reportResult.getResourceId());
+        context.setReportId(reportResult.getId());
+        event.setExt(context);
+        eventCenterTemplate.doEvents(event);
     }
 }

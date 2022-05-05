@@ -117,7 +117,6 @@ public abstract class PressureStartCache {
             PressureStartCache.getResourceJmeterStopKey(resourceId),
             PressureStartCache.getJmeterHeartbeatKey(sceneId),
             PressureStartCache.getJmeterStartFirstKey(resourceId),
-            PressureStartCache.getJmeterErrorFirstKey(resourceId),
             PressureStartCache.getSceneResourceLockingKey(sceneId),
             PressureStartCache.getSceneResourceKey(sceneId),
             PressureStartCache.getScenePreStopKey(sceneId, resourceId),
@@ -127,6 +126,7 @@ public abstract class PressureStartCache {
             PressureStartCache.getInspectKey(sceneId),
             PressureStartCache.getTryRunKey(sceneId),
             PressureStartCache.getErrorMessageKey(resourceId),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getJmeterErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId))
         );
