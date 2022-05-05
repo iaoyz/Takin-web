@@ -30,7 +30,7 @@ public class CloudResourceApiImpl implements CloudResourceApi {
     public List<CloudResource> getDetails(int taskId, String resourceId) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         CloudResourcesRequest crr = new CloudResourcesRequest();
-        crr.setTaskId(taskId);
+        crr.setJobId(taskId);
         crr.setResourceId(resourceId);
         List<CloudResource> resources = cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.MODULE_RESOURCE,EntrypointUrl.METHOD_RESOURCE_MACHINE), crr, new TypeReference<ApiResult<List<CloudResource>>>() {
         }).getData();

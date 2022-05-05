@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 public class CloudResourcesRequest extends ContextExt {
-    private int taskId;
+    private int jobId;
     private String resourceId;
 }
