@@ -42,7 +42,7 @@ public abstract class PressureStartCache {
 
     // 启动成功的jmeter实例名称存入该key
     public static String getResourceJmeterSuccessKey(String resourceId) {
-        return String.format("pressure:resource:jmeter:success:%s", resourceId);
+        return String.format("pressure:resource:jmeter:%s", resourceId);
     }
 
     // 停止的jmeter实例名称存入该key
