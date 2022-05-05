@@ -64,9 +64,6 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
         JobExample data = context.getData();
         String resourceId = String.valueOf(data.getResourceId());
         String podId = String.valueOf(data.getJobExampleId());
-        if (redisClientUtils.hasKey(PressureStartCache.getResourceJmeterFailKey(resourceId))) {
-            return;
-        }
         ResourceContext resourceContext = getResourceContext(resourceId);
         if (resourceContext == null) {
             return;
