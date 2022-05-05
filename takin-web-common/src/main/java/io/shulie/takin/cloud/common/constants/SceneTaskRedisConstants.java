@@ -30,14 +30,4 @@ public class SceneTaskRedisConstants {
      */
     public static final String PRESSURE_NODE_START_ERROR = "pressure_node_start_error";
 
-    /**
-     * 请求流量明细上传记录KEY
-     */
-    public static final String PRESSURE_TEST_LOG_UPLOAD_RECORD = "pressure_test_log_upload_record";
-
-    /**
-     * 引擎启动回传事件文件名KEY
-     */
-    public static final String CURRENT_PTL_FILE_NAME_SYSTEM_PROP_KEY = "__CURRENT_PTL_FILE_NAME__";
-
 }
