@@ -201,6 +201,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         resourceContext.setResourceId(resourceId);
         resourceContext.setSceneId(sceneId);
         resourceContext.setReportId(reportId);
+        resourceContext.setTaskId(context.getTaskId());
         resourceContext.setTenantId(tenantId);
         resourceContext.setJobId(context.getTaskId());
         resourceContext.setUniqueKey(context.getUniqueKey());
