@@ -259,11 +259,6 @@ public class CompositeStartConditionChecker implements InitializingBean {
             result.setStatus(TaskStatusEnum.FAILED);
             cloudSceneTaskService.handleSceneTaskEvent(result);
         }
-        sceneManageDAO.getBaseMapper().update(
-            null,
-            Wrappers.lambdaUpdate(SceneManageEntity.class)
-                .set(SceneManageEntity::getStatus, SceneManageStatusEnum.WAIT.getValue())
-                .eq(SceneManageEntity::getId, context.getSceneId()));
         if (flag) {
             redisClientUtils.delete(PressureStartCache.getSceneResourceKey(context.getSceneId()));
         }
