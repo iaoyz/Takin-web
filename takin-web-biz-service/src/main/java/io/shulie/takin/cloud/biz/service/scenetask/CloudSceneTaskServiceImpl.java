@@ -30,8 +30,10 @@ import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivity
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.SceneFileReadPosition;
 import com.pamirs.takin.cloud.entity.domain.vo.file.FileSliceRequest;
 import com.pamirs.takin.cloud.entity.domain.vo.report.SceneTaskNotifyParam;
+import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
 import io.shulie.takin.adapter.api.model.common.RuleBean;
 import io.shulie.takin.adapter.api.model.common.TimeBean;
+import io.shulie.takin.adapter.api.model.request.resource.ResourceUnLockRequest;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
@@ -194,6 +196,8 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     private RedisClientUtils redisClientUtils;
     @Resource
     private PressureTaskVarietyDAO pressureTaskVarietyDAO;
+    @Resource
+    private CloudResourceApi cloudResourceApi;
 
     private static final Long KB = 1024L;
     private static final Long MB = KB * 1024;
@@ -1446,14 +1450,18 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     }
 
     private void applyFinish(Long sceneId) {
-        Object resourceId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+        Object resource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
             PressureStartCache.RESOURCE_ID);
+        String resourceId = String.valueOf(resource);
         ResourceContext context = new ResourceContext();
         context.setSceneId(sceneId);
-        context.setResourceId(String.valueOf(resourceId));
+        context.setResourceId(resourceId);
         Event event = new Event();
         event.setEventName(PressureStartCache.PRESSURE_END);
         event.setExt(context);
         eventCenterTemplate.doEvents(event);
+        ResourceUnLockRequest request = new ResourceUnLockRequest();
+        request.setResourceId(resourceId);
+        cloudResourceApi.unLock(request);
     }
 }
