@@ -9,22 +9,16 @@ import javax.annotation.Resource;
 
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
-import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
-import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
-import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
-import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
-import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.web.biz.checker.StartConditionCheckerContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -38,11 +32,7 @@ import org.springframework.util.CollectionUtils;
 public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAsyncService {
 
     @Resource
-    private SceneManageDAO sceneManageDAO;
-    @Resource
     private EventCenterTemplate eventCenterTemplate;
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
 
     @Resource
     private RedisClientUtils redisClientUtils;
@@ -202,28 +192,6 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         }
     }
 
-    @Async("updateStatusPool")
-    @Override
-    public void updateSceneRunningStatus(Long sceneId, Long reportId, String resourceId) {
-        while (true) {
-            boolean isSceneFinished = isSceneFinished(sceneId);
-            boolean jobFinished = isJobFinished(resourceId);
-            if (jobFinished || isSceneFinished) {
-                String statusKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId,
-                    reportId);
-                stringRedisTemplate.opsForHash().put(
-                    statusKey, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY,
-                    SceneRunTaskStatusEnum.ENDED.getText());
-                break;
-            }
-            try {
-                TimeUnit.SECONDS.sleep(CHECK_INTERVAL_TIME);
-            } catch (InterruptedException e) {
-                log.error("更新场景运行状态缓存失败！异常信息:{}", e.getMessage());
-            }
-        }
-    }
-
     private void markResourceStatus(boolean success, StartConditionCheckerContext context) {
         String resourceId = context.getResourceId();
         Long sceneId = context.getSceneId();
@@ -251,17 +219,5 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         Long taskId = context.getTaskId();
         pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.ALIVE);
         pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.PRESSURING);
-    }
-
-    private boolean isSceneFinished(Long sceneId) {
-        SceneManageEntity sceneManage = sceneManageDAO.getSceneById(sceneId);
-        if (Objects.isNull(sceneManage) || Objects.isNull(sceneManage.getStatus())) {
-            return true;
-        }
-        return SceneManageStatusEnum.ifFinished(sceneManage.getStatus());
-    }
-
-    private boolean isJobFinished(String resourceId) {
-        return !redisClientUtils.hasKey(PressureStartCache.getResourceKey(resourceId));
     }
 }

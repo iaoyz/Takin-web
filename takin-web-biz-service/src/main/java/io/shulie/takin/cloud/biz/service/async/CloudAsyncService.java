@@ -21,12 +21,4 @@ public interface CloudAsyncService {
 
     @Async("checkStartedPodPool")
     void checkPodHeartbeatTask(ResourceContext context);
-
-    /**
-     * 更新场景运行状态
-     *
-     * @param sceneId  场景主键
-     * @param reportId 报告主键
-     */
-    void updateSceneRunningStatus(Long sceneId, Long reportId, String resourceId);
 }
