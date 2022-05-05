@@ -186,7 +186,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             Event event = new Event();
             event.setEventName(PressureStartCache.START_FAILED);
             StopEventSource source = new StopEventSource();
-            source.setMessage("取消压测");
+            source.setMessage("停止压测");
             source.setStarted(Objects.nonNull(jobId));
 
             ResourceContext context = new ResourceContext();
