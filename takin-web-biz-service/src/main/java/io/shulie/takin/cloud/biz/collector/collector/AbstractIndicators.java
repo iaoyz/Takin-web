@@ -201,7 +201,6 @@ public abstract class AbstractIndicators {
             return null;
         }
         ResourceContext context = new ResourceContext();
-        context.setResourceKey(resourceKey);
         context.setResourceId(resourceId);
         context.setSceneId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.SCENE_ID))));
         context.setReportId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.REPORT_ID))));
@@ -248,12 +247,9 @@ public abstract class AbstractIndicators {
         private String resourceId;
         private Long tenantId;
         private Long podNumber;
-        private String resourceKey;
         private String checkStatus;
-        private Long heartbeatTime;
         private String uniqueKey;
 
         private String message;
-        private boolean isEnd;
     }
 }
