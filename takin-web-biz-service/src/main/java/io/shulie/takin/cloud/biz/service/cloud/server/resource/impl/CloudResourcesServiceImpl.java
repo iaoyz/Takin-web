@@ -96,6 +96,6 @@ public class CloudResourcesServiceImpl implements CloudResourcesService {
                 default:
                     return 0;
             }
-        }).skip((currentPage - 1) * pageSize).limit(pageSize).collect(Collectors.toList());
+        }).skip(currentPage * pageSize).limit(pageSize).collect(Collectors.toList());
     }
 }

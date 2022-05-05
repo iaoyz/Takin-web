@@ -91,7 +91,7 @@ public abstract class PressureStartCache {
         return String.format("pressure:resource:start:jmeter:first:%s", resourceId);
     }
 
-    public static String getJmeterStopFirstKey(String resourceId) {
+    public static String getJmeterErrorFirstKey(String resourceId) {
         return String.format("pressure:resource:stop:jmeter:first:%s", resourceId);
     }
 
@@ -117,7 +117,7 @@ public abstract class PressureStartCache {
             PressureStartCache.getResourceJmeterStopKey(resourceId),
             PressureStartCache.getJmeterHeartbeatKey(sceneId),
             PressureStartCache.getJmeterStartFirstKey(resourceId),
-            PressureStartCache.getJmeterStopFirstKey(resourceId),
+            PressureStartCache.getJmeterErrorFirstKey(resourceId),
             PressureStartCache.getSceneResourceLockingKey(sceneId),
             PressureStartCache.getSceneResourceKey(sceneId),
             PressureStartCache.getScenePreStopKey(sceneId, resourceId),

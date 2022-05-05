@@ -11,15 +11,10 @@ import io.shulie.takin.cloud.biz.notify.CloudNotifyProcessor;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
-import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
-import io.shulie.takin.cloud.data.model.mysql.PressureTaskEntity;
-import io.shulie.takin.cloud.data.model.mysql.PressureTaskVarietyEntity;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.model.callback.basic.JobExample;
 import io.shulie.takin.eventcenter.Event;
@@ -37,10 +32,6 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
     private SceneTaskStatusCache taskStatusCache;
     @Resource
     private ReportDao reportDao;
-    @Resource
-    private PressureTaskDAO pressureTaskDAO;
-    @Resource
-    private PressureTaskVarietyDAO pressureTaskVarietyDAO;
 
     @Override
     public void process(PressureStopNotifyParam param) {
@@ -64,9 +55,6 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
         Long sceneId = resourceContext.getSceneId();
         Long reportId = resourceContext.getReportId();
         String resourceId = resourceContext.getResourceId();
-        if (redisClientUtils.lockNoExpire(PressureStartCache.getJmeterStopFirstKey(resourceId), podId)) {
-            notifyStopping(resourceContext);
-        }
         Long stoppedCount = redisClientUtils.setSetValueAndReturnCount(PressureStartCache.getResourceJmeterStopKey(resourceId), podId);
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         String taskKey = getPressureTaskKey(sceneId, reportId, tenantId);
@@ -79,16 +67,6 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
             // 压测停止
             notifyEnd(resourceContext, context);
         }
-    }
-
-    private void notifyStopping(ResourceContext context) {
-        Long taskId = context.getTaskId();
-        PressureTaskEntity entity = pressureTaskDAO.selectById(taskId);
-        if (entity.getStatus() == PressureTaskStateEnum.STARTING.ordinal()) { // 启动中
-            pressureTaskVarietyDAO.updateMessage(PressureTaskVarietyEntity.of(taskId,
-                PressureTaskStateEnum.STARTING, context.getMessage()));
-        }
-        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.STOPPING);
     }
 
     private void notifyEnd(ResourceContext context, PressureStopNotifyParam param) {

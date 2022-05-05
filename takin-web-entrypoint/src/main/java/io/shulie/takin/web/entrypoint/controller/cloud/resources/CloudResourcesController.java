@@ -34,7 +34,7 @@ public class CloudResourcesController {
             @RequestParam("resourceId") String resourceId,
             @RequestParam(value = "sortField", required = false) String sortField,
             @RequestParam(value = "sortType", required = false) String sortType,
-            @RequestParam(value = "currentPage", required = false) Integer currentPage,
+            @RequestParam(value = "current", required = false) Integer currentPage,
             @RequestParam(value = "pageSize", required = false) Integer pageSize
     ) {
         return Response.success(cloudResourcesService.getDetail(cloudResourceApi.getDetails(taskId, resourceId), taskId, resourceId, sortField, sortType, currentPage, pageSize));
