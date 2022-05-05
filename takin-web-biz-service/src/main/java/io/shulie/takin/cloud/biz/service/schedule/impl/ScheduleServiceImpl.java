@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -28,9 +27,9 @@ import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.SlaInfo;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadConfigInfo;
-import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStopReq;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.config.AppConfig;
+import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.engine.EngineConfigService;
 import io.shulie.takin.cloud.biz.service.record.ScheduleRecordEnginePluginService;
@@ -63,6 +62,8 @@ import io.shulie.takin.cloud.ext.content.enginecall.ThreadGroupConfigExt;
 import io.shulie.takin.cloud.model.request.StartRequest;
 import io.shulie.takin.cloud.model.request.StartRequest.FileInfo;
 import io.shulie.takin.cloud.model.request.StartRequest.FileInfo.SplitInfo;
+import io.shulie.takin.eventcenter.Event;
+import io.shulie.takin.eventcenter.EventCenterTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -105,6 +106,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     private RedisClientUtils redisClientUtils;
     @Resource
     private CloudSceneTaskService cloudSceneTaskService;
+    @Resource
+    private EventCenterTemplate eventCenterTemplate;
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
@@ -177,11 +180,24 @@ public class ScheduleServiceImpl implements ScheduleService {
     public void stopSchedule(ScheduleStopRequestExt request) {
         log.info("停止调度, 请求数据：{}", request);
         ScheduleRecord scheduleRecord = tScheduleRecordMapper.getScheduleByTaskId(request.getTaskId());
-        Long pressureTaskId = request.getPressureTaskId();
-        if (scheduleRecord != null && Objects.nonNull(pressureTaskId)) {
-            PressureTaskStopReq req = new PressureTaskStopReq();
-            req.setJobId(pressureTaskId);
-            pressureTaskApi.stop(req);
+        if (scheduleRecord != null) {
+            Long jobId = request.getJobId();
+            Event event = new Event();
+            event.setEventName(PressureStartCache.START_FAILED);
+            StopEventSource source = new StopEventSource();
+            source.setMessage("取消压测");
+            source.setStarted(Objects.nonNull(jobId));
+
+            ResourceContext context = new ResourceContext();
+            context.setSceneId(request.getSceneId());
+            context.setTaskId(request.getPressureTaskId());
+            context.setReportId(request.getTaskId());
+            context.setResourceId(request.getResourceId());
+            context.setTenantId(request.getTenantId());
+            context.setJobId(jobId);
+            source.setContext(context);
+            event.setExt(source);
+            eventCenterTemplate.doEvents(event);
         }
 
     }
