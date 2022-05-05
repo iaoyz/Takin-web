@@ -110,4 +110,14 @@ public class ReportDetailOutput extends UserCommonExt {
     @ApiModelProperty("是否存在JTL文件")
     private boolean hasJtl;
 
+    /**
+     * 资源Id
+     */
+    private String resourceId;
+
+    /**
+     * 压测引擎任务Id
+     */
+    private Long pressureTaskId;
+
 }

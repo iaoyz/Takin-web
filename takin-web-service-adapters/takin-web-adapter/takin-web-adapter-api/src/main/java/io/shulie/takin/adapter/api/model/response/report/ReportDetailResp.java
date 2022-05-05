@@ -104,4 +104,14 @@ public class ReportDetailResp extends ContextExt {
     private boolean hasJtl;
 
     private Long scriptId;
+
+    /**
+     * 资源Id
+     */
+    private String resourceId;
+
+    /**
+     * 压测引擎任务Id
+     */
+    private Long pressureTaskId;
 }

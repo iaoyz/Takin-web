@@ -102,4 +102,14 @@ public class ReportDetailOutput extends ContextExt {
     @ApiModelProperty(value = "节点链路详情")
     private List<ScriptNodeSummaryBean> nodeDetail;
 
+    /**
+     * 资源Id
+     */
+    private String resourceId;
+
+    /**
+     * 压测引擎任务Id
+     */
+    private Long pressureTaskId;
+
 }
