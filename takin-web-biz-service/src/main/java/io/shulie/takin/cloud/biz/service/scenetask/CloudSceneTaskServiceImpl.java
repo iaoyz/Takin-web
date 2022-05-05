@@ -337,13 +337,11 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         }
         ResourceContext context = new ResourceContext();
         context.setSceneId(sceneId);
-        String resourceId = req.getResourceId();
-        if (StringUtils.isBlank(resourceId)) {
-            Object resource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
-                PressureStartCache.RESOURCE_ID);
-            if (Objects.nonNull(resource)) {
-                resourceId = String.valueOf(resource);
-            }
+        String resourceId = "";
+        Object resource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
+            PressureStartCache.RESOURCE_ID);
+        if (Objects.nonNull(resource)) {
+            resourceId = String.valueOf(resource);
         }
         if (SceneManageStatusEnum.ifFree(sceneManage.getStatus())
             || Objects.equals(SceneManageStatusEnum.RESOURCE_LOCKING.getValue(), sceneManage.getStatus())) {
