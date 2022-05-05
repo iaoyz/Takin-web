@@ -50,6 +50,7 @@ import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartCheckInput.File
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskStartInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTaskUpdateTpsInput;
 import io.shulie.takin.cloud.biz.input.scenemanage.SceneTryRunInput;
+import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.output.report.SceneInspectTaskStartOutput;
 import io.shulie.takin.cloud.biz.output.report.SceneInspectTaskStopOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
@@ -134,7 +135,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -267,12 +267,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         ReportResult report = cloudReportService.getReportBaseInfo(Long.valueOf(String.valueOf(reportId)));
 
         if (!Objects.equals(input.getAssetType(), AssetTypeEnum.PRESS_REPORT.getCode())) {
-            try {
-                frozenAccountFlow(input, report, sceneData);
-            } catch (Exception e) {
-                afterFlowError(report);
-                throw e;
-            }
+            frozenAccountFlow(input, report, sceneData);
         }
         sceneData.setResourceId(report.getResourceId());
         SceneActionOutput sceneAction = new SceneActionOutput();
@@ -1303,7 +1298,11 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         if (redisClientUtils.hasKey(tryRunKey)) {
             String tryRun = redisClientUtils.getString(tryRunKey);
             redisClientUtils.del(tryRunKey);
-            startTask(JsonHelper.json2Bean(tryRun, SceneTaskStartInput.class));
+            try {
+                startTask(JsonHelper.json2Bean(tryRun, SceneTaskStartInput.class));
+            } catch (Exception e) {
+                startFail(context, e.getMessage());
+            }
         }
     }
 
@@ -1314,7 +1313,11 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         if (redisClientUtils.hasKey(flowDebugKey)) {
             String flowDebug = redisClientUtils.getString(flowDebugKey);
             redisClientUtils.del(flowDebugKey);
-            startTask(JsonHelper.json2Bean(flowDebug, SceneTaskStartInput.class));
+            try {
+                startTask(JsonHelper.json2Bean(flowDebug, SceneTaskStartInput.class));
+            } catch (Exception e) {
+                startFail(context, e.getMessage());
+            }
         }
     }
 
@@ -1325,7 +1328,11 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         if (redisClientUtils.hasKey(inspectKey)) {
             String inspect = redisClientUtils.getString(inspectKey);
             redisClientUtils.del(inspectKey);
-            startTask(JsonHelper.json2Bean(inspect, SceneTaskStartInput.class));
+            try {
+                startTask(JsonHelper.json2Bean(inspect, SceneTaskStartInput.class));
+            } catch (Exception e) {
+                startFail(context, e.getMessage());
+            }
         }
     }
 
@@ -1427,16 +1434,16 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         }
     }
 
-    private void afterFlowError(ReportResult report) {
-        Event flowEvent = new Event();
-        flowEvent.setEventName(PressureStartCache.UNLOCK_FLOW);
-        TaskResult taskResult = new TaskResult();
-        taskResult.setTaskId(report.getId());
-        flowEvent.setExt(taskResult);
-        eventCenterTemplate.doEvents(flowEvent);
-        Long sceneId = report.getSceneId();
-        redisClientUtils.del(PressureStartCache.getTryRunKey(sceneId),
-            PressureStartCache.getFlowDebugKey(sceneId), PressureStartCache.getInspectKey(sceneId));
+    private void startFail(ResourceContext context, String message) {
+        StopEventSource source = new StopEventSource();
+        source.setMessage(message);
+        source.setContext(context);
+        source.setStarted(false);
+
+        Event event = new Event();
+        event.setEventName(PressureStartCache.START_FAILED);
+        event.setExt(source);
+        eventCenterTemplate.doEvents(event);
     }
 
     private void applyFinish(Long sceneId) {

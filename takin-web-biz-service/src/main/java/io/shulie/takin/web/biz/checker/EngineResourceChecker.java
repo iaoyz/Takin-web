@@ -28,8 +28,10 @@ import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
+import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
+import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
@@ -46,6 +48,7 @@ import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 
@@ -77,6 +80,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     private CloudReportService cloudReportService;
     @Resource
     private SceneManageDAO sceneManageDAO;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
@@ -244,7 +249,12 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     @IntrestFor(event = PressureStartCache.PRESSURE_END)
     public void pressureEnd(Event event) {
         ResourceContext context = (ResourceContext)event.getExt();
-        clearCache(context.getResourceId(), context.getSceneId());
+        Long sceneId = context.getSceneId();
+        Long reportId = context.getReportId();
+        clearCache(context.getResourceId(), sceneId);
+        String statusKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
+        stringRedisTemplate.opsForHash().put(
+            statusKey, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.ENDED.getText());
     }
 
     // 启动前失败，即启动异常
