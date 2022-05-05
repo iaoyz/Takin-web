@@ -139,4 +139,11 @@ public class ReportResult extends ContextExt {
      * 压测引擎任务Id
      */
     private Long pressureTaskId;
+
+    public Date getStartTime() {
+        if (startTime == null) {
+            return new Date();
+        }
+        return startTime;
+    }
 }

@@ -185,11 +185,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     private ReportBusinessActivityDetailDao reportBusinessActivityDetailDao;
     @Resource
     private EventCenterTemplate eventCenterTemplate;
-    /**
-     * 初始化报告开始时间偏移时间
-     */
-    @Value("${init.report.startTime.Offset:10}")
-    private Long offsetStartTime;
     @Resource
     private RedisClientUtils redisClientUtils;
     @Resource
@@ -1145,7 +1140,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         entity.setResourceId(scene.getResourceId());
         entity.setSceneName(scene.getPressureTestSceneName());
         // 解决开始时间 偏移10s
-        entity.setStartTime(new Date(System.currentTimeMillis() + offsetStartTime * 1000));
+        entity.setStartTime(new Date());
         entity.setStatus(PressureTaskStateEnum.INITIALIZED.ordinal());
         entity.setGmtCreate(new Date());
         entity.setOperateId(input.getOperateId());
@@ -1173,8 +1168,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         report.setEnvCode(scene.getEnvCode());
         report.setTenantId(scene.getTenantId());
         report.setOperateId(input.getOperateId());
-        // 解决开始时间 偏移10s
-        report.setStartTime(pressureTask.getStartTime());
         //负责人默认启动人
         report.setUserId(CloudPluginUtils.getUserId());
         report.setSceneName(scene.getPressureTestSceneName());
