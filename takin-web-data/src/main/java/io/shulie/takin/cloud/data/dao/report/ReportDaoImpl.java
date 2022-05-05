@@ -269,12 +269,6 @@ public class ReportDaoImpl implements ReportDao {
     }
 
     @Override
-    public void updateResourceAssociation(String resourceId, Long pressureTaskId) {
-        reportMapper.update(new ReportEntity() {{setPressureTaskId(pressureTaskId);}},
-            Wrappers.lambdaQuery(ReportEntity.class).eq(ReportEntity::getResourceId, resourceId));
-    }
-
-    @Override
     public ReportResult selectByResourceId(String resourceId) {
         ReportEntity entity = reportMapper.selectOne(
             Wrappers.lambdaQuery(ReportEntity.class)

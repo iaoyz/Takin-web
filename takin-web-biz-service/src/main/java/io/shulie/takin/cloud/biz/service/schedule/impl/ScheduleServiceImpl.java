@@ -48,6 +48,7 @@ import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CommonUtil;
 import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
+import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.content.enginecall.BusinessActivityExt;
 import io.shulie.takin.cloud.ext.content.enginecall.ScheduleInitParamExt;
@@ -387,8 +388,11 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private void updateReportAssociation(ScheduleStartRequestExt startRequest, Long jobId) {
+        ReportUpdateParam report = new ReportUpdateParam();
+        report.setId(startRequest.getTaskId());
+        report.setPressureTaskId(jobId);
+        cloudReportService.updateReportById(report);
         String resourceId = startRequest.getResourceId();
-        cloudReportService.updateResourceAssociation(resourceId, jobId);
         pressureTaskDAO.updateResourceAssociation(resourceId, jobId);
         redisClientUtils.hmset(PressureStartCache.getResourceKey(resourceId), PressureStartCache.JOB_ID, jobId);
         redisClientUtils.hmset(PressureStartCache.getSceneResourceKey(startRequest.getSceneId()),
