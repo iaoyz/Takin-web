@@ -1,12 +1,9 @@
 package io.shulie.takin.cloud.biz.notify.processor.jmeter;
 
 import java.util.Date;
-import java.util.Objects;
 
 import javax.annotation.Resource;
 
-import com.pamirs.takin.cloud.entity.dao.report.TReportMapper;
-import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.notify.CallbackType;
@@ -15,14 +12,10 @@ import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
-import io.shulie.takin.cloud.common.enums.PressureSceneEnum;
-import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
-import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskVarietyDAO;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.model.callback.basic.JobExample;
 import lombok.extern.slf4j.Slf4j;
@@ -41,9 +34,6 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
 
     @Resource
     private ReportDao reportDao;
-
-    @Resource
-    private TReportMapper tReportMapper;
 
     @Resource
     private CloudAsyncService cloudAsyncService;
@@ -91,12 +81,6 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
         taskStatusCache.cacheStatus(sceneId, reportId, SceneRunTaskStatusEnum.RUNNING);
-        Report report = tReportMapper.selectByPrimaryKey(reportId);
-        if (Objects.nonNull(report) && !Objects.equals(report.getPressureType(), PressureSceneEnum.FLOW_DEBUG.getCode())
-            && !Objects.equals(report.getPressureType(), PressureSceneEnum.INSPECTION_MODE.getCode())
-            && SceneRunTaskStatusEnum.RUNNING.getCode() == SceneRunTaskStatusEnum.RUNNING.getCode()) {
-            cloudAsyncService.updateSceneRunningStatus(sceneId, reportId, context.getResourceId());
-        }
     }
 
     private void notifyStart(ResourceContext context, long startTime) {
