@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,6 +20,13 @@ import java.util.stream.Collectors;
 public class CloudResourcesServiceImpl implements CloudResourcesService {
     @javax.annotation.Resource
     private CloudResourcesDao cloudResourcesDao;
+    private static final Map<Integer, Integer> cache = new HashMap<>(3);
+
+    static {
+        cache.put(3, 3);
+        cache.put(1, 2);
+        cache.put(2, 1);
+    }
 
     @Override
     public Resource getDetail(List<CloudResource> resources, int taskId, String resourceId, String sortField, String sortType, Integer currentPage, Integer pageSize) {
@@ -92,6 +100,28 @@ public class CloudResourcesServiceImpl implements CloudResourcesService {
                         return h1.compareTo(h2);
                     } else {
                         return h1.compareTo(h2) == 1 ? -1 : 1;
+                    }
+                case "status":
+                    Integer s1 = cache.get(r1.getStatus());
+                    Integer s2 = cache.get(r2.getStatus());
+                    String host1 = r1.getHostIp();
+                    String host2 = r2.getHostIp();
+                    if (StringUtils.equals("desc", sortType)) {
+                        if (s1 > s2) {
+                            return -1;
+                        } else if (s1 < s2) {
+                            return 1;
+                        } else {
+                            return host1.compareTo(host2) == 1 ? -1 : 1;
+                        }
+                    } else {
+                        if (s1 > s2) {
+                            return 1;
+                        } else if (s1 < s2) {
+                            return -1;
+                        } else {
+                            return host1.compareTo(host2);
+                        }
                     }
                 default:
                     return 0;

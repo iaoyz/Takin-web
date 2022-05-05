@@ -32,8 +32,8 @@ public class CloudResourcesController {
     public Response getDetails(
             @RequestParam("taskId") int taskId,
             @RequestParam("resourceId") String resourceId,
-            @RequestParam(value = "sortField", required = false) String sortField,
-            @RequestParam(value = "sortType", required = false) String sortType,
+            @RequestParam(value = "sortField", required = false, defaultValue = "status") String sortField,
+            @RequestParam(value = "sortType", required = false, defaultValue = "desc") String sortType,
             @RequestParam(value = "current", required = false) Integer currentPage,
             @RequestParam(value = "pageSize", required = false) Integer pageSize
     ) {
