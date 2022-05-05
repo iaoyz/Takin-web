@@ -273,7 +273,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());
         initActivity(sceneData, report);
-        notifyStart(report);
         // 报告已经完成，则退出
         if (report.getStatus() == ReportConstants.FINISH_STATUS) {
             //失败状态
@@ -1334,11 +1333,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
                 startFail(context, e.getMessage());
             }
         }
-    }
-
-    // 压测启动中
-    public void notifyStart(ReportResult report) {
-        pressureTaskDAO.updateStatus(report.getTaskId(), PressureTaskStateEnum.STARTING);
     }
 
     private boolean checkOutJmx(SceneScriptRefOutput uploadFile) {
