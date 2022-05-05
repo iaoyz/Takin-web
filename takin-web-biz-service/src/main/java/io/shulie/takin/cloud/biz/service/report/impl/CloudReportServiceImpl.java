@@ -81,6 +81,7 @@ import io.shulie.takin.cloud.common.utils.NumberUtil;
 import io.shulie.takin.cloud.common.utils.TestTimeUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
+import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateConclusionParam;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
@@ -1616,8 +1617,8 @@ public class CloudReportServiceImpl implements CloudReportService {
     }
 
     @Override
-    public void updateResourceAssociation(String resourceId, Long pressureTaskId) {
-        reportDao.updateResourceAssociation(resourceId, pressureTaskId);
+    public void updateReportById(ReportUpdateParam report) {
+        reportDao.updateReport(report);
     }
 
     private void pressureEnd(ReportResult reportResult) {
