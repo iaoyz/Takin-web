@@ -353,17 +353,6 @@ public class ThreadPoolConfig {
     }
 
     /**
-     * 采用丢弃队列中最老的任务
-     *
-     * @return -
-     */
-    @Bean(name = "stopScheduleThreadPool")
-    public ScheduledThreadPoolExecutor stopScheduleTaskExecutor() {
-        ThreadFactory nameThreadFactory = new ThreadFactoryBuilder().setNameFormat("stop-schedule-thread-%d").build();
-        return new ScheduledThreadPoolExecutor(10, nameThreadFactory, new ThreadPoolExecutor.DiscardOldestPolicy());
-    }
-
-    /**
      * 大文件上传线程池
      * 任务有异常会导致文件不完整 直接抛出异常
      *
