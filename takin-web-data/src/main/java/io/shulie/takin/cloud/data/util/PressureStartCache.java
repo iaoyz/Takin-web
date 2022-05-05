@@ -45,11 +45,6 @@ public abstract class PressureStartCache {
         return String.format("pressure:resource:jmeter:success:%s", resourceId);
     }
 
-    // 启动失败的jmeter实例名称存入该key
-    public static String getResourceJmeterFailKey(String resourceId) {
-        return String.format("pressure:resource:jmeter:fail:%s", resourceId);
-    }
-
     // 停止的jmeter实例名称存入该key
     public static String getResourceJmeterStopKey(String resourceId) {
         return String.format("pressure:resource:jmeter:stop:%s", resourceId);
@@ -65,10 +60,6 @@ public abstract class PressureStartCache {
 
     public static String getScenePreStopKey(Long sceneId, String resourceId) {
         return String.format("pressure:scene:pre_stop:%s:%s", sceneId, resourceId);
-    }
-
-    public static String getSceneFinishKey(Long sceneId) {
-        return String.format("pressure:scene:finish:%s", sceneId);
     }
 
     public static String getStopFlag(Long sceneId, String resourceId) {
@@ -113,7 +104,6 @@ public abstract class PressureStartCache {
             PressureStartCache.getPodHeartbeatKey(sceneId),
             PressureStartCache.getPodStartFirstKey(resourceId),
             PressureStartCache.getResourceJmeterSuccessKey(resourceId),
-            PressureStartCache.getResourceJmeterFailKey(resourceId),
             PressureStartCache.getResourceJmeterStopKey(resourceId),
             PressureStartCache.getJmeterHeartbeatKey(sceneId),
             PressureStartCache.getJmeterStartFirstKey(resourceId),

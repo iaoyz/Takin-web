@@ -58,8 +58,8 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
         Long stoppedCount = redisClientUtils.setSetValueAndReturnCount(PressureStartCache.getResourceJmeterStopKey(resourceId), podId);
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         String taskKey = getPressureTaskKey(sceneId, reportId, tenantId);
-        if (Objects.equals(stoppedCount,
-            redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterSuccessKey(resourceId)))) {
+        Long successSize = redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterSuccessKey(resourceId));
+        if (successSize == 0 || Objects.equals(stoppedCount, successSize)) {
             setLast(last(taskKey), ScheduleConstants.LAST_SIGN);
             setMax(engineName + ScheduleConstants.LAST_SIGN, time);
             // 删除临时标识

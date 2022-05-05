@@ -129,8 +129,6 @@ public interface ReportDao {
      */
     List<ReportBusinessActivityDetailEntity> getReportBusinessActivityDetailsByReportId(Long reportId, NodeTypeEnum nodeType);
 
-    void updateResourceAssociation(String resourceId, Long pressureTaskId);
-
     /**
      * 获取报告
      *

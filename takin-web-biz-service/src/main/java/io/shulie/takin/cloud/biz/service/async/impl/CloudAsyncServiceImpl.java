@@ -204,10 +204,10 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
 
     @Async("updateStatusPool")
     @Override
-    public void updateSceneRunningStatus(Long sceneId, Long reportId, Long customerId) {
+    public void updateSceneRunningStatus(Long sceneId, Long reportId, String resourceId) {
         while (true) {
-            boolean isSceneFinished = isSceneFinished(reportId);
-            boolean jobFinished = isJobFinished(sceneId);
+            boolean isSceneFinished = isSceneFinished(sceneId);
+            boolean jobFinished = isJobFinished(resourceId);
             if (jobFinished || isSceneFinished) {
                 String statusKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId,
                     reportId);
@@ -261,7 +261,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         return SceneManageStatusEnum.ifFinished(sceneManage.getStatus());
     }
 
-    private boolean isJobFinished(Long sceneId) {
-        return "1".equals(redisClientUtils.getString(PressureStartCache.getSceneFinishKey(sceneId)));
+    private boolean isJobFinished(String resourceId) {
+        return !redisClientUtils.hasKey(PressureStartCache.getResourceKey(resourceId));
     }
 }
