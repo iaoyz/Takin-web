@@ -48,12 +48,6 @@ public class CloudResourceApiImpl implements CloudResourceApi {
         return resources;
     }
 
-    public static void main(String[] args) {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date date = new Date(Long.parseLong("1651204330000"));
-        System.out.println(sdf.format(date));
-    }
-
     @Override
     public Boolean check(ResourceCheckRequest request) {
         return cloudApiSenderService.post(
