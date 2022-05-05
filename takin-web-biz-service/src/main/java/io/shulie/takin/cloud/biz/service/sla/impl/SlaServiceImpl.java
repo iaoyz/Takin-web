@@ -162,9 +162,8 @@ public class SlaServiceImpl implements SlaService {
             Report report = tReportMapper.getReportByTaskId(info.getJobId());
             String ref = info.getRef();
             if (org.apache.commons.lang3.StringUtils.isNoneBlank(ref)) {
-                String[] refArray = ref.split(",");//拿到引用
-                String id = refArray[0];
-                String bindRef = refArray[1];
+                String id = info.getAttach();
+                String bindRef = info.getRef();
                 SceneBusinessActivityRef activityRef = tSceneBusinessActivityRefMapper.selectByBindRef(bindRef, report.getSceneId());
                 SceneSlaRefEntity slaRef = sceneSlaRefMapper.selectById(id);
                 SceneSlaRef sceneSlaRef = new SceneSlaRef();
