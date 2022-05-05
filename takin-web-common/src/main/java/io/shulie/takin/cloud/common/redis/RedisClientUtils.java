@@ -50,14 +50,14 @@ public class RedisClientUtils {
     private RedisTemplate redisTemplate;
     private DefaultRedisScript<String> unlockRedisScript;
     private DefaultRedisScript<String> reentryLockRedisScript;
-    private DefaultRedisScript<String> setAddCountScript;
+    private DefaultRedisScript<Object> setAddCountScript;
     private final Expiration expiration = Expiration.seconds(EXPIREMSECS);
 
     @PostConstruct
     public void init() {
         unlockRedisScript = new DefaultRedisScript<>(UNLOCK_SCRIPT, String.class);
         reentryLockRedisScript = new DefaultRedisScript<>(REENTRY_LOCK_SCRIPT, String.class);
-        setAddCountScript = new DefaultRedisScript<>(SET_ADD_RETURN_COUNT, String.class);
+        setAddCountScript = new DefaultRedisScript<>(SET_ADD_RETURN_COUNT, Object.class);
     }
 
     @Autowired
@@ -426,7 +426,11 @@ public class RedisClientUtils {
     }
 
     public Long setSetValueAndReturnCount(String key, String value) {
-        return Long.valueOf(stringRedisTemplate.execute(setAddCountScript, Lists.newArrayList(key), value));
+        Object count = stringRedisTemplate.execute(setAddCountScript, Lists.newArrayList(key), value);
+        if (count instanceof List) {
+            return Long.valueOf(String.valueOf(((List<Object>)count).get(0)));
+        }
+        return Long.valueOf(String.valueOf(count));
     }
 
     public Long getSetSize(String key) {
