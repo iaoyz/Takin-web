@@ -1,7 +1,5 @@
 package io.shulie.takin.cloud.biz.notify.processor.jmeter;
 
-import java.util.Objects;
-
 import javax.annotation.Resource;
 
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
@@ -73,7 +71,7 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
         Long tenantId = context.getTenantId();
-        log.info("场景[{}]压测任务已完成,更新结束时间{}", sceneId, reportId);
+        log.info("场景[{}-{}]压测任务已完成,更新结束时间{}", sceneId, reportId, System.currentTimeMillis());
         // 刷新任务状态的Redis缓存
         taskStatusCache.cacheStatus(sceneId, reportId, SceneRunTaskStatusEnum.ENDED);
         // 更新压测场景状态  压测引擎运行中,压测引擎停止压测 ---->压测引擎停止压测

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -703,9 +704,9 @@ public class CloudReportServiceImpl implements CloudReportService {
             .map(SceneManageStatusEnum::getSceneManageStatusEnum)
             .map(SceneManageStatusEnum::getDesc).orElse("未找到场景"));
         if (sceneManage != null && !sceneManage.getType().equals(SceneManageStatusEnum.FORCE_STOP.getValue())) {
-            boolean finishStep = redisClientUtils.lockNoExpire(
+            boolean finishStep = redisClientUtils.lockExpire(
                 PressureStartCache.getFinishReportStepKey(reportResult.getResourceId()),
-                String.valueOf(System.currentTimeMillis()));
+                String.valueOf(System.currentTimeMillis()), 3, TimeUnit.MINUTES);
             cloudSceneManageService.updateSceneLifeCycle(
                 UpdateStatusBean.build(reportResult.getSceneId(), reportResult.getId(), reportResult.getTenantId())
                     .checkEnum(SceneManageStatusEnum.ENGINE_RUNNING,
