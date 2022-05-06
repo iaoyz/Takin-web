@@ -130,8 +130,7 @@ public abstract class PressureStartCache {
             RedisClientUtils.getLockPrefix(PressureStartCache.getJmeterErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getPodErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)),
-            RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId)),
-            RedisClientUtils.getLockPrefix(PressureStartCache.getFinishReportStepKey(resourceId)
+            RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId)
             )
         );
     }

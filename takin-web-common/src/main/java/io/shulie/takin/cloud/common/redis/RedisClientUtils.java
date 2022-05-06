@@ -51,7 +51,6 @@ public class RedisClientUtils {
     private DefaultRedisScript<Integer> unlockRedisScript;
     private DefaultRedisScript<Integer> reentryLockRedisScript;
     private DefaultRedisScript<Object> remAndCountScript;
-    private final Expiration expiration = Expiration.seconds(EXPIREMSECS);
 
     @PostConstruct
     public void init() {
@@ -91,12 +90,7 @@ public class RedisClientUtils {
     }
 
     public boolean lock(String key, String value) {
-
-        return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>)connection -> {
-            Boolean bl = connection.set(getLockPrefix(key).getBytes(), value.getBytes(), expiration,
-                RedisStringCommands.SetOption.SET_IF_ABSENT);
-            return Boolean.TRUE.equals(bl);
-        }));
+        return lockExpire(key, value, EXPIREMSECS, TimeUnit.SECONDS);
     }
 
     public boolean reentryLockNoExpire(String key, String value) {
@@ -107,6 +101,14 @@ public class RedisClientUtils {
     public boolean lockNoExpire(String key, String value) {
         return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>)connection -> {
             Boolean bl = connection.set(getLockPrefix(key).getBytes(), value.getBytes(), Expiration.persistent(),
+                RedisStringCommands.SetOption.SET_IF_ABSENT);
+            return Boolean.TRUE.equals(bl);
+        }));
+    }
+
+    public boolean lockExpire(String key, String value, long time, TimeUnit unit) {
+        return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>)connection -> {
+            Boolean bl = connection.set(getLockPrefix(key).getBytes(), value.getBytes(), Expiration.from(time, unit),
                 RedisStringCommands.SetOption.SET_IF_ABSENT);
             return Boolean.TRUE.equals(bl);
         }));
