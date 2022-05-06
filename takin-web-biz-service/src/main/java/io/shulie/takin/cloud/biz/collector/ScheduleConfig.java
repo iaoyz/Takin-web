@@ -30,10 +30,10 @@ public class ScheduleConfig {
     }
 
     @Bean(name = "checkStartedPodPool")
-    public Executor asyncServiceExecutor() {
+    public Executor podAsyncServiceExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 设置核心线程数
-        executor.setCorePoolSize(3);
+        executor.setCorePoolSize(10);
         // 设置最大线程数
         executor.setMaxPoolSize(20);
         //配置队列大小
@@ -41,9 +41,61 @@ public class ScheduleConfig {
         // 设置线程活跃时间（秒）
         executor.setKeepAliveSeconds(60);
         // 设置默认线程名称
-        executor.setThreadNamePrefix("check-started-pressure-node");
-        // 等待所有任务结束后再关闭线程池
-        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setThreadNamePrefix("check-started-pod");
+        //执行初始化
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "checkStartedJmeterPool")
+    public Executor jmeterAsyncServiceExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // 设置核心线程数
+        executor.setCorePoolSize(10);
+        // 设置最大线程数
+        executor.setMaxPoolSize(20);
+        //配置队列大小
+        executor.setQueueCapacity(100);
+        // 设置线程活跃时间（秒）
+        executor.setKeepAliveSeconds(60);
+        // 设置默认线程名称
+        executor.setThreadNamePrefix("check-started-jmeter");
+        //执行初始化
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "checkPodHeartbeatPool")
+    public Executor podHeartbeatAsyncServiceExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // 设置核心线程数
+        executor.setCorePoolSize(10);
+        // 设置最大线程数
+        executor.setMaxPoolSize(20);
+        //配置队列大小
+        executor.setQueueCapacity(100);
+        // 设置线程活跃时间（秒）
+        executor.setKeepAliveSeconds(60);
+        // 设置默认线程名称
+        executor.setThreadNamePrefix("check-pod-heartbeat");
+        //执行初始化
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "checkJmeterHeartbeatPool")
+    public Executor jmeterHeartbeatAsyncServiceExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // 设置核心线程数
+        executor.setCorePoolSize(10);
+        // 设置最大线程数
+        executor.setMaxPoolSize(20);
+        //配置队列大小
+        executor.setQueueCapacity(100);
+        // 设置线程活跃时间（秒）
+        executor.setKeepAliveSeconds(60);
+        // 设置默认线程名称
+        executor.setThreadNamePrefix("check-jmeter-heartbeat");
         //执行初始化
         executor.initialize();
         return executor;

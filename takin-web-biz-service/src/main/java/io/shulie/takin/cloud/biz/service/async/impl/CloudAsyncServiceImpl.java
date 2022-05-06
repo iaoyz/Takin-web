@@ -99,7 +99,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         markResourceStatus(checkPass, context);
     }
 
-    @Async("checkStartedPodPool")
+    @Async("checkStartedJmeterPool")
     @Override
     public void checkJmeterStartedTask(ResourceContext context) {
         log.info("启动后台检查jmeter启动状态线程.....");
@@ -140,7 +140,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         }
     }
 
-    @Async("checkStartedPodPool")
+    @Async("checkJmeterHeartbeatPool")
     @Override
     public void checkJmeterHeartbeatTask(ResourceContext context) {
         log.info("启动后台检查jmeter心跳状态线程.....");
@@ -166,7 +166,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         }
     }
 
-    @Async("checkStartedPodPool")
+    @Async("checkPodHeartbeatPool")
     @Override
     public void checkPodHeartbeatTask(ResourceContext context) {
         log.info("启动后台检查pod心跳状态线程.....");

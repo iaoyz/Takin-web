@@ -17,7 +17,7 @@ public abstract class PressureStartCache {
     public static final String TASK_ID = "task_id";
     public static final String RESOURCE_ID = "resource_Id";
     public static final String UNIQUE_KEY = "unique_key";
-    public static final String JOB_ID = "pressure_task_id";
+    public static final String JOB_ID = "job_id";
 
     // 事件
     public static final String CHECK_FAIL_EVENT = "check_failed";
