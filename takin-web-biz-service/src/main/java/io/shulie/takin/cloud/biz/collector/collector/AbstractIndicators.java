@@ -17,10 +17,12 @@ import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisStringCommands;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.util.CollectionUtils;
@@ -61,6 +63,8 @@ public abstract class AbstractIndicators {
     protected EventCenterTemplate eventCenterTemplate;
     @Resource
     protected RedisTemplate<String, Object> redisTemplate;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RedisClientUtils redisClientUtils;
     private DefaultRedisScript<Void> minRedisScript;
@@ -209,9 +213,11 @@ public abstract class AbstractIndicators {
     protected void setTryRunTaskInfo(Long sceneId, Long reportId, Long tenantId, String errorMsg) {
         log.info("压测启动失败--sceneId:【{}】,reportId:【{}】,tenantId:【{}】,errorMsg:【{}】", sceneId, reportId, tenantId, errorMsg);
         String tryRunTaskKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
-        redisClientUtils.hmset(tryRunTaskKey,
+        stringRedisTemplate.opsForHash().put(tryRunTaskKey,
             SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.FAILED.getText());
-        redisClientUtils.hmset(tryRunTaskKey, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
+        if (StringUtils.isNotBlank(errorMsg)) {
+            stringRedisTemplate.opsForHash().put(tryRunTaskKey, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
+        }
     }
 
     protected void callStopEventIfNecessary(String resourceId, String message) {
@@ -223,7 +229,7 @@ public abstract class AbstractIndicators {
             StopEventSource source = new StopEventSource();
             source.setMessage(message);
             source.setContext(context);
-            source.setStarted(Objects.nonNull(context.getJobId()));
+            source.setPressureRunning(Objects.nonNull(context.getJobId()));
             event.setExt(source);
             eventCenterTemplate.doEvents(event);
         }

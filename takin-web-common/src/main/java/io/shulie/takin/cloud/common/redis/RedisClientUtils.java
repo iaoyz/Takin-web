@@ -48,15 +48,15 @@ public class RedisClientUtils {
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private RedisTemplate redisTemplate;
-    private DefaultRedisScript<String> unlockRedisScript;
-    private DefaultRedisScript<String> reentryLockRedisScript;
+    private DefaultRedisScript<Integer> unlockRedisScript;
+    private DefaultRedisScript<Integer> reentryLockRedisScript;
     private DefaultRedisScript<Object> remAndCountScript;
     private final Expiration expiration = Expiration.seconds(EXPIREMSECS);
 
     @PostConstruct
     public void init() {
-        unlockRedisScript = new DefaultRedisScript<>(UNLOCK_SCRIPT, String.class);
-        reentryLockRedisScript = new DefaultRedisScript<>(REENTRY_LOCK_SCRIPT, String.class);
+        unlockRedisScript = new DefaultRedisScript<>(UNLOCK_SCRIPT, Integer.class);
+        reentryLockRedisScript = new DefaultRedisScript<>(REENTRY_LOCK_SCRIPT, Integer.class);
         remAndCountScript = new DefaultRedisScript<>(REM_RETURN_COUNT, Object.class);
     }
 
@@ -92,7 +92,7 @@ public class RedisClientUtils {
 
     public boolean lock(String key, String value) {
 
-        return Boolean.TRUE.equals(stringRedisTemplate.execute((RedisCallback<Boolean>)connection -> {
+        return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>)connection -> {
             Boolean bl = connection.set(getLockPrefix(key).getBytes(), value.getBytes(), expiration,
                 RedisStringCommands.SetOption.SET_IF_ABSENT);
             return Boolean.TRUE.equals(bl);
@@ -100,7 +100,8 @@ public class RedisClientUtils {
     }
 
     public boolean reentryLockNoExpire(String key, String value) {
-        return "1".equals(redisTemplate.execute(reentryLockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
+        return "1".equals(String.valueOf(redisTemplate.execute(reentryLockRedisScript,
+            Lists.newArrayList(getLockPrefix(key)), value)));
     }
 
     public boolean lockNoExpire(String key, String value) {
@@ -116,7 +117,8 @@ public class RedisClientUtils {
     }
 
     public boolean unlock(String key, String value) {
-        return "1".equals(redisTemplate.execute(unlockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
+        return "1".equals(String.valueOf(redisTemplate.execute(unlockRedisScript,
+            Lists.newArrayList(getLockPrefix(key)), value)));
     }
 
     public Long increment(final String key, final long l) {

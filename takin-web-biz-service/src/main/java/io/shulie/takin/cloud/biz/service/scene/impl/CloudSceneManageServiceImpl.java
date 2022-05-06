@@ -718,7 +718,6 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
         context.setResourceId(recentlyReport.getResourceId());
         source.setContext(context);
         source.setMessage(errorMsg);
-        source.setStarted(false);
         event.setExt(source);
         eventCenterTemplate.doEvents(event);
     }

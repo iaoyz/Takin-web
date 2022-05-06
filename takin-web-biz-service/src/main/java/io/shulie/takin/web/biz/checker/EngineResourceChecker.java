@@ -189,8 +189,9 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         ResourceContext context = (ResourceContext)event.getExt();
         String resourceId = context.getResourceId();
         if (StringUtils.isNotBlank(resourceId)) {
-            redisClientUtils.expire(PressureStartCache.getResourceKey(resourceId), 15);
-            redisClientUtils.expire(PressureStartCache.getResourcePodSuccessKey(resourceId), 15);
+            redisClientUtils.del(PressureStartCache.getResourceKey(resourceId),
+                PressureStartCache.getResourcePodSuccessKey(resourceId),
+                PressureStartCache.getPodStartFirstKey(resourceId));
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resourceId);
             cloudResourceApi.unLock(request);
@@ -233,9 +234,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     public void callStartFail(Event event) {
         StopEventSource source = (StopEventSource)event.getExt();
         ResourceContext context = source.getContext();
-        String message = source.getMessage();
-        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), message);
-        if (!source.isStarted()) {
+        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), source.getMessage());
+        if (!source.isPressureRunning()) {
             preStartFail(source);
         } else {
             stopJob(context.getJobId());
@@ -255,6 +255,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         String statusKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
         stringRedisTemplate.opsForHash().put(
             statusKey, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.ENDED.getText());
+        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE);
     }
 
     // 启动前失败，即启动异常
