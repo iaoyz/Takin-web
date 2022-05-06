@@ -337,13 +337,13 @@ public class ScheduleServiceImpl extends AbstractIndicators implements ScheduleS
                 .filter(file -> FileTypeBusinessUtil.isData(file.getFileType()))
                 .collect(groupingBy(DataFile::getFileType));
             if (!CollectionUtils.isEmpty(fileTypeMap)) {
-                req.setData(fileTypeMap.values().stream().flatMap(Collection::stream)
+                req.setDataFile(fileTypeMap.values().stream().flatMap(Collection::stream)
                     .map(ScheduleServiceImpl::convertFile).collect(Collectors.toList()));
             }
         }
         List<String> enginePluginsFilePath = requestExt.getEnginePluginsFilePath();
         if (!CollectionUtils.isEmpty(enginePluginsFilePath)) {
-            req.setDependency(enginePluginsFilePath.stream().map(path -> {
+            req.setDependencyFile(enginePluginsFilePath.stream().map(path -> {
                 FileInfo info = new FileInfo();
                 info.setUri(path);
                 return info;

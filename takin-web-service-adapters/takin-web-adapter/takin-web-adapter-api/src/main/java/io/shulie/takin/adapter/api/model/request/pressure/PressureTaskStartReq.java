@@ -51,11 +51,11 @@ public class PressureTaskStartReq extends ContextExt {
     /**
      * 运行时依赖文件(插件)
      */
-    private List<StartRequest.FileInfo> dependency;
+    private List<StartRequest.FileInfo> dependencyFile;
     /**
      * 数据文件(csv)
      */
-    private List<StartRequest.FileInfo> data;
+    private List<StartRequest.FileInfo> dataFile;
     /**
      * 线程配置
      */
