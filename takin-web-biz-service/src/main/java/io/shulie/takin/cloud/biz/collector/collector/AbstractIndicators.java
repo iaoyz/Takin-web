@@ -17,6 +17,7 @@ import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisStringCommands;
 import org.springframework.data.redis.core.RedisCallback;
@@ -211,7 +212,9 @@ public abstract class AbstractIndicators {
         String tryRunTaskKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
         redisClientUtils.hmset(tryRunTaskKey,
             SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.FAILED.getText());
-        redisClientUtils.hmset(tryRunTaskKey, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
+        if (StringUtils.isNotBlank(errorMsg)) {
+            redisClientUtils.hmset(tryRunTaskKey, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR, errorMsg);
+        }
     }
 
     protected void callStopEventIfNecessary(String resourceId, String message) {
@@ -223,7 +226,7 @@ public abstract class AbstractIndicators {
             StopEventSource source = new StopEventSource();
             source.setMessage(message);
             source.setContext(context);
-            source.setStarted(Objects.nonNull(context.getJobId()));
+            source.setPressureRunning(Objects.nonNull(context.getJobId()));
             event.setExt(source);
             eventCenterTemplate.doEvents(event);
         }

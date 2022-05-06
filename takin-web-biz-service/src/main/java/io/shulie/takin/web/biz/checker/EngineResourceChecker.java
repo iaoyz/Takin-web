@@ -234,9 +234,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     public void callStartFail(Event event) {
         StopEventSource source = (StopEventSource)event.getExt();
         ResourceContext context = source.getContext();
-        String message = source.getMessage();
-        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), message);
-        if (!source.isStarted()) {
+        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), source.getMessage());
+        if (!source.isPressureRunning()) {
             preStartFail(source);
         } else {
             stopJob(context.getJobId());

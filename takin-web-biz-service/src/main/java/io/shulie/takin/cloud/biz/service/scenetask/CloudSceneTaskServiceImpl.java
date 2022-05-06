@@ -1432,7 +1432,6 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         StopEventSource source = new StopEventSource();
         source.setMessage(message);
         source.setContext(context);
-        source.setStarted(false);
 
         Event event = new Event();
         event.setEventName(PressureStartCache.START_FAILED);
