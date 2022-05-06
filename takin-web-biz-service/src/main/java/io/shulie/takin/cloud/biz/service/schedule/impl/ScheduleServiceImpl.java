@@ -186,8 +186,7 @@ public class ScheduleServiceImpl extends AbstractIndicators implements ScheduleS
             Event event = new Event();
             event.setEventName(PressureStartCache.START_FAILED);
             StopEventSource source = new StopEventSource();
-            source.setMessage("停止压测");
-            source.setStarted(Objects.nonNull(jobId));
+            source.setPressureRunning(Objects.nonNull(jobId));
 
             ResourceContext context = new ResourceContext();
             context.setSceneId(request.getSceneId());

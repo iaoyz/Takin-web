@@ -812,7 +812,6 @@ public class SceneTaskServiceImpl extends AbstractIndicators implements SceneTas
                 StopEventSource source = new StopEventSource();
                 source.setMessage(message);
                 source.setContext(context);
-                source.setStarted(false);
                 event.setExt(source);
                 eventCenterTemplate.doEvents(event);
             }

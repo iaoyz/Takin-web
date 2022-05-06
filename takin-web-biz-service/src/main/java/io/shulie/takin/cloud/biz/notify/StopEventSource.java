@@ -12,5 +12,5 @@ public class StopEventSource {
 
     private ResourceContext context;
     private String message;
-    private boolean started;
+    private boolean pressureRunning;
 }
