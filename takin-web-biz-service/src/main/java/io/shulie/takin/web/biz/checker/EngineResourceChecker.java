@@ -255,6 +255,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         String statusKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
         stringRedisTemplate.opsForHash().put(
             statusKey, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.ENDED.getText());
+        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE);
     }
 
     // 启动前失败，即启动异常
