@@ -293,7 +293,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         }
         redisClientUtils.del(PressureStartCache.getResourcePodSuccessKey(resourceId),
             PressureStartCache.getPodStartFirstKey(resourceId),
-            PressureStartCache.getPodHeartbeatKey(context.getSceneId()));
+            PressureStartCache.getPodHeartbeatKey(resourceId));
         redisClientUtils.setString(PressureStartCache.getErrorMessageKey(resourceId), context.getMessage(), 15, TimeUnit.SECONDS);
     }
 

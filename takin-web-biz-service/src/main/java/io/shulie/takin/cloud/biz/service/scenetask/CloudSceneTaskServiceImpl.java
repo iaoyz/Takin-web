@@ -1443,9 +1443,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         Object resource = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId),
             PressureStartCache.RESOURCE_ID);
         String resourceId = String.valueOf(resource);
-        ResourceContext context = new ResourceContext();
-        context.setSceneId(sceneId);
-        context.setResourceId(resourceId);
+        ResourceContext context = getResourceContext(resourceId);
         Event event = new Event();
         event.setEventName(PressureStartCache.PRESSURE_END);
         event.setExt(context);
