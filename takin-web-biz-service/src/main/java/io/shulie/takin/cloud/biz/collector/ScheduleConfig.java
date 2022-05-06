@@ -33,11 +33,11 @@ public class ScheduleConfig {
     public Executor podAsyncServiceExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 设置核心线程数
-        executor.setCorePoolSize(10);
+        executor.setCorePoolSize(50);
         // 设置最大线程数
-        executor.setMaxPoolSize(20);
+        executor.setMaxPoolSize(70);
         //配置队列大小
-        executor.setQueueCapacity(100);
+        executor.setQueueCapacity(10);
         // 设置线程活跃时间（秒）
         executor.setKeepAliveSeconds(60);
         // 设置默认线程名称
@@ -51,11 +51,11 @@ public class ScheduleConfig {
     public Executor jmeterAsyncServiceExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 设置核心线程数
-        executor.setCorePoolSize(10);
+        executor.setCorePoolSize(50);
         // 设置最大线程数
-        executor.setMaxPoolSize(20);
+        executor.setMaxPoolSize(70);
         //配置队列大小
-        executor.setQueueCapacity(100);
+        executor.setQueueCapacity(10);
         // 设置线程活跃时间（秒）
         executor.setKeepAliveSeconds(60);
         // 设置默认线程名称
@@ -69,11 +69,11 @@ public class ScheduleConfig {
     public Executor podHeartbeatAsyncServiceExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 设置核心线程数
-        executor.setCorePoolSize(10);
+        executor.setCorePoolSize(50);
         // 设置最大线程数
-        executor.setMaxPoolSize(20);
+        executor.setMaxPoolSize(70);
         //配置队列大小
-        executor.setQueueCapacity(100);
+        executor.setQueueCapacity(10);
         // 设置线程活跃时间（秒）
         executor.setKeepAliveSeconds(60);
         // 设置默认线程名称
@@ -87,11 +87,11 @@ public class ScheduleConfig {
     public Executor jmeterHeartbeatAsyncServiceExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 设置核心线程数
-        executor.setCorePoolSize(10);
+        executor.setCorePoolSize(50);
         // 设置最大线程数
-        executor.setMaxPoolSize(20);
+        executor.setMaxPoolSize(70);
         //配置队列大小
-        executor.setQueueCapacity(100);
+        executor.setQueueCapacity(10);
         // 设置线程活跃时间（秒）
         executor.setKeepAliveSeconds(60);
         // 设置默认线程名称
