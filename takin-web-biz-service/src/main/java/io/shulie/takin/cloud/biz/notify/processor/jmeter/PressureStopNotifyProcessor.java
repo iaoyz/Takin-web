@@ -34,8 +34,9 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
     private ReportDao reportDao;
 
     @Override
-    public void process(PressureStopNotifyParam param) {
+    public String process(PressureStopNotifyParam param) {
         processStopped(param);
+        return String.valueOf(param.getData().getResourceId());
     }
 
     private void processStopped(PressureStopNotifyParam context) {
@@ -55,6 +56,7 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
         Long sceneId = resourceContext.getSceneId();
         Long reportId = resourceContext.getReportId();
         String resourceId = resourceContext.getResourceId();
+        redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "jmeter停止");
         Long remainCount = redisClientUtils.remSetValueAndReturnCount(PressureStartCache.getResourceJmeterSuccessKey(resourceId), podId);
         String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
         if (remainCount == 0) {

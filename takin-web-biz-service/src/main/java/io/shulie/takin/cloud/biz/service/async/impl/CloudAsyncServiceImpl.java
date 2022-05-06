@@ -148,19 +148,19 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         String resourceId = context.getResourceId();
         int checkTime = pressureNodeHeartbeatExpireTime * 1000;
         while (!redisClientUtils.hasKey(RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)))) {
-            long now = System.currentTimeMillis();
             Map<Object, Object> heartbeatMap = redisClientUtils.hmget(PressureStartCache.getJmeterHeartbeatKey(sceneId));
             if (CollectionUtils.isEmpty(heartbeatMap)) {
-                break;
+                callStopEventIfNecessary(resourceId, "jmeter节点超时未上报心跳数据");
+                return;
             }
             for (Entry<Object, Object> entry : heartbeatMap.entrySet()) {
-                if (Long.parseLong(String.valueOf(entry.getValue())) + checkTime > now) {
+                if (Long.parseLong(String.valueOf(entry.getValue())) + checkTime < System.currentTimeMillis()) {
                     callStopEventIfNecessary(resourceId, String.format("jmeter节点[%s]心跳超时", entry.getKey()));
                     return;
                 }
             }
             try {
-                TimeUnit.SECONDS.sleep(CHECK_INTERVAL_TIME);
+                TimeUnit.SECONDS.sleep(checkTime);
             } catch (InterruptedException ignore) {
             }
         }
@@ -174,19 +174,19 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         String resourceId = context.getResourceId();
         int checkTime = pressureNodeHeartbeatExpireTime * 1000;
         while (!redisClientUtils.hasKey(RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)))) {
-            long now = System.currentTimeMillis();
             Map<Object, Object> heartbeatMap = redisClientUtils.hmget(PressureStartCache.getPodHeartbeatKey(sceneId));
             if (CollectionUtils.isEmpty(heartbeatMap)) {
-                break;
+                callStopEventIfNecessary(resourceId, "pod节点超时未上报心跳数据");
+                return;
             }
             for (Entry<Object, Object> entry : heartbeatMap.entrySet()) {
-                if (Long.parseLong(String.valueOf(entry.getValue())) + checkTime > now) {
+                if (Long.parseLong(String.valueOf(entry.getValue())) + checkTime < System.currentTimeMillis()) {
                     callStopEventIfNecessary(resourceId, String.format("pod节点[%s]心跳超时", entry.getKey()));
                     return;
                 }
             }
             try {
-                TimeUnit.SECONDS.sleep(CHECK_INTERVAL_TIME);
+                TimeUnit.SECONDS.sleep(checkTime);
             } catch (InterruptedException ignore) {
             }
         }
@@ -218,7 +218,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
 
     private void markJmeterStarted(ResourceContext context) {
         Long taskId = context.getTaskId();
-        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.ALIVE);
-        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.PRESSURING);
+        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.ALIVE, null);
+        pressureTaskDAO.updateStatus(taskId, PressureTaskStateEnum.PRESSURING, null);
     }
 }

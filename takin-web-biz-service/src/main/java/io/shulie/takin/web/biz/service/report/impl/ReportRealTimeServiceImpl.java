@@ -93,6 +93,9 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
             queryDTO.setReportId(reportId);
             if (reportId == null) {
                 log.warn("get report id by sceneId is empty,sceneId：{}", sceneId);
+            } else {
+                ReportDetailOutput response = reportService.getReportByReportId(reportId);
+                queryDTO.setTaskId(response.getPressureTaskId());
             }
         }
         // 取延迟1分钟时间 前5分钟数据 因为 agent上报数据需要1分钟计算出来：改为前端控制
@@ -108,6 +111,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         if (reportDetail == null || reportDetail.getStartTime() == null) {
             return new PageInfo<>(Lists.newArrayList());
         }
+        queryDTO.setTaskId(response.getPressureTaskId());
         Long startTime = queryDTO.getStartTime();
         long reportStartTime = DateUtil.parseSecondFormatter(reportDetail.getStartTime()).getTime() - 5 * 60 * 1000L;
         if (startTime == null || startTime.compareTo(0L) <= 0) {
@@ -310,6 +314,11 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         // entryList 获得
         List<EntranceRuleDTO> entranceList = this.getEntryListByBusinessActivityIds(businessActivityIdList);
 
+        // 如果压测引擎任务Id不为空，替换reportId，现在大数据taskId对应的是压测引擎任务Id
+        Long taskId = queryDTO.getTaskId();
+        if (Objects.nonNull(taskId)) {
+            queryDTO.setReportId(taskId);
+        }
         TraceInfoQueryDTO traceInfoQueryDTO = new TraceInfoQueryDTO();
         BeanUtils.copyProperties(queryDTO, traceInfoQueryDTO);
         traceInfoQueryDTO.setEntranceRuleDTOS(entranceList);

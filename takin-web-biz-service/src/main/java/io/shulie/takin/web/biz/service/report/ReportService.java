@@ -6,6 +6,7 @@ import java.util.Map;
 import com.pamirs.takin.entity.domain.dto.report.ReportDTO;
 import com.pamirs.takin.entity.domain.vo.report.ReportQueryParam;
 import io.shulie.takin.adapter.api.model.request.report.ReportTrendQueryReq;
+import io.shulie.takin.adapter.api.model.request.report.TrendRequest;
 import io.shulie.takin.adapter.api.model.request.report.WarnQueryReq;
 import io.shulie.takin.adapter.api.model.response.report.ActivityResponse;
 import io.shulie.takin.adapter.api.model.response.report.MetricesResponse;
@@ -102,11 +103,10 @@ public interface ReportService {
      * avgTps
      * 两个 key
      *
-     * @param reportId 报告 id
-     * @param sceneId  场景 id
+     * @param req 查询条件
      * @return 指标列表
      */
-    List<MetricesResponse> queryMetrics(Long reportId, Long sceneId);
+    List<MetricesResponse> queryMetrics(TrendRequest req);
 
     /**
      * 查询报告的警告数量

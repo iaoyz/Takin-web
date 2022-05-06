@@ -60,7 +60,7 @@ public abstract class PressureStartCache {
         return String.format("pressure:scene:pre_stop:%s:%s", sceneId, resourceId);
     }
 
-    // 压测停止标识：jmeter异常、pod异常、jmeter启动超时、pod启动超时、jmeter心跳超时、pod心跳超时
+    // 压测停止标识：jmeter停止、jmeter异常、pod异常、jmeter启动超时、pod启动超时、jmeter心跳超时、pod心跳超时
     public static String getStopFlag(Long sceneId, String resourceId) {
         return String.format("pressure:scene:stop:%s:%s", sceneId, resourceId);
     }
@@ -86,8 +86,13 @@ public abstract class PressureStartCache {
     }
 
     // 第一个异常的jmeter id
+    public static String getPodErrorFirstKey(String resourceId) {
+        return String.format("pressure:resource:error:pod:first:%s", resourceId);
+    }
+
+    // 第一个异常的jmeter id
     public static String getJmeterErrorFirstKey(String resourceId) {
-        return String.format("pressure:resource:stop:jmeter:first:%s", resourceId);
+        return String.format("pressure:resource:error:jmeter:first:%s", resourceId);
     }
 
     public static String getFlowDebugKey(Long sceneId) {
@@ -113,13 +118,13 @@ public abstract class PressureStartCache {
             PressureStartCache.getSceneResourceLockingKey(sceneId),
             PressureStartCache.getSceneResourceKey(sceneId),
             PressureStartCache.getScenePreStopKey(sceneId, resourceId),
-            PressureStartCache.getStopFlag(sceneId, resourceId),
             PressureStartCache.getSceneResourceKey(sceneId),
             PressureStartCache.getFlowDebugKey(sceneId),
             PressureStartCache.getInspectKey(sceneId),
             PressureStartCache.getTryRunKey(sceneId),
             PressureStartCache.getErrorMessageKey(resourceId),
             RedisClientUtils.getLockPrefix(PressureStartCache.getJmeterErrorFirstKey(resourceId)),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getPodErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId))
         );

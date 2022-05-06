@@ -106,7 +106,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             if (!Boolean.TRUE.equals(checkResult)) {
                 return CheckResult.fail(type(), "压力机资源不足");
             }
-            pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.CHECKED);
+            pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.CHECKED, null);
             // 锁定资源：异步接口，每个pod启动成功都会回调一次回调接口
             String resourceId = lockResource(context);
             context.setResourceId(resourceId);
@@ -151,7 +151,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
                 .checkEnum(SceneManageStatusEnum.WAIT, SceneManageStatusEnum.FAILED, SceneManageStatusEnum.STOP,
                     SceneManageStatusEnum.FORCE_STOP)
                 .updateEnum(SceneManageStatusEnum.RESOURCE_LOCKING).build());
-        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.RESOURCE_LOCKING);
+        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.RESOURCE_LOCKING, null);
         cloudAsyncService.checkPodStartedTask(context);
     }
 
@@ -208,7 +208,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
             redisClientUtils.hmset(resourceKey, PressureStartCache.CHECK_STATUS, CheckStatus.SUCCESS.ordinal());
         }
         redisClientUtils.delete(PressureStartCache.getErrorMessageKey(resourceId));
-        pressureTaskDAO.updateStatus(ext.getTaskId(), PressureTaskStateEnum.STARTING);
+        pressureTaskDAO.updateStatus(ext.getTaskId(), PressureTaskStateEnum.STARTING, null);
     }
 
     @IntrestFor(event = PressureStartCache.PRE_STOP_EVENT, order = 1)
@@ -233,11 +233,15 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     @IntrestFor(event = PressureStartCache.START_FAILED)
     public void callStartFail(Event event) {
         StopEventSource source = (StopEventSource)event.getExt();
+        String message = source.getMessage();
         ResourceContext context = source.getContext();
-        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), source.getMessage());
+        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), message);
+        // 此处手动停止的也会插入此状态
+        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.UNUSUAL, message);
         if (!source.isPressureRunning()) {
             preStartFail(source);
         } else {
+            pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.STOPPING, message);
             stopJob(context.getJobId());
             // 如果没有启动的jmeter节点，直接结束
             if (!redisClientUtils.hasKey(PressureStartCache.getJmeterStartFirstKey(context.getResourceId()))) {
@@ -255,7 +259,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         String statusKey = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
         stringRedisTemplate.opsForHash().put(
             statusKey, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.ENDED.getText());
-        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE);
+        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE, null);
     }
 
     // 启动前失败，即启动异常
@@ -275,7 +279,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         }};
         // --->update 失败状态
         sceneManageDAO.getBaseMapper().updateById(sceneManage);
-        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE);
+        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE, null);
         unLockResource(context.getResourceId());
         releaseFlow(context.getReportId());
     }

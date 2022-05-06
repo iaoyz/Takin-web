@@ -223,7 +223,7 @@ public abstract class AbstractIndicators {
     protected void callStopEventIfNecessary(String resourceId, String message) {
         ResourceContext context = getResourceContext(resourceId);
         if (context != null
-            && redisClientUtils.lock(PressureStartCache.getStopFlag(context.getSceneId(), resourceId), "1")) {
+            && redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(context.getSceneId(), resourceId), message)) {
             Event event = new Event();
             event.setEventName(PressureStartCache.START_FAILED);
             StopEventSource source = new StopEventSource();

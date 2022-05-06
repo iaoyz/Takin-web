@@ -7,6 +7,7 @@ import com.github.pagehelper.PageInfo;
 import com.pamirs.takin.cloud.entity.domain.dto.report.BusinessActivityDTO;
 import com.pamirs.takin.cloud.entity.domain.dto.report.CloudReportDTO;
 import com.pamirs.takin.cloud.entity.domain.dto.report.Metrices;
+import io.shulie.takin.adapter.api.model.request.report.TrendRequest;
 import io.shulie.takin.cloud.biz.input.report.UpdateReportConclusionInput;
 import io.shulie.takin.cloud.biz.input.report.UpdateReportSlaDataInput;
 import io.shulie.takin.cloud.biz.input.report.WarnCreateInput;
@@ -166,11 +167,10 @@ public interface CloudReportService {
     /**
      * 新增 tenantId
      *
-     * @param reportId 报告主键
-     * @param sceneId  场景主键
+     * @param req 查询条件
      * @return -
      */
-    List<Metrices> metric(Long reportId, Long sceneId);
+    List<Metrices> metric(TrendRequest req);
 
     /**
      * 更新扩展字段

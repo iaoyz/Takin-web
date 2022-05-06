@@ -43,4 +43,7 @@ public class TrendRequest extends ContextExt {
      */
     @ApiModelProperty(value = "结束时间")
     private String endTime;
+
+    @ApiModelProperty(value = "压测引擎任务Id")
+    private Long jobId;
 }

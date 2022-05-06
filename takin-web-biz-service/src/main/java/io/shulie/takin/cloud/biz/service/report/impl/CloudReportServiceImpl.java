@@ -45,6 +45,7 @@ import com.pamirs.takin.cloud.entity.domain.dto.report.StatReportDTO;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivityDetail;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.WarnDetail;
+import io.shulie.takin.adapter.api.model.request.report.TrendRequest;
 import io.shulie.takin.cloud.biz.cloudserver.ReportConverter;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.input.report.UpdateReportConclusionInput;
@@ -81,7 +82,6 @@ import io.shulie.takin.cloud.common.utils.NumberUtil;
 import io.shulie.takin.cloud.common.utils.TestTimeUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.dao.scene.manage.SceneManageDAO;
-import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.model.mysql.SceneManageEntity;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateConclusionParam;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
@@ -319,14 +319,14 @@ public class CloudReportServiceImpl implements CloudReportService {
 
         // 补充停止原因
         reportDetail.setStopReasons(getStopReasonBean(sceneId, reportResult.getId()));
-
+        Long jobId = reportResult.getPressureTaskId();
         // 查询sla熔断数据
         ReportDetailOutput detailOutput = this.getReportByReportId(reportResult.getId());
         reportDetail.setSlaMsg(detailOutput.getSlaMsg());
         String testPlanXpathMd5 = getTestPlanXpathMd5(reportResult.getScriptNodeTree());
         String transaction = StringUtils.isBlank(testPlanXpathMd5) ? ReportConstants.ALL_BUSINESS_ACTIVITY
             : testPlanXpathMd5;
-        StatReportDTO statReport = statTempReport(sceneId, reportResult.getId(), reportResult.getTenantId(),
+        StatReportDTO statReport = statTempReport(jobId, sceneId, reportResult.getId(), reportResult.getTenantId(),
             transaction);
         if (statReport == null) {
             log.warn("实况报表:[{}]，暂无数据", reportResult.getId());
@@ -340,7 +340,7 @@ public class CloudReportServiceImpl implements CloudReportService {
         }
         reportDetail.setSceneName(wrapper.getPressureTestSceneName());
         //最大并发
-        Integer maxConcurrence = getMaxConcurrence(sceneId, reportResult.getId(), reportResult.getTenantId(),
+        Integer maxConcurrence = getMaxConcurrence(jobId, sceneId, reportResult.getId(), reportResult.getTenantId(),
             transaction);
         if (Objects.nonNull(statReport) && Objects.nonNull(statReport.getAvgConcurrenceNum())) {
             maxConcurrence = Math.max(maxConcurrence, statReport.getAvgConcurrenceNum().intValue());
@@ -361,7 +361,7 @@ public class CloudReportServiceImpl implements CloudReportService {
             reportBusinessActivityDetails.stream()
                 .filter(Objects::nonNull)
                 .forEach(ref -> {
-                    StatReportDTO data = statTempReport(sceneId, reportResult.getId(), reportResult.getTenantId(),
+                    StatReportDTO data = statTempReport(jobId, sceneId, reportResult.getId(), reportResult.getTenantId(),
                         ref.getBindRef());
                     Map<String, Object> objectMap = fillTempMap(data, ref);
                     resultMap.put(ref.getBindRef(), objectMap);
@@ -373,7 +373,7 @@ public class CloudReportServiceImpl implements CloudReportService {
             List<ScriptNodeSummaryBean> nodeDetails = reportBusinessActivityDetails.stream()
                 .filter(Objects::nonNull)
                 .map(ref -> {
-                    StatReportDTO data = statTempReport(sceneId, reportResult.getId(), reportResult.getTenantId(),
+                    StatReportDTO data = statTempReport(jobId, sceneId, reportResult.getId(), reportResult.getTenantId(),
                         ref.getBindRef());
                     return new ScriptNodeSummaryBean() {{
                         setName(ref.getBusinessActivityName());
@@ -769,8 +769,8 @@ public class CloudReportServiceImpl implements CloudReportService {
      *
      * @return -
      */
-    private StatReportDTO statTempReport(Long sceneId, Long reportId, Long tenantId, String transaction) {
-        String measurement = InfluxUtil.getMeasurement(sceneId, reportId, tenantId);
+    private StatReportDTO statTempReport(Long jobId, Long sceneId, Long reportId, Long tenantId, String transaction) {
+        String measurement = InfluxUtil.getMeasurement(jobId, sceneId, reportId, tenantId);
         String influxDbSql = "select"
             + " count as tempRequestCount, fail_count as failRequest, avg_tps as tps , avg_rt as avgRt, sa_count as saCount, active_threads as avgConcurrenceNum"
             + " from "
@@ -803,9 +803,9 @@ public class CloudReportServiceImpl implements CloudReportService {
      * @param transaction 节点
      * @return -
      */
-    private Integer getMaxConcurrence(Long sceneId, Long reportId, Long customerId, String transaction) {
+    private Integer getMaxConcurrence(Long jobId, Long sceneId, Long reportId, Long customerId, String transaction) {
         String influxDbSql = "select max(active_threads) as maxConcurrenceNum from "
-            + InfluxUtil.getMeasurement(sceneId, reportId, customerId)
+            + InfluxUtil.getMeasurement(jobId, sceneId, reportId, customerId)
             + " where transaction = '" + transaction + "'"
             + " order by time desc limit 1";
         StatReportDTO statReportDTO = influxWriter.querySingle(influxDbSql, StatReportDTO.class);
@@ -849,7 +849,8 @@ public class CloudReportServiceImpl implements CloudReportService {
                 + "avgConcurrenceNum ");
         influxDbSql.append(" from ");
         influxDbSql.append(
-            InfluxUtil.getMeasurement(reportResult.getSceneId(), reportResult.getId(), reportResult.getTenantId()));
+            InfluxUtil.getMeasurement(reportResult.getPressureTaskId(), reportResult.getSceneId(),
+                reportResult.getId(), reportResult.getTenantId()));
         influxDbSql.append(" where ");
         influxDbSql.append(" transaction = ").append("'").append(transaction).append("'");
 
@@ -945,13 +946,16 @@ public class CloudReportServiceImpl implements CloudReportService {
      * @return -
      */
     @Override
-    public List<Metrices> metric(Long reportId, Long sceneId) {
+    public List<Metrices> metric(TrendRequest req) {
+        Long reportId = req.getReportId();
+        Long sceneId = req.getSceneId();
+        Long jobId = req.getJobId();
         List<Metrices> metricList = Lists.newArrayList();
         if (StringUtils.isBlank(String.valueOf(reportId))) {
             return metricList;
         }
         try {
-            String measurement = InfluxUtil.getMeasurement(sceneId, reportId, CloudPluginUtils.getContext().getTenantId());
+            String measurement = InfluxUtil.getMeasurement(jobId, sceneId, reportId, CloudPluginUtils.getContext().getTenantId());
             metricList = influxWriter.query(
                 "select time,avg_tps as avgTps from " + measurement + " where transaction='all'", Metrices.class);
         } catch (Throwable e) {
@@ -1092,13 +1096,15 @@ public class CloudReportServiceImpl implements CloudReportService {
         String transaction = StringUtils.isBlank(testPlanXpathMd5) ? ReportConstants.ALL_BUSINESS_ACTIVITY
             : testPlanXpathMd5;
         //汇总所有业务活动数据
-        StatReportDTO statReport = statReport(taskResult.getSceneId(), reportId, taskResult.getTenantId(), transaction);
+        Long jobId = taskResult.getPressureTaskId();
+        StatReportDTO statReport = statReport(jobId, taskResult.getSceneId(),
+            reportId, taskResult.getTenantId(), transaction);
         if (statReport == null) {
             log.warn("没有找到报表数据，报表生成失败。报告ID：{}", reportId);
         }
 
         //更新报表业务活动 isConclusion 指标是否通过
-        boolean isConclusion = updateReportBusinessActivity(taskResult.getSceneId(), taskResult.getTaskId(),
+        boolean isConclusion = updateReportBusinessActivity(jobId, taskResult.getSceneId(), taskResult.getTaskId(),
             taskResult.getTenantId());
         //保存报表结果
         saveReportResult(reportResult, taskResult, statReport, isConclusion);
@@ -1145,9 +1151,9 @@ public class CloudReportServiceImpl implements CloudReportService {
 
     }
 
-    private Date getFinalDateTime(Long sceneId, Long reportId, Long customerId) {
+    private Date getFinalDateTime(Long jobId, Long sceneId, Long reportId, Long customerId) {
         String influxDbSql = "select max(create_time) as time from "
-            + InfluxUtil.getMeasurement(sceneId, reportId, customerId);
+            + InfluxUtil.getMeasurement(jobId, sceneId, reportId, customerId);
         StatReportDTO statReportDTO = influxWriter.querySingle(influxDbSql, StatReportDTO.class);
         Date date;
         if (Objects.nonNull(statReportDTO) && StringUtils.isNotBlank(statReportDTO.getTime())) {
@@ -1172,7 +1178,7 @@ public class CloudReportServiceImpl implements CloudReportService {
      * @param transaction 业务活动
      * @return -
      */
-    private StatReportDTO statReport(Long sceneId, Long reportId, Long customerId, String transaction) {
+    private StatReportDTO statReport(Long jobId, Long sceneId, Long reportId, Long customerId, String transaction) {
         String influxDbSql = "select "
             + "sum(count)                   as totalRequest,"
             + "sum(count)                   as tempRequestCount,"
@@ -1187,7 +1193,7 @@ public class CloudReportServiceImpl implements CloudReportService {
             + "max(active_threads)          as maxConcurrenceNum,"
             + "round(mean(active_threads))  as avgConcurrenceNum"
             + " from "
-            + InfluxUtil.getMeasurement(sceneId, reportId, customerId)
+            + InfluxUtil.getMeasurement(jobId, sceneId, reportId, customerId)
             + " where transaction = '" + transaction + "'";
 
         return influxWriter.querySingle(influxDbSql, StatReportDTO.class);
@@ -1198,7 +1204,7 @@ public class CloudReportServiceImpl implements CloudReportService {
      *
      * @return -
      */
-    private boolean updateReportBusinessActivity(Long sceneId, Long reportId, Long tenantId) {
+    private boolean updateReportBusinessActivity(Long jobId, Long sceneId, Long reportId, Long tenantId) {
         //报表活动
         List<ReportBusinessActivityDetail> reportBusinessActivityDetails = tReportBusinessActivityDetailMapper
             .queryReportBusinessActivityDetailByReportId(reportId);
@@ -1206,13 +1212,13 @@ public class CloudReportServiceImpl implements CloudReportService {
         //业务活动是否匹配
         boolean totalPassFlag = true;
         boolean passFlag;
-        String tableName = InfluxUtil.getMeasurement(sceneId, reportId, tenantId);
+        String tableName = InfluxUtil.getMeasurement(jobId, sceneId, reportId, tenantId);
         for (ReportBusinessActivityDetail reportBusinessActivityDetail : reportBusinessActivityDetails) {
             if (StringUtils.isBlank(reportBusinessActivityDetail.getBindRef())) {
                 continue;
             }
             //统计某个业务活动的数据
-            StatReportDTO data = statReport(sceneId, reportId, tenantId,
+            StatReportDTO data = statReport(jobId, sceneId, reportId, tenantId,
                 reportBusinessActivityDetail.getBindRef());
             if (data == null) {
                 //如果有一个业务活动没有找到对应的数据，则认为压测不通过
@@ -1394,8 +1400,8 @@ public class CloudReportServiceImpl implements CloudReportService {
             reportResult.setStartTime(reportResult.getGmtCreate());
         }
         if (Objects.isNull(reportResult.getEndTime())) {
-            Date finalDateTime = getFinalDateTime(reportResult.getSceneId(), reportResult.getId(),
-                reportResult.getTenantId());
+            Date finalDateTime = getFinalDateTime(reportResult.getPressureTaskId(), reportResult.getSceneId(),
+                reportResult.getId(), reportResult.getTenantId());
             if (Objects.isNull(finalDateTime) || finalDateTime.getTime() < reportResult.getStartTime().getTime()) {
                 finalDateTime = new Date();
             }

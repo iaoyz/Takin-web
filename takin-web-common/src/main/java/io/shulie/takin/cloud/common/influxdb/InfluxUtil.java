@@ -1,10 +1,6 @@
 package io.shulie.takin.cloud.common.influxdb;
 
-import java.lang.reflect.Field;
-
-import org.influxdb.BuilderException;
-import org.influxdb.annotation.Column;
-import org.influxdb.dto.Point;
+import java.util.Objects;
 
 /**
  * @author qianshui
@@ -33,17 +29,15 @@ public class InfluxUtil {
         return String.format("%s_%s_%s_%s", measurementName, sceneId, reportId, cId);
     }
 
-    private static void addFieldByAttribute(final Point.Builder builder, final Object pojo, final Field field, final Column column, final String fieldName) {
-        try {
-            Object fieldValue = field.get(pojo);
-            if (column.tag()) {
-                builder.tag(fieldName, (String)fieldValue);
-            } else {
-                builder.field(fieldName, fieldValue);
-            }
-        } catch (IllegalArgumentException | IllegalAccessException e) {
-            // Can not happen since we use metadata got from the object
-            throw new BuilderException("Field " + fieldName + " could not found on class " + pojo.getClass().getSimpleName());
+    // 此处考虑旧数据兼容性
+    public static String getMeasurement(Long jobId, Long sceneId, Long reportId, Long customerId) {
+        if (Objects.isNull(jobId)) {
+            return getMeasurement(sceneId, reportId, customerId);
         }
+        return getMeasurement(jobId);
+    }
+
+    public static String getMeasurement(Long jobId) {
+        return String.format("pressure_%s", jobId);
     }
 }
