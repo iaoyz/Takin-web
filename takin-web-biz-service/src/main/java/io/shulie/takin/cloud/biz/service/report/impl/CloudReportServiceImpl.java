@@ -59,7 +59,6 @@ import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.ReportEventService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
 import io.shulie.takin.cloud.biz.service.scene.SceneTaskEventService;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.scenemanage.WarnBean;
@@ -142,8 +141,6 @@ public class CloudReportServiceImpl implements CloudReportService {
     PluginManager pluginManager;
     @Resource
     SceneManageDAO sceneManageDao;
-    @Resource
-    CloudSceneTaskService cloudSceneTaskService;
     @Resource
     TWarnDetailMapper tWarnDetailMapper;
     @Resource
@@ -440,8 +437,6 @@ public class CloudReportServiceImpl implements CloudReportService {
     private List<StopReasonBean> getStopReasonBean(Long sceneId, Long reportId) {
         List<StopReasonBean> stopReasons = Lists.newArrayList();
 
-        ReportResult reportResult = reportDao.selectById(reportId);
-
         // 查询sla熔断数据
         ReportDetailOutput detailOutput = this.getReportByReportId(reportId);
         if (detailOutput.getSlaMsg() != null) {
@@ -450,26 +445,6 @@ public class CloudReportServiceImpl implements CloudReportService {
             slaReasonBean.setDescription(SceneStopReasonEnum.toSlaDesc(detailOutput.getSlaMsg()));
             stopReasons.add(slaReasonBean);
         }
-        // 检查压力节点 情况
-        String pressureNodeKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s", sceneId,
-            reportId);
-        Object pressureNodeStartError = stringRedisTemplate.opsForHash().get(pressureNodeKey,
-            SceneTaskRedisConstants.PRESSURE_NODE_START_ERROR);
-        if (Objects.nonNull(pressureNodeStartError)) {
-            // 组装压力节点异常显示数据
-            stopReasons.add(new StopReasonBean() {{
-                setType(SceneStopReasonEnum.PRESSURE_NODE.getType());
-                setDescription(SceneStopReasonEnum.toDesc(pressureNodeStartError.toString()));
-            }});
-            //  持久化
-            getReportFeatures(reportResult, ReportConstants.PRESSURE_MSG, pressureNodeStartError.toString());
-            reportDao.updateReport(new ReportUpdateParam() {{
-                setId(reportId);
-                setFeatures(reportResult.getFeatures());
-                setGmtUpdate(new Date());
-            }});
-        }
-
         // 查询压测引擎是否有异常
         String key = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
         Object errorObj = stringRedisTemplate.opsForHash().get(key, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR);
@@ -479,16 +454,6 @@ public class CloudReportServiceImpl implements CloudReportService {
                 setType(SceneStopReasonEnum.ENGINE.getType());
                 setDescription(SceneStopReasonEnum.toEngineDesc(errorObj.toString()));
             }});
-            //  持久化
-            getReportFeatures(reportResult, ReportConstants.PRESSURE_MSG, errorObj.toString());
-            reportDao.updateReport(new ReportUpdateParam() {{
-                setId(reportId);
-                setFeatures(reportResult.getFeatures());
-                setGmtUpdate(new Date());
-            }});
-            // 进行中断操作
-            log.info("检测到压测引擎异常，触发中断场景【{}】压测,异常原因：{}", sceneId, errorObj);
-            cloudSceneTaskService.stop(sceneId);
         }
         return stopReasons;
     }
