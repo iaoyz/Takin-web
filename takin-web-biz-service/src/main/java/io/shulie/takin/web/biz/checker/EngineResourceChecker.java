@@ -189,8 +189,9 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         ResourceContext context = (ResourceContext)event.getExt();
         String resourceId = context.getResourceId();
         if (StringUtils.isNotBlank(resourceId)) {
-            redisClientUtils.expire(PressureStartCache.getResourceKey(resourceId), 15);
-            redisClientUtils.expire(PressureStartCache.getResourcePodSuccessKey(resourceId), 15);
+            redisClientUtils.del(PressureStartCache.getResourceKey(resourceId),
+                PressureStartCache.getResourcePodSuccessKey(resourceId),
+                PressureStartCache.getPodStartFirstKey(resourceId));
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resourceId);
             cloudResourceApi.unLock(request);
