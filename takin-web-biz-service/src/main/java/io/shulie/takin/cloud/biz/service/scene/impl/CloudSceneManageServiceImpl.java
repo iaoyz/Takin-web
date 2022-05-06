@@ -75,6 +75,7 @@ import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageErrorEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.cloud.common.utils.JsonUtil;
 import io.shulie.takin.cloud.common.utils.LinuxUtil;
@@ -146,6 +147,8 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
     private TSceneBusinessActivityRefMapper tSceneBusinessActivityRefMapper;
     @Resource
     private EventCenterTemplate eventCenterTemplate;
+    @Resource
+    private RedisClientUtils redisClientUtils;
 
     @Value("${script.temp.path}")
     private String scriptTempPath;
@@ -707,19 +710,22 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
         // --->update 失败状态
         sceneManageDAO.getBaseMapper().updateById(sceneManage);
 
-        // 触发启动失败事件
-        Event event = new Event();
-        event.setEventName(PressureStartCache.START_FAILED);
-        StopEventSource source = new StopEventSource();
-        ResourceContext context = new ResourceContext();
-        context.setSceneId(sceneId);
-        context.setTaskId(recentlyReport.getTaskId());
-        context.setReportId(recentlyReport.getId());
-        context.setResourceId(recentlyReport.getResourceId());
-        source.setContext(context);
-        source.setMessage(errorMsg);
-        event.setExt(source);
-        eventCenterTemplate.doEvents(event);
+        if (!redisClientUtils.hasKey(RedisClientUtils.getLockPrefix(
+            PressureStartCache.getFinishReportStepKey(recentlyReport.getResourceId())))) {
+            // 触发启动失败事件
+            Event event = new Event();
+            event.setEventName(PressureStartCache.START_FAILED);
+            StopEventSource source = new StopEventSource();
+            ResourceContext context = new ResourceContext();
+            context.setSceneId(sceneId);
+            context.setTaskId(recentlyReport.getTaskId());
+            context.setReportId(recentlyReport.getId());
+            context.setResourceId(recentlyReport.getResourceId());
+            source.setContext(context);
+            source.setMessage(errorMsg);
+            event.setExt(source);
+            eventCenterTemplate.doEvents(event);
+        }
     }
 
     @Override

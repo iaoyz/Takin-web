@@ -45,7 +45,20 @@ import com.pamirs.takin.cloud.entity.domain.dto.report.StatReportDTO;
 import com.pamirs.takin.cloud.entity.domain.entity.report.Report;
 import com.pamirs.takin.cloud.entity.domain.entity.report.ReportBusinessActivityDetail;
 import com.pamirs.takin.cloud.entity.domain.entity.scene.manage.WarnDetail;
+import io.shulie.takin.adapter.api.model.ScriptNodeSummaryBean;
+import io.shulie.takin.adapter.api.model.common.DataBean;
+import io.shulie.takin.adapter.api.model.common.DistributeBean;
+import io.shulie.takin.adapter.api.model.common.SlaBean;
+import io.shulie.takin.adapter.api.model.common.StopReasonBean;
+import io.shulie.takin.adapter.api.model.request.WarnQueryParam;
+import io.shulie.takin.adapter.api.model.request.report.ReportQueryReq;
+import io.shulie.takin.adapter.api.model.request.report.ReportTrendQueryReq;
+import io.shulie.takin.adapter.api.model.request.report.ScriptNodeTreeQueryReq;
 import io.shulie.takin.adapter.api.model.request.report.TrendRequest;
+import io.shulie.takin.adapter.api.model.response.report.NodeTreeSummaryResp;
+import io.shulie.takin.adapter.api.model.response.report.ReportTrendResp;
+import io.shulie.takin.adapter.api.model.response.report.ScriptNodeTreeResp;
+import io.shulie.takin.adapter.api.model.response.scenemanage.BusinessActivitySummaryBean;
 import io.shulie.takin.cloud.biz.cloudserver.ReportConverter;
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
 import io.shulie.takin.cloud.biz.input.report.UpdateReportConclusionInput;
@@ -56,10 +69,9 @@ import io.shulie.takin.cloud.biz.output.report.ReportOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.WarnDetailOutput;
 import io.shulie.takin.cloud.biz.service.report.CloudReportService;
-import io.shulie.takin.cloud.biz.service.scene.ReportEventService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
+import io.shulie.takin.cloud.biz.service.scene.ReportEventService;
 import io.shulie.takin.cloud.biz.service.scene.SceneTaskEventService;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.scenemanage.WarnBean;
@@ -74,6 +86,7 @@ import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.influxdb.InfluxUtil;
 import io.shulie.takin.cloud.common.influxdb.InfluxWriter;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
 import io.shulie.takin.cloud.common.utils.GsonUtil;
 import io.shulie.takin.cloud.common.utils.JsonPathUtil;
@@ -97,19 +110,6 @@ import io.shulie.takin.cloud.ext.content.enums.NodeTypeEnum;
 import io.shulie.takin.cloud.ext.content.response.Response;
 import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
-import io.shulie.takin.adapter.api.model.ScriptNodeSummaryBean;
-import io.shulie.takin.adapter.api.model.common.DataBean;
-import io.shulie.takin.adapter.api.model.common.DistributeBean;
-import io.shulie.takin.adapter.api.model.common.SlaBean;
-import io.shulie.takin.adapter.api.model.common.StopReasonBean;
-import io.shulie.takin.adapter.api.model.request.WarnQueryParam;
-import io.shulie.takin.adapter.api.model.request.report.ReportQueryReq;
-import io.shulie.takin.adapter.api.model.request.report.ReportTrendQueryReq;
-import io.shulie.takin.adapter.api.model.request.report.ScriptNodeTreeQueryReq;
-import io.shulie.takin.adapter.api.model.response.report.NodeTreeSummaryResp;
-import io.shulie.takin.adapter.api.model.response.report.ReportTrendResp;
-import io.shulie.takin.adapter.api.model.response.report.ScriptNodeTreeResp;
-import io.shulie.takin.adapter.api.model.response.scenemanage.BusinessActivitySummaryBean;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
@@ -143,8 +143,6 @@ public class CloudReportServiceImpl implements CloudReportService {
     @Resource
     SceneManageDAO sceneManageDao;
     @Resource
-    CloudSceneTaskService cloudSceneTaskService;
-    @Resource
     TWarnDetailMapper tWarnDetailMapper;
     @Resource
     ReportEventService reportEventService;
@@ -158,6 +156,8 @@ public class CloudReportServiceImpl implements CloudReportService {
     TReportBusinessActivityDetailMapper tReportBusinessActivityDetailMapper;
     @Resource
     private EventCenterTemplate eventCenterTemplate;
+    @Resource
+    private RedisClientUtils redisClientUtils;
 
     @Value("${report.aggregation.interval}")
     private String reportAggregationInterval;
@@ -440,8 +440,6 @@ public class CloudReportServiceImpl implements CloudReportService {
     private List<StopReasonBean> getStopReasonBean(Long sceneId, Long reportId) {
         List<StopReasonBean> stopReasons = Lists.newArrayList();
 
-        ReportResult reportResult = reportDao.selectById(reportId);
-
         // 查询sla熔断数据
         ReportDetailOutput detailOutput = this.getReportByReportId(reportId);
         if (detailOutput.getSlaMsg() != null) {
@@ -450,26 +448,6 @@ public class CloudReportServiceImpl implements CloudReportService {
             slaReasonBean.setDescription(SceneStopReasonEnum.toSlaDesc(detailOutput.getSlaMsg()));
             stopReasons.add(slaReasonBean);
         }
-        // 检查压力节点 情况
-        String pressureNodeKey = String.format(SceneTaskRedisConstants.PRESSURE_NODE_ERROR_KEY + "%s_%s", sceneId,
-            reportId);
-        Object pressureNodeStartError = stringRedisTemplate.opsForHash().get(pressureNodeKey,
-            SceneTaskRedisConstants.PRESSURE_NODE_START_ERROR);
-        if (Objects.nonNull(pressureNodeStartError)) {
-            // 组装压力节点异常显示数据
-            stopReasons.add(new StopReasonBean() {{
-                setType(SceneStopReasonEnum.PRESSURE_NODE.getType());
-                setDescription(SceneStopReasonEnum.toDesc(pressureNodeStartError.toString()));
-            }});
-            //  持久化
-            getReportFeatures(reportResult, ReportConstants.PRESSURE_MSG, pressureNodeStartError.toString());
-            reportDao.updateReport(new ReportUpdateParam() {{
-                setId(reportId);
-                setFeatures(reportResult.getFeatures());
-                setGmtUpdate(new Date());
-            }});
-        }
-
         // 查询压测引擎是否有异常
         String key = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneId, reportId);
         Object errorObj = stringRedisTemplate.opsForHash().get(key, SceneTaskRedisConstants.SCENE_RUN_TASK_ERROR);
@@ -479,16 +457,6 @@ public class CloudReportServiceImpl implements CloudReportService {
                 setType(SceneStopReasonEnum.ENGINE.getType());
                 setDescription(SceneStopReasonEnum.toEngineDesc(errorObj.toString()));
             }});
-            //  持久化
-            getReportFeatures(reportResult, ReportConstants.PRESSURE_MSG, errorObj.toString());
-            reportDao.updateReport(new ReportUpdateParam() {{
-                setId(reportId);
-                setFeatures(reportResult.getFeatures());
-                setGmtUpdate(new Date());
-            }});
-            // 进行中断操作
-            log.info("检测到压测引擎异常，触发中断场景【{}】压测,异常原因：{}", sceneId, errorObj);
-            cloudSceneTaskService.stop(sceneId);
         }
         return stopReasons;
     }
@@ -735,11 +703,16 @@ public class CloudReportServiceImpl implements CloudReportService {
             .map(SceneManageStatusEnum::getSceneManageStatusEnum)
             .map(SceneManageStatusEnum::getDesc).orElse("未找到场景"));
         if (sceneManage != null && !sceneManage.getType().equals(SceneManageStatusEnum.FORCE_STOP.getValue())) {
+            boolean finishStep = redisClientUtils.lockNoExpire(
+                PressureStartCache.getFinishReportStepKey(reportResult.getResourceId()),
+                String.valueOf(System.currentTimeMillis()));
             cloudSceneManageService.updateSceneLifeCycle(
                 UpdateStatusBean.build(reportResult.getSceneId(), reportResult.getId(), reportResult.getTenantId())
                     .checkEnum(SceneManageStatusEnum.ENGINE_RUNNING,
                         SceneManageStatusEnum.STOP).updateEnum(SceneManageStatusEnum.WAIT).build());
-            pressureEnd(reportResult);
+            if (finishStep) {
+                pressureEnd(reportResult);
+            }
         }
         //报告结束应该放在场景之后
         reportDao.finishReport(reportId);
@@ -1137,16 +1110,6 @@ public class CloudReportServiceImpl implements CloudReportService {
                 UpdateStatusBean.build(reportResult.getSceneId(), reportResult.getId(), reportResult.getTenantId())
                     .checkEnum(
                         SceneManageStatusEnum.STOP).updateEnum(SceneManageStatusEnum.WAIT).build());
-            // 清理缓存
-            Event otherEvent = new Event();
-            otherEvent.setEventName(PressureStartCache.PRESSURE_END);
-
-            ResourceContext context = new ResourceContext();
-            context.setSceneId(reportResult.getSceneId());
-            context.setResourceId(reportResult.getResourceId());
-            context.setReportId(reportResult.getId());
-            otherEvent.setExt(context);
-            eventCenterTemplate.doEvents(otherEvent);
         }
 
     }
@@ -1633,6 +1596,9 @@ public class CloudReportServiceImpl implements CloudReportService {
         ResourceContext context = new ResourceContext();
         context.setSceneId(reportResult.getSceneId());
         context.setResourceId(reportResult.getResourceId());
+        context.setTaskId(reportResult.getTaskId());
+        context.setJobId(reportResult.getPressureTaskId());
+        context.setTenantId(reportResult.getTenantId());
         context.setReportId(reportResult.getId());
         event.setExt(context);
         eventCenterTemplate.doEvents(event);

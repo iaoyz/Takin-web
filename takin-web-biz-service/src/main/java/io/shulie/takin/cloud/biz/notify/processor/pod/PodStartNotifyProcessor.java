@@ -49,8 +49,7 @@ public class PodStartNotifyProcessor extends AbstractIndicators implements Cloud
     private void processStartSuccess(ResourceExample context, ResourceContext resourceContext) {
         String resourceId = String.valueOf(context.getResourceId());
         String podId = String.valueOf(context.getResourceExampleId());
-        redisClientUtils.hmset(PressureStartCache.getPodHeartbeatKey(resourceContext.getSceneId()),
-            podId, System.currentTimeMillis());
+        redisClientUtils.hmset(PressureStartCache.getPodHeartbeatKey(resourceId), podId, System.currentTimeMillis());
         redisClientUtils.setSetValue(PressureStartCache.getResourcePodSuccessKey(resourceId), podId);
         if (Boolean.TRUE.equals(
             redisTemplate.opsForValue().setIfAbsent(PressureStartCache.getPodStartFirstKey(resourceId), podId))) {

@@ -37,12 +37,12 @@ public abstract class PressureStartCache {
 
     // 启动成功的pod实例名称存入该key
     public static String getResourcePodSuccessKey(String resourceId) {
-        return String.format("pressure:resource:pod:%s", resourceId);
+        return String.format("pressure:resource:pod:success:%s", resourceId);
     }
 
     // 启动成功的jmeter实例名称存入该key,stop 时会移除
     public static String getResourceJmeterSuccessKey(String resourceId) {
-        return String.format("pressure:resource:jmeter:%s", resourceId);
+        return String.format("pressure:resource:jmeter:success:%s", resourceId);
     }
 
     // 场景启动锁，保证场景不能同时启动多次
@@ -66,33 +66,33 @@ public abstract class PressureStartCache {
     }
 
     // jmeter心跳时间
-    public static String getJmeterHeartbeatKey(Long sceneId) {
-        return String.format("pressure:scene:heartbeat:jmeter:%s", sceneId);
+    public static String getJmeterHeartbeatKey(String resourceId) {
+        return String.format("pressure:resource:jmeter:heartbeat:%s", resourceId);
     }
 
     // pod心跳时间
-    public static String getPodHeartbeatKey(Long sceneId) {
-        return String.format("pressure:scene:heartbeat:pod:%s", sceneId);
+    public static String getPodHeartbeatKey(String resourceId) {
+        return String.format("pressure:resource:pod:heartbeat:%s", resourceId);
     }
 
     // 第一个启动的pod id
     public static String getPodStartFirstKey(String resourceId) {
-        return String.format("pressure:resource:start:pod:first:%s", resourceId);
+        return String.format("pressure:resource:pod:first:start:%s", resourceId);
     }
 
     // 第一个启动的jmeter id
     public static String getJmeterStartFirstKey(String resourceId) {
-        return String.format("pressure:resource:start:jmeter:first:%s", resourceId);
+        return String.format("pressure:resource:jmeter:first:start:%s", resourceId);
     }
 
     // 第一个异常的jmeter id
     public static String getPodErrorFirstKey(String resourceId) {
-        return String.format("pressure:resource:error:pod:first:%s", resourceId);
+        return String.format("pressure:resource:pod:first:error:%s", resourceId);
     }
 
     // 第一个异常的jmeter id
     public static String getJmeterErrorFirstKey(String resourceId) {
-        return String.format("pressure:resource:error:jmeter:first:%s", resourceId);
+        return String.format("pressure:resource:jmeter:first:error:%s", resourceId);
     }
 
     public static String getFlowDebugKey(Long sceneId) {
@@ -107,13 +107,17 @@ public abstract class PressureStartCache {
         return String.format("pressure:scene:try_run:%s", sceneId);
     }
 
+    public static String getFinishReportStepKey(String resourceId) {
+        return String.format("pressure:resource:finish_step:%s", resourceId);
+    }
+
     public static List<String> clearCacheKey(String resourceId, Long sceneId) {
         return Arrays.asList(PressureStartCache.getResourceKey(resourceId),
             PressureStartCache.getResourcePodSuccessKey(resourceId),
-            PressureStartCache.getPodHeartbeatKey(sceneId),
+            PressureStartCache.getPodHeartbeatKey(resourceId),
             PressureStartCache.getPodStartFirstKey(resourceId),
             PressureStartCache.getResourceJmeterSuccessKey(resourceId),
-            PressureStartCache.getJmeterHeartbeatKey(sceneId),
+            PressureStartCache.getJmeterHeartbeatKey(resourceId),
             PressureStartCache.getJmeterStartFirstKey(resourceId),
             PressureStartCache.getSceneResourceLockingKey(sceneId),
             PressureStartCache.getSceneResourceKey(sceneId),
@@ -126,7 +130,9 @@ public abstract class PressureStartCache {
             RedisClientUtils.getLockPrefix(PressureStartCache.getJmeterErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getPodErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)),
-            RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId))
+            RedisClientUtils.getLockPrefix(PressureStartCache.getSceneResourceLockingKey(sceneId)),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getFinishReportStepKey(resourceId)
+            )
         );
     }
 }

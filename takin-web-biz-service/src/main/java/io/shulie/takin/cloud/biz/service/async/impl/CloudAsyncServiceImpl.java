@@ -148,7 +148,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         String resourceId = context.getResourceId();
         int checkTime = pressureNodeHeartbeatExpireTime * 1000;
         while (!redisClientUtils.hasKey(RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)))) {
-            Map<Object, Object> heartbeatMap = redisClientUtils.hmget(PressureStartCache.getJmeterHeartbeatKey(sceneId));
+            Map<Object, Object> heartbeatMap = redisClientUtils.hmget(PressureStartCache.getJmeterHeartbeatKey(resourceId));
             if (CollectionUtils.isEmpty(heartbeatMap)) {
                 callStopEventIfNecessary(resourceId, "jmeter节点超时未上报心跳数据");
                 return;
@@ -174,7 +174,7 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         String resourceId = context.getResourceId();
         int checkTime = pressureNodeHeartbeatExpireTime * 1000;
         while (!redisClientUtils.hasKey(RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)))) {
-            Map<Object, Object> heartbeatMap = redisClientUtils.hmget(PressureStartCache.getPodHeartbeatKey(sceneId));
+            Map<Object, Object> heartbeatMap = redisClientUtils.hmget(PressureStartCache.getPodHeartbeatKey(resourceId));
             if (CollectionUtils.isEmpty(heartbeatMap)) {
                 callStopEventIfNecessary(resourceId, "pod节点超时未上报心跳数据");
                 return;
@@ -197,11 +197,12 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
         Long tenantId = context.getTenantId();
+        Long taskId = context.getTaskId();
         ResourceContext resourceContext = new ResourceContext();
         resourceContext.setResourceId(resourceId);
         resourceContext.setSceneId(sceneId);
         resourceContext.setReportId(reportId);
-        resourceContext.setTaskId(context.getTaskId());
+        resourceContext.setTaskId(taskId);
         resourceContext.setTenantId(tenantId);
         resourceContext.setJobId(context.getTaskId());
         resourceContext.setUniqueKey(context.getUniqueKey());

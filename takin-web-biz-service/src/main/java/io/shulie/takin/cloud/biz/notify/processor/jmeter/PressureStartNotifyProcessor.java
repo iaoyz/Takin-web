@@ -86,13 +86,12 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
 
     private void notifyStart(ResourceContext context, PressureStartNotifyParam param) {
         // 添加心跳数据
-        Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
         long startTime = param.getTime().getTime();
-        redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(sceneId),
+        redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(context.getResourceId()),
             String.valueOf(param.getData().getJobExampleId()), System.currentTimeMillis());
         cloudAsyncService.checkJmeterHeartbeatTask(context);
-        log.info("场景[{}]压测任务开始，更新报告[{}]开始时间[{}]", sceneId, reportId, startTime);
+        log.info("场景[{}]压测任务开始，更新报告[{}]开始时间[{}]", context.getSceneId(), reportId, startTime);
         reportDao.updateReportStartTime(reportId, new Date(startTime));
     }
 }

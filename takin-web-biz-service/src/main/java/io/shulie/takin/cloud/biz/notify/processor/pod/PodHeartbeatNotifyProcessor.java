@@ -24,8 +24,7 @@ public class PodHeartbeatNotifyProcessor extends AbstractIndicators
         ResourceContext resourceContext = getResourceContext(resourceId);
         if (resourceContext != null) {
             String podId = String.valueOf(data.getJobExampleId());
-            redisClientUtils.hmset(PressureStartCache.getPodHeartbeatKey(resourceContext.getSceneId()), podId,
-                System.currentTimeMillis());
+            redisClientUtils.hmset(PressureStartCache.getPodHeartbeatKey(resourceId), podId, System.currentTimeMillis());
         }
         return resourceId;
     }

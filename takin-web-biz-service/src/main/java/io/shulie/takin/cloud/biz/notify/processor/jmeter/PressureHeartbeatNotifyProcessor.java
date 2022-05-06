@@ -23,7 +23,7 @@ public class PressureHeartbeatNotifyProcessor extends AbstractIndicators
         String resourceId = String.valueOf(data.getResourceId());
         ResourceContext resourceContext = getResourceContext(resourceId);
         if (resourceContext != null) {
-            redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(resourceContext.getSceneId()),
+            redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(resourceId),
                 String.valueOf(data.getJobExampleId()), System.currentTimeMillis());
         }
         return resourceId;
