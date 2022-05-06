@@ -27,7 +27,7 @@ import io.shulie.takin.adapter.api.model.common.TimeBean;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.SlaInfo;
 import io.shulie.takin.adapter.api.model.request.pressure.PressureTaskStartReq.ThreadConfigInfo;
-import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators.ResourceContext;
+import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.config.AppConfig;
 import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.service.async.CloudAsyncService;
@@ -78,7 +78,7 @@ import static java.util.stream.Collectors.groupingBy;
  */
 @Service
 @Slf4j
-public class ScheduleServiceImpl implements ScheduleService {
+public class ScheduleServiceImpl extends AbstractIndicators implements ScheduleService {
     @Resource
     private StrategyConfigService strategyConfigService;
     @Resource
@@ -228,9 +228,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             // 是空的
             log.info("场景{},任务{},顾客{}开始启动压测， 压测启动成功", sceneId, taskId, customerId);
             updateReportAssociation(startRequest, jobId);
-            ResourceContext context = new ResourceContext();
-            context.setResourceId(String.valueOf(req.getResourceId()));
-            context.setSceneId(sceneId);
+            ResourceContext context = getResourceContext(request.getRequest().getResourceId());
             cloudAsyncService.checkJmeterStartedTask(context);
         } catch (Exception e) {
             // 创建失败

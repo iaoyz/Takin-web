@@ -42,22 +42,22 @@ public class RedisClientUtils {
     private static final String UNLOCK_SCRIPT = "if redis.call('get',KEYS[1]) == ARGV[1] then "
         + " redis.call('del',KEYS[1]) return '1' else return '0' end";
 
-    private static final String SET_ADD_RETURN_COUNT =
-        " redis.call('SADD', KEYS[1], ARGV[1]); return redis.call('SCARD', KEYS[1])";
+    private static final String REM_RETURN_COUNT =
+        " redis.call('SREM', KEYS[1], ARGV[1]); return redis.call('SCARD', KEYS[1])";
 
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private RedisTemplate redisTemplate;
     private DefaultRedisScript<String> unlockRedisScript;
     private DefaultRedisScript<String> reentryLockRedisScript;
-    private DefaultRedisScript<Object> setAddCountScript;
+    private DefaultRedisScript<Object> remAndCountScript;
     private final Expiration expiration = Expiration.seconds(EXPIREMSECS);
 
     @PostConstruct
     public void init() {
         unlockRedisScript = new DefaultRedisScript<>(UNLOCK_SCRIPT, String.class);
         reentryLockRedisScript = new DefaultRedisScript<>(REENTRY_LOCK_SCRIPT, String.class);
-        setAddCountScript = new DefaultRedisScript<>(SET_ADD_RETURN_COUNT, Object.class);
+        remAndCountScript = new DefaultRedisScript<>(REM_RETURN_COUNT, Object.class);
     }
 
     @Autowired
@@ -100,11 +100,11 @@ public class RedisClientUtils {
     }
 
     public boolean reentryLockNoExpire(String key, String value) {
-        return "1".equals(stringRedisTemplate.execute(reentryLockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
+        return "1".equals(redisTemplate.execute(reentryLockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
     }
 
     public boolean lockNoExpire(String key, String value) {
-        return Boolean.TRUE.equals(stringRedisTemplate.execute((RedisCallback<Boolean>)connection -> {
+        return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>)connection -> {
             Boolean bl = connection.set(getLockPrefix(key).getBytes(), value.getBytes(), Expiration.persistent(),
                 RedisStringCommands.SetOption.SET_IF_ABSENT);
             return Boolean.TRUE.equals(bl);
@@ -116,7 +116,7 @@ public class RedisClientUtils {
     }
 
     public boolean unlock(String key, String value) {
-        return "1".equals(stringRedisTemplate.execute(unlockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
+        return "1".equals(redisTemplate.execute(unlockRedisScript, Lists.newArrayList(getLockPrefix(key)), value));
     }
 
     public Long increment(final String key, final long l) {
@@ -425,8 +425,8 @@ public class RedisClientUtils {
         return redisTemplate.opsForSet().add(key, value);
     }
 
-    public Long setSetValueAndReturnCount(String key, String value) {
-        Object count = stringRedisTemplate.execute(setAddCountScript, Lists.newArrayList(key), value);
+    public Long remSetValueAndReturnCount(String key, String value) {
+        Object count = redisTemplate.execute(remAndCountScript, Lists.newArrayList(key), value);
         if (count instanceof List) {
             return Long.valueOf(String.valueOf(((List<Object>)count).get(0)));
         }

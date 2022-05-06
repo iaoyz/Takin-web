@@ -66,9 +66,7 @@ public class DynamicTpsServiceImpl implements DynamicTpsService {
             if (CollectionUtils.isEmpty(params)) {
                 return null;
             }
-            ThreadConfigInfo ext = params.get(0).getContext();
-            Integer tps = ext.getTps();
-            return tps == null ? null : tps.doubleValue();
+            return params.stream().mapToDouble(param -> param.getContext().getTps()).sum();
         } catch (Exception e) {
             return null;
         }

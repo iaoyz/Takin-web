@@ -8,9 +8,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import io.shulie.takin.cloud.biz.notify.StopEventSource;
-import io.shulie.takin.cloud.biz.service.report.CloudReportService;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
-import io.shulie.takin.cloud.biz.service.scene.CloudSceneTaskService;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
@@ -20,7 +18,6 @@ import io.shulie.takin.eventcenter.EventCenterTemplate;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.RedisStringCommands;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -65,13 +62,7 @@ public abstract class AbstractIndicators {
     @Resource
     protected RedisTemplate<String, Object> redisTemplate;
     @Resource
-    private CloudSceneTaskService sceneTaskService;
-    @Resource
-    private CloudReportService cloudReportService;
-    @Resource
     private RedisClientUtils redisClientUtils;
-    @Value("${pressure.heartbeat.timeout:30}")
-    private Long heartbeatTimeout;
     private DefaultRedisScript<Void> minRedisScript;
     private DefaultRedisScript<Void> maxRedisScript;
     private DefaultRedisScript<Void> unlockRedisScript;
@@ -201,7 +192,6 @@ public abstract class AbstractIndicators {
             return null;
         }
         ResourceContext context = new ResourceContext();
-        context.setResourceKey(resourceKey);
         context.setResourceId(resourceId);
         context.setSceneId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.SCENE_ID))));
         context.setReportId(Long.valueOf(String.valueOf(resource.get(PressureStartCache.REPORT_ID))));
@@ -248,12 +238,9 @@ public abstract class AbstractIndicators {
         private String resourceId;
         private Long tenantId;
         private Long podNumber;
-        private String resourceKey;
         private String checkStatus;
-        private Long heartbeatTime;
         private String uniqueKey;
 
         private String message;
-        private boolean isEnd;
     }
 }
