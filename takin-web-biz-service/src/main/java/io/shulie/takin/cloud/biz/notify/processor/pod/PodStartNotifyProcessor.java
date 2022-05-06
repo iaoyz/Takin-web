@@ -29,7 +29,7 @@ public class PodStartNotifyProcessor extends AbstractIndicators implements Cloud
     }
 
     @Override
-    public void process(PodStartNotifyParam context) {
+    public String process(PodStartNotifyParam context) {
         ResourceExample data = context.getData();
         String resourceId = String.valueOf(data.getResourceId());
         ResourceContext resourceContext = getResourceContext(resourceId);
@@ -42,12 +42,15 @@ public class PodStartNotifyProcessor extends AbstractIndicators implements Cloud
                 }
             }
         }
+        return resourceId;
     }
 
     // 增加pod实例数
     private void processStartSuccess(ResourceExample context, ResourceContext resourceContext) {
         String resourceId = String.valueOf(context.getResourceId());
         String podId = String.valueOf(context.getResourceExampleId());
+        redisClientUtils.hmset(PressureStartCache.getPodHeartbeatKey(resourceContext.getSceneId()),
+            podId, System.currentTimeMillis());
         redisClientUtils.setSetValue(PressureStartCache.getResourcePodSuccessKey(resourceId), podId);
         if (Boolean.TRUE.equals(
             redisTemplate.opsForValue().setIfAbsent(PressureStartCache.getPodStartFirstKey(resourceId), podId))) {

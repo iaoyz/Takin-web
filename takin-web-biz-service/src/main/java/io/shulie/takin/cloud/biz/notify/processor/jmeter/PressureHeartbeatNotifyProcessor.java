@@ -18,14 +18,15 @@ public class PressureHeartbeatNotifyProcessor extends AbstractIndicators
     private RedisClientUtils redisClientUtils;
 
     @Override
-    public void process(PressureHeartbeatNotifyParam param) {
+    public String process(PressureHeartbeatNotifyParam param) {
         JobExample data = param.getData();
-        ResourceContext resourceContext = getResourceContext(String.valueOf(data.getResourceId()));
+        String resourceId = String.valueOf(data.getResourceId());
+        ResourceContext resourceContext = getResourceContext(resourceId);
         if (resourceContext != null) {
-            String podId = String.valueOf(data.getJobExampleId());
-            redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(resourceContext.getSceneId()), podId,
-                System.currentTimeMillis());
+            redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(resourceContext.getSceneId()),
+                String.valueOf(data.getJobExampleId()), System.currentTimeMillis());
         }
+        return resourceId;
     }
 
     @Override

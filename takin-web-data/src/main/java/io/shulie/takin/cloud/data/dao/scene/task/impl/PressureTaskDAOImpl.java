@@ -58,18 +58,13 @@ public class PressureTaskDAOImpl implements PressureTaskDAO {
     }
 
     @Override
-    public PressureTaskEntity queryByResourceId(String resourceId) {
-        return pressureTaskMapper.selectOne(Wrappers.lambdaQuery(PressureTaskEntity.class)
-            .eq(PressureTaskEntity::getResourceId, resourceId));
-    }
-
-    @Override
-    public void updateStatus(Long taskId, PressureTaskStateEnum state) {
+    public void updateStatus(Long taskId, PressureTaskStateEnum state, String message) {
         PressureTaskEntity entity = new PressureTaskEntity();
         entity.setId(taskId);
         entity.setStatus(state.ordinal());
+        entity.setExceptionMsg(message);
         entity.setGmtUpdate(new Date());
         pressureTaskMapper.updateById(entity);
-        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, state));
+        pressureTaskVarietyDAO.save(PressureTaskVarietyEntity.of(taskId, state, message));
     }
 }

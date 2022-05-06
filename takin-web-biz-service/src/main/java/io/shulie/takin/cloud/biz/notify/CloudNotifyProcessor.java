@@ -4,5 +4,5 @@ public interface CloudNotifyProcessor<T extends CloudNotifyParam> {
 
     CallbackType type();
 
-     void process(T param);
+     String process(T param);
 }

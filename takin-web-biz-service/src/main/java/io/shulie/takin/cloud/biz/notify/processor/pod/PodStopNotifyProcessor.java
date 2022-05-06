@@ -14,7 +14,8 @@ public class PodStopNotifyProcessor extends AbstractIndicators implements CloudN
     }
 
     @Override
-    public void process(PodStopNotifyParam context) {
+    public String process(PodStopNotifyParam context) {
         // 暂不处理
+        return "";
     }
 }

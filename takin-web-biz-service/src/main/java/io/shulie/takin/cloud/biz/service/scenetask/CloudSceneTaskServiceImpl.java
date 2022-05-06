@@ -335,7 +335,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         if (SceneManageStatusEnum.ifFree(sceneManage.getStatus())
             || Objects.equals(SceneManageStatusEnum.RESOURCE_LOCKING.getValue(), sceneManage.getStatus())) {
 
-            if (redisClientUtils.lock(PressureStartCache.getStopFlag(sceneId, resourceId), "1")) {
+            if (redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(sceneId, resourceId), "取消压测")) {
                 context.setResourceId(resourceId);
                 context.setMessage("取消压测");
                 Event event = new Event();

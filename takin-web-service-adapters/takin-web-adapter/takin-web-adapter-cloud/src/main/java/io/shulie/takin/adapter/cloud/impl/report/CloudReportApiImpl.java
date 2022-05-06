@@ -286,7 +286,7 @@ public class CloudReportApiImpl implements CloudReportApi {
      */
     @Override
     public List<MetricesResponse> metrics(TrendRequest req) {
-        List<Metrices> metrics = cloudReportService.metric(req.getReportId(), req.getSceneId());
+        List<Metrices> metrics = cloudReportService.metric(req);
         if (CollectionUtils.isEmpty(metrics)) {
             return new ArrayList<>(0);
         }

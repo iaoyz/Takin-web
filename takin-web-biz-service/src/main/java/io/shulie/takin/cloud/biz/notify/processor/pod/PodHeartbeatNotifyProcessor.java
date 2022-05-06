@@ -18,14 +18,16 @@ public class PodHeartbeatNotifyProcessor extends AbstractIndicators
     private RedisClientUtils redisClientUtils;
 
     @Override
-    public void process(PodHeartbeatNotifyParam param) {
+    public String process(PodHeartbeatNotifyParam param) {
         JobExample data = param.getData();
-        ResourceContext resourceContext = getResourceContext(String.valueOf(data.getResourceId()));
+        String resourceId = String.valueOf(data.getResourceId());
+        ResourceContext resourceContext = getResourceContext(resourceId);
         if (resourceContext != null) {
             String podId = String.valueOf(data.getJobExampleId());
             redisClientUtils.hmset(PressureStartCache.getPodHeartbeatKey(resourceContext.getSceneId()), podId,
                 System.currentTimeMillis());
         }
+        return resourceId;
     }
 
     @Override

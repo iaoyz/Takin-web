@@ -1,12 +1,19 @@
 package io.shulie.takin.cloud.biz.notify.processor.pod;
 
+import javax.annotation.Resource;
+
 import io.shulie.takin.cloud.biz.collector.collector.AbstractIndicators;
 import io.shulie.takin.cloud.biz.notify.CallbackType;
 import io.shulie.takin.cloud.biz.notify.CloudNotifyProcessor;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import org.springframework.stereotype.Component;
 
 @Component
 public class PodErrorNotifyProcessor extends AbstractIndicators implements CloudNotifyProcessor<PodErrorNotifyParam> {
+
+    @Resource
+    private RedisClientUtils redisClientUtils;
 
     @Override
     public CallbackType type() {
@@ -14,8 +21,13 @@ public class PodErrorNotifyProcessor extends AbstractIndicators implements Cloud
     }
 
     @Override
-    public void process(PodErrorNotifyParam context) {
+    public String process(PodErrorNotifyParam context) {
         ResourceExampleErrorInfo data = context.getData();
-        callStopEventIfNecessary(String.valueOf(data.getResourceId()), data.getErrorMessage());
+        String resourceId = String.valueOf(data.getResourceId());
+        if (redisClientUtils.lock(PressureStartCache.getPodErrorFirstKey(resourceId),
+            String.valueOf(data.getResourceExampleId()))) {
+            callStopEventIfNecessary(resourceId, data.getErrorMessage());
+        }
+        return resourceId;
     }
 }

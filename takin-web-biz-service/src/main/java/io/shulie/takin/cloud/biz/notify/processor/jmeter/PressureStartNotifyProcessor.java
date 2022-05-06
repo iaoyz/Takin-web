@@ -46,8 +46,9 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
     }
 
     @Override
-    public void process(PressureStartNotifyParam param) {
+    public String process(PressureStartNotifyParam param) {
         processStartSuccess(param);
+        return String.valueOf(param.getData().getResourceId());
     }
 
     private void processStartSuccess(PressureStartNotifyParam context) {
@@ -71,7 +72,7 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
                     .checkEnum(SceneManageStatusEnum.PRESSURE_NODE_RUNNING)
                     .updateEnum(SceneManageStatusEnum.ENGINE_RUNNING)
                     .build());
-                notifyStart(resourceContext, context.getTime().getTime());
+                notifyStart(resourceContext, context);
                 cacheTryRunTaskStatus(resourceContext);
             }
         }
@@ -83,10 +84,14 @@ public class PressureStartNotifyProcessor extends AbstractIndicators
         taskStatusCache.cacheStatus(sceneId, reportId, SceneRunTaskStatusEnum.RUNNING);
     }
 
-    private void notifyStart(ResourceContext context, long startTime) {
-        cloudAsyncService.checkJmeterHeartbeatTask(context);
+    private void notifyStart(ResourceContext context, PressureStartNotifyParam param) {
+        // 添加心跳数据
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
+        long startTime = param.getTime().getTime();
+        redisClientUtils.hmset(PressureStartCache.getJmeterHeartbeatKey(sceneId),
+            String.valueOf(param.getData().getJobExampleId()), System.currentTimeMillis());
+        cloudAsyncService.checkJmeterHeartbeatTask(context);
         log.info("场景[{}]压测任务开始，更新报告[{}]开始时间[{}]", sceneId, reportId, startTime);
         reportDao.updateReportStartTime(reportId, new Date(startTime));
     }

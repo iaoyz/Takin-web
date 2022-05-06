@@ -17,7 +17,5 @@ public interface PressureTaskDAO {
 
     void updateByReportId(PressureTaskEntity entity);
 
-    PressureTaskEntity queryByResourceId(String resourceId);
-
-    void updateStatus(Long taskId, PressureTaskStateEnum state);
+    void updateStatus(Long taskId, PressureTaskStateEnum state, String message);
 }
