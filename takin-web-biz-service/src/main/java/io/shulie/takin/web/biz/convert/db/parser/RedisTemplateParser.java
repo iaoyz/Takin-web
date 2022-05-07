@@ -1,9 +1,9 @@
 package io.shulie.takin.web.biz.convert.db.parser;
 
-import com.pamirs.attach.plugin.dynamic.Converter;
-import com.pamirs.attach.plugin.dynamic.Type;
-import com.pamirs.attach.plugin.dynamic.template.Info;
-import com.pamirs.attach.plugin.dynamic.template.RedisTemplate;
+import com.pamirs.attach.plugin.dynamic.one.Converter;
+import com.pamirs.attach.plugin.dynamic.one.Type;
+import com.pamirs.attach.plugin.dynamic.one.template.Info;
+import com.pamirs.attach.plugin.dynamic.one.template.RedisTemplate;
 import com.pamirs.takin.common.enums.ds.DsTypeEnum;
 import com.pamirs.takin.entity.domain.entity.TBaseConfig;
 import io.shulie.takin.common.beans.component.SelectVO;
@@ -50,7 +50,7 @@ public class RedisTemplateParser extends AbstractTemplateParser {
      * @return
      */
     @Override
-    public ShadowDetailResponse convertDetailByTemplate(Long recordId) {
+    public ShadowDetailResponse convertDetailByTemplate(Long recordId,String appName) {
         ApplicationDsCacheManageDetailResult convert = dsCacheManageDAO.selectOneById(recordId);
         if (Objects.isNull(convert)) {
             return null;
@@ -66,6 +66,7 @@ public class RedisTemplateParser extends AbstractTemplateParser {
         shadowDetailResponse.setConnectionPool(convert.getCacheName());
         shadowDetailResponse.setShadowInfo(convert.getShaDowFileExtedn());
         shadowDetailResponse.setCacheType(convert.getType());
+        shadowDetailResponse.setIsManual(convert.getSource());
         return shadowDetailResponse;
     }
 
@@ -76,7 +77,7 @@ public class RedisTemplateParser extends AbstractTemplateParser {
      * @return
      */
     @Override
-    public List<? extends StyleTemplate> convertShadowMsgWithTemplate(Integer dsType, Boolean isNewData, String cacheType, Converter.TemplateConverter.TemplateEnum templateEnum) {
+    public List<? extends StyleTemplate> convertShadowMsgWithTemplate(Integer dsType, Boolean isNewData, String cacheType, Converter.TemplateConverter.TemplateEnum templateEnum, ShadowTemplateSelect select) {
         List list = Lists.newArrayList();
         if (DsTypeEnum.SHADOW_REDIS_CLUSTER.getCode().equals(dsType)) {
             Map<String, String> tipsMap = this.generateTips();

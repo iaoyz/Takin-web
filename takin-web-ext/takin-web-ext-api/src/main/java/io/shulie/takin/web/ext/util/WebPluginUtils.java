@@ -1,15 +1,18 @@
 package io.shulie.takin.web.ext.util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import io.shulie.takin.cloud.ext.content.trace.ContextExt;
 import io.shulie.takin.plugin.framework.core.PluginManager;
+import io.shulie.takin.web.ext.api.agentupgradeonline.AgentHeartbeatExtApi;
 import io.shulie.takin.web.ext.api.auth.WebDataAuthExtApi;
 import io.shulie.takin.web.ext.api.auth.WebUserAuthExtApi;
 import io.shulie.takin.web.ext.api.e2e.InspectionExtApi;
@@ -32,10 +35,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * @author by: hezhongqi
  * @date 2021/8/4 14:42
  */
+@SuppressWarnings("unused")
 public class WebPluginUtils {
 
     /**
-     * 默认 userAppkey 解决zk PATH 问题
+     * 默认 userAppKey 解决zk PATH 问题
      */
     public static String DEFAULT_TENANT_APP_KEY = "default";
     public static Long DEFAULT_TENANT_ID = 1L;
@@ -53,6 +57,7 @@ public class WebPluginUtils {
     private static WebUserExtApi userApi;
     private static WebDataAuthExtApi dataAuthApi;
     private static WebUserAuthExtApi userAuthExtApi;
+    private static AgentHeartbeatExtApi agentHeartbeatExtApi;
     public static InspectionExtApi inspectionExtApi;
     private static WebTenantExtApi tenantExtApi;
 
@@ -64,6 +69,7 @@ public class WebPluginUtils {
         userApi = pluginManager.getExtension(WebUserExtApi.class);
         dataAuthApi = pluginManager.getExtension(WebDataAuthExtApi.class);
         userAuthExtApi = pluginManager.getExtension(WebUserAuthExtApi.class);
+        agentHeartbeatExtApi = pluginManager.getExtension(AgentHeartbeatExtApi.class);
         inspectionExtApi = pluginManager.getExtension(InspectionExtApi.class);
         tenantExtApi = pluginManager.getExtension(WebTenantExtApi.class);
     }
@@ -71,21 +77,41 @@ public class WebPluginUtils {
     @AllArgsConstructor
     @Getter
     public enum EnvCodeEnum {
+        /**
+         * 测试环境
+         */
         TEST("test", "测试环境", ""),
+        /**
+         * 生产环境
+         */
         PROD("prod", "生产环境", "当前环境为生产环境，请谨慎操作");
 
-        private String envCode;
-        private String envName;
-        private String desc;
+        private final String envCode;
+        private final String envName;
+        private final String desc;
     }
 
+    /**
+     * 获取 IAgentCommandProcessor 实现类处理不同的心跳指令
+     *
+     * 由于 IAgentCommandProcessor 类在biz-service模块下所以在当前接口定义中只定义返回Object对象，使用时加下类型判断
+     *
+     * @return IAgentCommandProcessor子类集合
+     */
+    public static List<Object> getAgentCommandProcessor() {
+        List<Object> result = new ArrayList<>();
+        if (Objects.nonNull(agentHeartbeatExtApi)) {
+            result = agentHeartbeatExtApi.getAgentCommandProcessor();
+        }
+        return result;
+    }
     //********************************用户插件模块**********************************//
 
     /**
      * 根据userId 获取 用户信息
      *
-     * @param userId
-     * @return
+     * @param userId 用户主键
+     * @return 用户信息
      */
     public static UserExt getUserExtByUserId(Long userId) {
         if (Objects.nonNull(userApi)) {
@@ -137,7 +163,13 @@ public class WebPluginUtils {
      */
     public static Map<Long, UserExt> getUserMapByIds(List<Long> userIds) {
         if (CollectionUtils.isNotEmpty(userIds) && Objects.nonNull(userApi)) {
-            return userApi.getUserMapByIds(userIds);
+            userIds = userIds.stream().filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+            Map<Long, UserExt> userMap = userApi.getUserMapByIds(userIds);
+            if (null != userMap) {
+                return userMap;
+            }
         }
         return Maps.newHashMap();
     }
@@ -153,24 +185,6 @@ public class WebPluginUtils {
         }
         return Lists.newArrayList();
     }
-
-    ///**
-    // * 根据userAppKey查询用户
-    // *
-    // * @param userAppKey userAppKey
-    // * @return UserExt对象
-    // */
-    //public static UserExt getUserByAppKey(String userAppKey) {
-    //    if (StringUtils.isBlank(userAppKey)) {
-    //        return null;
-    //    }
-    //    //for (UserExt ext : selectAllUser()) {
-    //    //    //if (userAppKey.equals(ext.getKey())) {
-    //    //    //    return ext;
-    //    //    //}
-    //    //}
-    //    return null;
-    //}
 
     /**
      * 补充用户名称
@@ -193,21 +207,8 @@ public class WebPluginUtils {
      * @return true/false
      */
     public static Boolean checkUserPlugin() {
-        if (userApi != null) {
-            return Boolean.TRUE;
-        }
+        if (userApi != null) {return Boolean.TRUE;}
         return Boolean.FALSE;
-        //UserExt user = pluginUtils.queryUserByKey(pluginUtils.getTenantUserKey());
-        //if (null == user) {
-        //    return Response.fail("未查询到用户相关信息");
-        //}
-
-        //UserExt user = null;
-        ////TakinRestContext.getUser();
-        //if (Objects.isNull(user) || user.getUserType() != 0) {
-        //    log.error("用户为空或用户类型非管理员，开启验证任务失败");
-        //    return;
-        //}
     }
 
     public List<UserExt> selectDistinctUserAppKey() {
@@ -221,14 +222,6 @@ public class WebPluginUtils {
         }
         return null;
     }
-
-    //public void fillMiddlewareUserData(AppMiddlewareQuery query) {
-    //    //UserExt user = null;
-    //    ////TakinRestContext.getUser();
-    //    //if (1 == user.getRole()) {
-    //    //    query.setUserId(user.getId());
-    //    //}
-    //}
 
     public static Class<?> getClassByName(String className) {
         try {
@@ -326,9 +319,9 @@ public class WebPluginUtils {
     /**
      * 前端 根据租户code 获取租户信息 目前给插件user-module使用
      *
-     * @param tenantAppKey
-     * @param tenantCode
-     * @return
+     * @param tenantAppKey 租户AppKey
+     * @param tenantCode   租户编码
+     * @return 租户信息
      */
     public static TenantInfoExt getTenantInfo(String tenantAppKey, String tenantCode) {
         if (tenantExtApi != null) {
@@ -354,8 +347,9 @@ public class WebPluginUtils {
 
     /**
      * 获取租户信息
-     * @param tenantId
-     * @return
+     *
+     * @param tenantId 租户主键
+     * @return 租户信息
      */
     public static TenantInfoExt getTenantInfo(Long tenantId) {
         if (tenantExtApi != null) {
@@ -375,9 +369,9 @@ public class WebPluginUtils {
     /**
      * 返回默认的环境 目前给插件user-module使用
      *
-     * @param userAppKey
-     * @param tenantCode
-     * @return
+     * @param userAppKey 用户AppKey
+     * @param tenantCode 租户编码
+     * @return 默认环境
      */
     public static String getDefaultEnvCode(String userAppKey, String tenantCode) {
         if (tenantExtApi != null) {
@@ -389,9 +383,9 @@ public class WebPluginUtils {
     /**
      * 获取默认用户id
      *
-     * @param userAppKey
-     * @param tenantCode
-     * @return
+     * @param userAppKey 用户AppKey
+     * @param tenantCode 租户编码
+     * @return 默认用户主键
      */
     public static Long getDefaultUserId(String userAppKey, String tenantCode) {
         if (tenantExtApi != null) {
@@ -406,9 +400,9 @@ public class WebPluginUtils {
     /**
      * 前端 根据租户code 判断租户,默认存在 目前给插件user-module使用
      *
-     * @param tenantAppKey
-     * @param tenantCode
-     * @return
+     * @param tenantAppKey 租户AppKey
+     * @param tenantCode   租户编码
+     * @return 是否存在租户
      */
     public static Boolean isExistTenant(String tenantAppKey, String tenantCode) {
         if (tenantExtApi != null) {
@@ -427,8 +421,6 @@ public class WebPluginUtils {
         }
         return Boolean.FALSE;
     }
-
-
 
     /**
      * 根据租户id查询当前租户 key
@@ -523,9 +515,9 @@ public class WebPluginUtils {
         }
         HashMap<String, String> dataMap = new LinkedHashMap<>();
         dataMap.put("租户ID", DEFAULT_TENANT_ID + "");
-        dataMap.put("租户user-app-key", DEFAULT_TENANT_APP_KEY);
+        dataMap.put("租户tenant-app-key", DEFAULT_TENANT_APP_KEY);
+        dataMap.put("租户code", DEFAULT_TENANT_CODE);
         dataMap.put("用户ID", DEFAULT_USER_ID + "");
-        dataMap.put("用户user-app-key", DEFAULT_TENANT_APP_KEY);
         return dataMap;
     }
 
@@ -542,6 +534,18 @@ public class WebPluginUtils {
             traceContextExt.setEnvCode(DEFAULT_ENV_CODE);
             traceContextExt.setTenantId(DEFAULT_TENANT_ID);
             traceContextExt.setTenantCode(DEFAULT_TENANT_CODE);
+            traceContextExt.setUserAppKey(DEFAULT_TENANT_APP_KEY);
+        }
+    }
+
+    /**
+     * 设置cloud 溯源数据
+     *
+     * @param traceContextExt 溯源数据对象
+     */
+    public static void setCloudUserData(ContextExt traceContextExt) {
+        if (Objects.nonNull(userApi)) {
+            userApi.setCloudUserData(traceContextExt);
         }
     }
 
@@ -572,7 +576,7 @@ public class WebPluginUtils {
     /**
      * 设置租户信息
      *
-     * @param commonExt
+     * @param commonExt 溯源信息
      */
     public static void setTraceTenantContext(TenantCommonExt commonExt) {
         if (Objects.nonNull(userApi)) {
@@ -666,7 +670,9 @@ public class WebPluginUtils {
     }
 
     /**
-     * @return
+     * -
+     *
+     * @return -
      */
     public static List<String> traceEnvCodeForSystem() {
         return Lists.newArrayList(SYS_DEFAULT_ENV_CODE, traceEnvCode());
@@ -691,7 +697,7 @@ public class WebPluginUtils {
     /**
      * 返回租户code
      *
-     * @return
+     * @return 租户编码
      */
     public static String traceTenantCode() {
         if (userApi != null) {
@@ -703,7 +709,7 @@ public class WebPluginUtils {
     /**
      * 组装 http 租户参数
      *
-     * @return
+     * @return 租户参数
      */
     public static TenantCommonExt traceTenantCommonExt() {
         TenantCommonExt ext = new TenantCommonExt();
@@ -718,10 +724,10 @@ public class WebPluginUtils {
     /**
      * 获取默认租户
      *
-     * @return
+     * @return 默认租户列表
      */
     private static List<TenantInfoExt> getDefaultTenantInfoList() {
-        List<TenantInfoExt> exts = Lists.newArrayList();
+        List<TenantInfoExt> extList = Lists.newArrayList();
         TenantInfoExt ext = new TenantInfoExt();
         ext.setTenantId(DEFAULT_TENANT_ID);
         ext.setTenantAppKey(DEFAULT_TENANT_APP_KEY);
@@ -729,14 +735,14 @@ public class WebPluginUtils {
         ext.setTenantNick(DEFAULT_TENANT_APP_KEY);
         ext.setTenantCode(DEFAULT_TENANT_APP_KEY);
         ext.setEnvs(getDefaultTenantEnvList());
-        exts.add(ext);
-        return exts;
+        extList.add(ext);
+        return extList;
     }
 
     /**
      * 获取默认租户 环境
      *
-     * @return
+     * @return -
      */
     private static List<TenantEnv> getDefaultTenantEnvList() {
         List<TenantEnv> envs = Lists.newArrayList();

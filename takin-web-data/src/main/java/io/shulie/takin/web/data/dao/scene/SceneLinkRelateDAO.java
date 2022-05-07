@@ -5,8 +5,9 @@ import java.util.List;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pamirs.takin.entity.domain.vo.linkmanage.BusinessFlowTree;
 import io.shulie.takin.web.data.model.mysql.SceneLinkRelateEntity;
-import io.shulie.takin.web.data.param.scene.SceneLinkRelateCreateParam;
 import io.shulie.takin.web.data.param.scene.SceneLinkRelateParam;
+import io.shulie.takin.web.data.param.scene.SceneLinkRelateQuery;
+import io.shulie.takin.web.data.param.scene.SceneLinkRelateSaveParam;
 import io.shulie.takin.web.data.result.scene.SceneLinkRelateResult;
 
 /**
@@ -17,12 +18,14 @@ public interface SceneLinkRelateDAO extends IService<SceneLinkRelateEntity> {
 
     /**
      * 批量增加
-     * @param params
+     *
+     * @param ofSceneLinkRelateResults -
      */
-    void batchInsert(List<SceneLinkRelateCreateParam> params);
+    void batchInsert(List<SceneLinkRelateSaveParam> ofSceneLinkRelateResults);
 
     /**
      * 根据流程删除删除
+     *
      * @param sceneId
      */
     void deleteBySceneId(String sceneId);
@@ -37,6 +40,7 @@ public interface SceneLinkRelateDAO extends IService<SceneLinkRelateEntity> {
 
     /**
      * 返回业务活动个数
+     *
      * @param sceneId
      * @return
      */
@@ -44,6 +48,7 @@ public interface SceneLinkRelateDAO extends IService<SceneLinkRelateEntity> {
 
     /**
      * 返回链路个数
+     *
      * @param techLinkIds
      * @return
      */
@@ -51,6 +56,7 @@ public interface SceneLinkRelateDAO extends IService<SceneLinkRelateEntity> {
 
     /**
      * 根据业务活动获取个数
+     *
      * @param businessLinkId
      * @return
      */
@@ -65,21 +71,33 @@ public interface SceneLinkRelateDAO extends IService<SceneLinkRelateEntity> {
     List<SceneLinkRelateResult> getList(SceneLinkRelateParam param);
 
     /**
-     * 根据业务流程id, 获得关联业务活动ids
+     * 根据业务流程ids, 获得关联业务活动ids
      *
-     * @param businessFlowId 业务流程ids
+     * @param businessFlowIds 业务流程ids
      * @return 业务活动ids
      */
-    List<Long> listBusinessLinkIdsByBusinessFlowId(Long businessFlowId);
+    List<Long> listBusinessLinkIdsByBusinessFlowIds(List<Long> businessFlowIds);
 
     /**
      * 业务id, frontUuidKey, flowId
      *
-     * @param flowId 业务流程id
+     * @param flowId   业务流程id
      * @param tenantId 租户id
-     * @param envCode 环境表示
+     * @param envCode  环境表示
      * @return tree列表
      */
     List<BusinessFlowTree> listRecursion(Long flowId, Long tenantId, String envCode);
+
+    /**
+     * 查询接口
+     */
+    List<SceneLinkRelateResult> query(SceneLinkRelateQuery query);
+
+    /**
+     * 通过scriptIdentification查找匹配的记录
+     */
+    List<SceneLinkRelateResult> getByIdentification(String scriptIdentification);
+
+    void deleteByIds(List<Long> oldIds);
 
 }

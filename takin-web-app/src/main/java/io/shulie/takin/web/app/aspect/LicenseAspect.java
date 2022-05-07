@@ -29,7 +29,7 @@ public class LicenseAspect {
     @Resource
     private PluginManager pluginManager;
 
-    @Pointcut("execution(public * io.shulie.takin.cloud.sdk.impl..*.*(..))")
+    @Pointcut("execution(public * io.shulie.takin.web.sdk.impl..*.*(..))")
     public void setLicense() {
 
     }

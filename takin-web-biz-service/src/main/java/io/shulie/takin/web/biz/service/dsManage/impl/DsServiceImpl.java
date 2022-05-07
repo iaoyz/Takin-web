@@ -1,12 +1,6 @@
 package io.shulie.takin.web.biz.service.dsManage.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -25,9 +19,9 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.pamirs.attach.plugin.dynamic.Converter;
-import com.pamirs.attach.plugin.dynamic.Type;
-import com.pamirs.attach.plugin.dynamic.template.RedisTemplate;
+import com.pamirs.attach.plugin.dynamic.one.Converter;
+import com.pamirs.attach.plugin.dynamic.one.Type;
+import com.pamirs.attach.plugin.dynamic.one.template.RedisTemplate;
 import com.pamirs.takin.common.enums.ds.DbTypeEnum;
 import com.pamirs.takin.common.enums.ds.DsTypeEnum;
 import com.pamirs.takin.common.enums.ds.MiddleWareTypeEnum;
@@ -41,12 +35,13 @@ import com.pamirs.takin.entity.domain.vo.dsmanage.DatasourceMediator;
 import com.pamirs.takin.entity.domain.vo.dsmanage.DsAgentVO;
 import com.pamirs.takin.entity.domain.vo.dsmanage.DsServerVO;
 import io.shulie.takin.common.beans.component.SelectVO;
+import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.amdb.api.ApplicationClient;
+import io.shulie.takin.web.amdb.bean.query.application.ApplicationNodeQueryDTO;
 import io.shulie.takin.web.amdb.bean.result.application.AppShadowDatabaseDTO;
+import io.shulie.takin.web.amdb.bean.result.application.ApplicationNodeAgentDTO;
 import io.shulie.takin.web.biz.cache.AgentConfigCacheManager;
-import io.shulie.takin.web.biz.convert.db.parser.AbstractTemplateParser;
-import io.shulie.takin.web.biz.convert.db.parser.DbTemplateParser;
-import io.shulie.takin.web.biz.convert.db.parser.RedisTemplateParser;
+import io.shulie.takin.web.biz.convert.db.parser.*;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsCreateInput;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsCreateInputV2;
 import io.shulie.takin.web.biz.pojo.input.application.ApplicationDsDeleteInput;
@@ -67,6 +62,7 @@ import io.shulie.takin.web.biz.service.dsManage.AbstractShaDowManageService;
 import io.shulie.takin.web.biz.service.dsManage.DsService;
 import io.shulie.takin.web.biz.service.dsManage.impl.v2.ShaDowCacheServiceImpl;
 import io.shulie.takin.web.biz.service.dsManage.impl.v2.ShaDowDbServiceImpl;
+import io.shulie.takin.web.biz.utils.fastagentaccess.AgentVersionUtil;
 import io.shulie.takin.web.common.common.Response;
 import io.shulie.takin.web.common.exception.TakinWebException;
 import io.shulie.takin.web.common.exception.TakinWebExceptionEnum;
@@ -93,6 +89,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -103,7 +100,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Slf4j
 public class DsServiceImpl implements DsService {
-
     @Resource
     private TAppBusinessTableInfoMapper tAppBusinessTableInfoMapper;
 
@@ -172,6 +168,17 @@ public class DsServiceImpl implements DsService {
     @Autowired
     private CacheConfigTemplateDAO cacheConfigTemplateDAO;
 
+    @Value("${ds.database.url}")
+    private String oracleUrl;
+
+    @Value("${agent.ds.compareVersion}")
+    private String compareVersion;
+
+    @Value("${agent.ds.newVersion:false}")
+    private boolean newVersion;
+
+    public static final String EXT_FLAG = "extFlag";
+
     @PostConstruct
     public void init() {
         map = new HashMap<>(6);
@@ -197,13 +204,11 @@ public class DsServiceImpl implements DsService {
 
     }
 
-
     private Map<String, AbstractDsTemplateService> templateServiceMap;
 
     private Map<Integer, AbstractShaDowManageService> shaDowServiceMap;
 
     private Map<Type, AbstractTemplateParser> templateParserMap;
-
 
     @Override
     public Response dsUpdate(ApplicationDsUpdateInput updateRequest) {
@@ -356,8 +361,7 @@ public class DsServiceImpl implements DsService {
         AppBusinessTableInfo query = new AppBusinessTableInfo();
         query.setUrl(info.getUrl());
         // 补充用户数据
-        UserExt user = WebPluginUtils.traceUser();
-        query.setUserId(user.getId());
+        query.setUserId(WebPluginUtils.traceUserId());
         Long count = tAppBusinessTableInfoMapper.selectCountByUserIdAndUrl(query);
         if (count == 1) {
             AppBusinessTableInfo updateInfo = tAppBusinessTableInfoMapper.selectByUserIdAndUrl(query);
@@ -375,7 +379,7 @@ public class DsServiceImpl implements DsService {
     @Override
     public Response queryPageBusiness(AppBusinessTableQuery query) {
         UserExt user = WebPluginUtils.traceUser();
-        if (1 == user.getRole()) {
+        if (user != null && 1 == user.getRole()) {
             query.setUserId(user.getId());
         }
         PageHelper.startPage(query.getPageNum(), query.getPageSize());
@@ -439,17 +443,16 @@ public class DsServiceImpl implements DsService {
         return dsService.dsDelete(dsDeleteRequest);
     }
 
-
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response dsQueryV2(Long applicationId) {
+    public List<ApplicationDsV2Response> dsQueryV2(Long applicationId) {
         ApplicationDetailResult detailResult = applicationDAO.getApplicationById(applicationId);
         if (Objects.isNull(detailResult)) {
-            return Response.fail("0", "该应用不存在");
+            throw new TakinWebException(TakinWebExceptionEnum.APPLICATION_MANAGE_NO_EXIST_ERROR, "该应用不存在");
+
         }
 
         List<AppShadowDatabaseDTO> shadowDataBaseInfos = applicationClient.getApplicationShadowDataBaseInfo(detailResult.getApplicationName());
-
 
         ApplicationDsQueryParam queryParam = new ApplicationDsQueryParam();
         queryParam.setApplicationId(applicationId);
@@ -466,15 +469,15 @@ public class DsServiceImpl implements DsService {
         response.addAll(caches.stream().map(this::cacheBuild).collect(Collectors.toList()));
         response.addAll(dbs.stream().map(this::dbBuild).collect(Collectors.toList()));
         response.addAll(oldResponseList.stream().map(this::v1Build).collect(Collectors.toList()));
-
-        // 补充权限
-        response.forEach(WebPluginUtils::fillQueryResponse);
-
+        response.forEach(r -> {
+            if (r.getIsManual() != null && !r.getIsManual()) {
+                r.setCanRemove(false);
+            }
+        });
         agentConfigCacheManager.evictShadowDb(detailResult.getApplicationName());
         agentConfigCacheManager.evictShadowServer(detailResult.getApplicationName());
-        return Response.success(response);
+        return response;
     }
-
 
     @Override
     public Response dsQueryDetailV2(Long applicationId, Long id, String middlewareType, Boolean isNewData) {
@@ -483,7 +486,6 @@ public class DsServiceImpl implements DsService {
             return Response.fail("0", "该应用不存在");
         }
 
-
         if (!isNewData) {
             // [db/cache]老数据兼容改造,其他类型保留原返回结构
             Response<ApplicationDsDetailOutput> oldResponse = this.dsQueryDetail(id, true);
@@ -491,12 +493,16 @@ public class DsServiceImpl implements DsService {
             if (list.contains(oldResponse.getData().getDbType())) {
                 Integer dsType = oldResponse.getData().getDsType();
                 AbstractDsService abstractDsService = getAbstractDsService(dsType);
-                return Response.success(abstractDsService.convertDetailByTemplate(id));
+                ShadowDetailResponse response = abstractDsService.convertDetailByTemplate(id);
+                if (response != null) {
+                    response.setIsManual(1);
+                }
+                return Response.success(response);
             }
             return Response.success(this.dsQueryDetail(id, false));
         }
         AbstractTemplateParser templateParser = templateParserMap.get(Type.MiddleWareType.ofKey(middlewareType));
-        return Response.success(templateParser.convertDetailByTemplate(id));
+        return Response.success(templateParser.convertDetailByTemplate(id, detailResult.getApplicationName()));
     }
 
     private void filterAndSave(List<AppShadowDatabaseDTO> shadowDataBaseInfos, Long applicationId, ApplicationDsQueryParam queryParam) {
@@ -539,7 +545,6 @@ public class DsServiceImpl implements DsService {
                         .collect(Collectors.toMap(ApplicationDsDbManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
 
-
             for (String k : amdbDbMap.keySet()) {
                 if (!dbOldMap.containsKey(k) && !dbMap.containsKey(k)) {
                     ApplicationDsDbManageDetailResult dbDetail = this.buildDbDetail(amdbDbMap.get(k), applicationId);
@@ -548,9 +553,7 @@ public class DsServiceImpl implements DsService {
             }
         }
 
-
         if (CollectionUtils.isNotEmpty(amdbByCaches)) {
-
 
             Map<String, AppShadowDatabaseDTO> amdbCacheMap = amdbByCaches
                     .stream()
@@ -569,7 +572,6 @@ public class DsServiceImpl implements DsService {
                         .collect(Collectors.toMap(ApplicationDsCacheManageDetailResult::getFilterStr, Function.identity(), (key1, key2) -> key2));
             }
 
-
             for (String k : amdbCacheMap.keySet()) {
                 if (!cacheOldMap.containsKey(k) && !cacheMap.containsKey(k)) {
                     ApplicationDsCacheManageDetailResult cacheDetail = this.buildCacheDetail(amdbCacheMap.get(k), applicationId);
@@ -581,7 +583,6 @@ public class DsServiceImpl implements DsService {
         dsDbManageDAO.batchSave(saveDbs);
         dsCacheManageDAO.batchSave(saveCaches);
     }
-
 
     /**
      * 查询中间件支持的隔离方案
@@ -596,7 +597,6 @@ public class DsServiceImpl implements DsService {
         return service.queryDsType(middlewareType, engName);
     }
 
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response dsUpdateConfig(ApplicationDsUpdateInputV2 updateRequestV2) {
@@ -604,6 +604,8 @@ public class DsServiceImpl implements DsService {
         if (Objects.isNull(detailResult)) {
             return Response.fail("0", "该应用不存在");
         }
+        buildNewDataSource(updateRequestV2);
+        validateURL(updateRequestV2.getExtInfo(), updateRequestV2.getUrl(), updateRequestV2.getDsType(), updateRequestV2.getUsername());
         Integer code = MiddleWareTypeEnum.getEnumByValue(updateRequestV2.getMiddlewareType()).getCode();
         AbstractShaDowManageService service = shaDowServiceMap.get(code);
 
@@ -614,7 +616,6 @@ public class DsServiceImpl implements DsService {
                 throw new TakinWebException(TakinWebExceptionEnum.SHADOW_CONFIG_CREATE_ERROR, "此模式不支持");
             }
         }
-
 
         if (!updateRequestV2.getIsNewData()) {
             //针对老版本数据,先删除原表数据,逻辑删除,新表重新保存
@@ -637,7 +638,9 @@ public class DsServiceImpl implements DsService {
     }
 
     @Override
-    public Response dsQueryConfigTemplate(String agentSourceType, Integer dsType, Boolean isNewData, String cacheType, String connectionPool) {
+    public Response dsQueryConfigTemplate(String agentSourceType, Integer dsType, Boolean isNewData,
+                                          String cacheType, String connectionPool, String applicationName,
+                                          String applicationId) {
         Converter.TemplateConverter.TemplateEnum templateEnum;
         if (StrUtil.isNotBlank(connectionPool)) {
             templateEnum = redisTemplateParser.convert(connectionPool);
@@ -658,7 +661,19 @@ public class DsServiceImpl implements DsService {
             return Response.success();
         }
         AbstractTemplateParser templateParser = templateParserMap.get(type);
-        return Response.success(templateParser.convertShadowMsgWithTemplate(dsType, isNewData, cacheType, templateEnum));
+
+        // 判断当前模板中是否要添加用户名和密码
+        // 用id查一下name
+        if (StringUtils.isNotBlank(applicationId) && StringUtils.isBlank(applicationName)) {
+            ApplicationDetailResult detailResult = applicationDAO.getApplicationById(Long.valueOf(applicationId));
+            if (Objects.isNull(detailResult)) {
+                return Response.fail("0", "该应用不存在");
+            }
+            applicationName = detailResult.getApplicationName();
+        }
+        ShadowTemplateSelect select = this.processSelect(applicationName);
+
+        return Response.success(templateParser.convertShadowMsgWithTemplate(dsType, isNewData, cacheType, templateEnum, select));
     }
 
     /**
@@ -692,6 +707,8 @@ public class DsServiceImpl implements DsService {
         if (Objects.isNull(detailResult)) {
             return Response.fail("0", "该应用不存在");
         }
+        buildNewDataSource(createRequestV2);
+        validateURL(createRequestV2.getExtInfo(), createRequestV2.getUrl(), createRequestV2.getDsType(), createRequestV2.getUsername());
         Integer code = MiddleWareTypeEnum.getEnumByValue(createRequestV2.getMiddlewareType()).getCode();
         AbstractShaDowManageService service = shaDowServiceMap.get(code);
         service.createShadowProgramme(createRequestV2, true);
@@ -702,21 +719,120 @@ public class DsServiceImpl implements DsService {
     }
 
     /**
+     * 处理下新版的逻辑，把数据搞成原来的样子
+     *
+     * @param createRequestV2
+     */
+    private void buildNewDataSource(ApplicationDsCreateInputV2 createRequestV2) {
+        String extInfo = createRequestV2.getExtInfo();
+        JSONObject extObj = Optional.ofNullable(JSONObject.parseObject(extInfo)).orElse(new JSONObject());
+        String shadowUserNameStr = extObj.getString("shadowUserName");
+        if (StringUtils.isNotBlank(shadowUserNameStr)) {
+            // 判断是否为新版本
+            if (shadowUserNameStr.startsWith("{") && shadowUserNameStr.endsWith("}")) {
+                String context = "";
+                JSONObject dataObj = JSONObject.parseObject(shadowUserNameStr);
+                String tag = dataObj.getString("tag");
+                // 2是选择输入，获取值，重新处理
+                if ("2".equals(tag)) {
+                    context = dataObj.getString("context");
+                }
+                extObj.put("shadowUserName", context);
+                // 打一个标记字段,是否处理为新版本
+                extObj.put(EXT_FLAG, "true");
+            }
+        }
+
+        String shadowPwdStr = extObj.getString("shadowPwd");
+        if (StringUtils.isNotBlank(shadowPwdStr)) {
+            // 判断是否为新版本,JSON就是新版本
+            if (shadowPwdStr.startsWith("{") && shadowPwdStr.endsWith("}")) {
+                String context = "";
+                JSONObject dataObj = JSONObject.parseObject(shadowPwdStr);
+                String tag = dataObj.getString("tag");
+                if ("2".equals(tag)) {
+                    context = dataObj.getString("context");
+                }
+                extObj.put("shadowPwd", context);
+                // 打一个标记字段,是否处理为新版本，解析使用
+                extObj.put(EXT_FLAG, "true");
+            }
+        }
+        // 重新设置下extObj
+        createRequestV2.setExtInfo(JSON.toJSONString(extObj));
+    }
+
+    /**
+     * 校验影子url和业务url是否一致
+     */
+    private void validateURL(String extInfo, String url, int dsType, String userName) {
+        if (StringUtils.isBlank(extInfo) || StringUtils.isBlank(url)) {
+            return;
+        }
+        // 判断是否是oracle库,不处理
+        if (url.startsWith(oracleUrl)) {
+            if (DsTypeEnum.SHADOW_REDIS_SERVER.getCode() == dsType || DsTypeEnum.SHADOW_DB.getCode() == dsType) {
+                String shadowUrl = Optional.ofNullable(JSONObject.parseObject(extInfo)).orElse(new JSONObject()).getString("shadowUrl");
+                String shadowUserName = Optional.ofNullable(JSONObject.parseObject(extInfo)).orElse(new JSONObject()).getString("shadowUserName");
+                if (url.equals(shadowUrl) && userName.equals(shadowUserName)) {
+                    throw new TakinWebException(TakinWebExceptionEnum.SHADOW_CONFIG_URL_CREATE_ERROR, "影子数据源与业务数据源一致，会导致压测数据写入业务库，请更改后重新提交!");
+                }
+            }
+        } else {
+            // 影子库或影子库影子表方案的时候
+            if (DsTypeEnum.SHADOW_REDIS_SERVER.getCode() == dsType || DsTypeEnum.SHADOW_DB.getCode() == dsType) {
+                String shadowUrl = Optional.ofNullable(JSONObject.parseObject(extInfo)).orElse(new JSONObject()).getString("shadowUrl");
+                if (url.equals(shadowUrl)) {
+                    throw new TakinWebException(TakinWebExceptionEnum.SHADOW_CONFIG_URL_CREATE_ERROR, "影子数据源与业务数据源一致，会导致压测数据写入业务库，请更改后重新提交!");
+                }
+            }
+        }
+
+    }
+
+    private boolean validateOracleURL(String shadowUrl, String url, int dsType,
+                                      String shadowUserName, String userName) {
+        if (StringUtils.isBlank(shadowUrl) || StringUtils.isBlank(url)) {
+            return true;
+        }
+        if (StringUtils.isBlank(shadowUserName) || StringUtils.isBlank(userName)) {
+            return true;
+        }
+        // 判断是否是oracle库,处理
+        if (url.startsWith(oracleUrl)) {
+            // 影子库或影子库影子表方案的时候
+            if (DsTypeEnum.SHADOW_REDIS_SERVER.getCode() == dsType || DsTypeEnum.SHADOW_DB.getCode() == dsType) {
+                if (shadowUrl.equals(url) && shadowUserName.equals(userName)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
      * 获取中间件支持的版本
      *
-     * @param middlewareType
-     * @return
+     * @param middlewareType 中间件类型
+     * @return 支持的版本集合
      */
     @Override
     public List<SelectVO> querySupperName(String middlewareType) {
         AbstractDsTemplateService templateService = templateServiceMap.get(middlewareType);
-        return templateService.queryDsSupperName();
+        List<SelectVO> list =  templateService.queryDsSupperName();
+        List<SelectVO> tmpList = list.stream().filter(a -> {
+            if ("兼容老版本(影子库)".equals(a.getLabel()) || "兼容老版本(影子表)".equals(a.getLabel())) {
+                return false;
+            }
+            return true;
+        }).collect(Collectors.toList());
+        return tmpList;
     }
 
     /**
      * 获取缓存支持的模式
      *
-     * @return
+     * @return 支持的模式集合
      */
     @Override
     public List<SelectVO> queryCacheType() {
@@ -772,7 +888,6 @@ public class DsServiceImpl implements DsService {
         v2Response.setCacheType("");
         v2Response.setIsNewData(true);
         v2Response.setIsNewPage(true);
-//        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(dbDetail.getStatus());
         v2Response.setUserId(WebPluginUtils.traceUserId());
         WebPluginUtils.fillQueryResponse(v2Response);
@@ -794,7 +909,6 @@ public class DsServiceImpl implements DsService {
         v2Response.setCacheType(cacheDetail.getType());
         v2Response.setIsNewData(true);
         v2Response.setIsNewPage(true);
-//        v2Response.setCanRemove(v2Response.getIsManual());
         v2Response.setStatus(cacheDetail.getStatus());
         v2Response.setExtMsg(cacheDetail.getType());
         v2Response.setUserId(WebPluginUtils.traceUserId());
@@ -813,7 +927,7 @@ public class DsServiceImpl implements DsService {
         v2Response.setConnectionPool("");
         v2Response.setIsManual(true);
         v2Response.setStatus(response.getStatus());
-//        v2Response.setCanRemove(v2Response.getIsManual());
+        //        v2Response.setCanRemove(v2Response.getIsManual());
         if (MiddleWareTypeEnum.LINK_POOL.getCode().equals(response.getDbType().getValue())) {
             v2Response.setUrl(response.getUrl());
             if (DsTypeEnum.SHADOW_TABLE.getCode().equals(response.getDsType().getValue())) {
@@ -879,26 +993,26 @@ public class DsServiceImpl implements DsService {
                 configurations.setDatasourceMediator(new DatasourceMediator("dataSourceBusiness", "dataSourcePerformanceTest"));
                 DataSource dataSourceBusiness = new DataSource();
                 dataSourceBusiness.setId("dataSourceBusiness");
-                if(Objects.equals("老转新",detail.getConfigJson())){
-                    if(Objects.nonNull(parameter)){
+                if (Objects.equals("老转新", detail.getConfigJson())) {
+                    if (Objects.nonNull(parameter)) {
                         List<JSONObject> dataSources = JSONArray.parseArray(parameter.getString("dataSources"),
                                 JSONObject.class);
                         JSONObject busObj = dataSources.get(0);
                         JSONObject testObj = dataSources.get(1);
-                        dataSourceBusiness.setUrl( busObj.getString("url"));
-                        dataSourceBusiness.setUsername( busObj.getString("username"));
+                        dataSourceBusiness.setUrl(busObj.getString("url"));
+                        dataSourceBusiness.setUsername(busObj.getString("username"));
                         dataSourceBusiness.setDriverClassName(testObj.getString("driverClassName"));
                     }
-                }else{
+                } else {
                     dataSourceBusiness.setUrl(Objects.isNull(parameter) ? detail.getUrl() : parameter.getString("url"));
                     dataSourceBusiness.setUsername(Objects.isNull(parameter) ? detail.getUserName() : parameter.getString("username"));
-                    dataSourceBusiness.setDriverClassName(Objects.isNull(parameter) ? "":parameter.getString("driverClassName"));
+                    dataSourceBusiness.setDriverClassName(Objects.isNull(parameter) ? "" : parameter.getString("driverClassName"));
                 }
 
                 DataSource dataSourcePerformanceTest = this.buildShadowMsg(shadowConfigMap);
                 dataSourcePerformanceTest.setId("dataSourcePerformanceTest");
                 dataSourcePerformanceTest.setDriverClassName(StringUtils.isBlank(dataSourcePerformanceTest.getDriverClassName())
-                        ?dataSourceBusiness.getDriverClassName():dataSourcePerformanceTest.getDriverClassName());
+                        ? dataSourceBusiness.getDriverClassName() : dataSourcePerformanceTest.getDriverClassName());
 
                 List<DataSource> dataSources = new ArrayList<>();
                 dataSources.add(dataSourceBusiness);
@@ -911,14 +1025,12 @@ public class DsServiceImpl implements DsService {
             return dsAgentVO;
         }).collect(Collectors.toList());
 
-
         return collect;
     }
 
-
     private Map<String, String> matchShadowDb(String shadowStr) {
         Map<String, String> matchMap = new HashMap<>();
-        Map shadowMap = JSONObject.parseObject(shadowStr, Map.class);
+        Map<?, ?> shadowMap = JSONObject.parseObject(shadowStr, Map.class);
         matchMap.put("username", String.valueOf(shadowMap.get("shadowUserName")));
         matchMap.put("url", String.valueOf(shadowMap.get("shadowUrl")));
         matchMap.put("password", String.valueOf(shadowMap.get("shadowPwd")));
@@ -927,10 +1039,11 @@ public class DsServiceImpl implements DsService {
         shadowMap.remove("shadowUrl");
         shadowMap.remove("shadowPwd");
         shadowMap.remove("applicationName");
+        shadowMap.remove(EXT_FLAG);
 
         shadowMap.forEach((k, v) -> {
             String value = null;
-            Map map = JSONObject.parseObject(String.valueOf(v), Map.class);
+            Map<?, ?> map = JSONObject.parseObject(String.valueOf(v), Map.class);
             if (Objects.equals("2", String.valueOf(map.get("tag")))) {
                 value = String.valueOf(map.get("context"));
             }
@@ -948,7 +1061,6 @@ public class DsServiceImpl implements DsService {
                 .collect(Collectors.toList());
         return Joiner.on(",").join(tableNames);
     }
-
 
     private DataSource buildShadowMsg(Map<String, String> matchShadow) {
         DataSource dataSourcePerformanceTest = new DataSource();
@@ -977,5 +1089,43 @@ public class DsServiceImpl implements DsService {
         AbstractTemplateParser templateParser = templateParserMap.get(Type.MiddleWareType.ofKey(middlewareType));
         templateParser.enable(id, status);
         return Response.success();
+    }
+
+    /**
+     * 是否需要填写账号密码
+     *
+     * @param appName
+     * @return
+     */
+    @Override
+    public ShadowTemplateSelect processSelect(String appName) {
+        ShadowTemplateSelect select = new ShadowTemplateSelect(newVersion);
+        if (StringUtils.isBlank(appName)) {
+            // 默认
+            return select;
+        }
+        ApplicationNodeQueryDTO queryDTO = new ApplicationNodeQueryDTO();
+        queryDTO.setAppName(appName);
+        // 不分页，直接查询全部
+        PagingList<ApplicationNodeAgentDTO> responsePagingList = applicationClient.pageApplicationNodeByAgent(queryDTO);
+        List<ApplicationNodeAgentDTO> dtoList = responsePagingList.getList();
+        // TODO 没有获取到数据,这个时候怎么处理呢
+        if (CollectionUtils.isEmpty(dtoList)) {
+            log.error("从amdb未获取到应用版本信息,当前应用名{}", appName);
+            return select;
+        }
+        // 获取所有探针版本
+        List<String> agentVersionList = dtoList.stream()
+                .map(agentDto -> agentDto.getAgentVersion())
+                .collect(Collectors.toList());
+        // 倒序排
+        Collections.sort(agentVersionList, (o1, o2) -> AgentVersionUtil.compareVersion(o1, o2, false));
+        // 获取最大版本号
+        String maxVersion = agentVersionList.stream().findFirst().get();
+        if (AgentVersionUtil.compareVersion(maxVersion, compareVersion, true) >= 0) {
+            select.setNewVersion(true);
+            return select;
+        }
+        return select;
     }
 }

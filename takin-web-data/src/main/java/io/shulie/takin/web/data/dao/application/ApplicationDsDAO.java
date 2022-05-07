@@ -23,15 +23,15 @@ public interface ApplicationDsDAO {
     /**
      * 启动状态
      *
-     * @return
+     * @return 启动结果
      */
     int enable(ApplicationDsEnableParam enableParam);
 
     int delete(ApplicationDsDeleteParam deleteParam);
 
-    ApplicationDsResult queryByPrimaryKey(Long id);
-
     List<ApplicationDsResult> queryList(ApplicationDsQueryParam param);
+
+    ApplicationDsResult queryByPrimaryKey(Long id);
 
     int allocationUser(ApplicationDsUpdateUserParam param);
 
