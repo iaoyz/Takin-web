@@ -1071,7 +1071,7 @@ public class CloudReportServiceImpl implements CloudReportService {
         String transaction = StringUtils.isBlank(testPlanXpathMd5) ? ReportConstants.ALL_BUSINESS_ACTIVITY
             : testPlanXpathMd5;
         //汇总所有业务活动数据
-        Long jobId = taskResult.getPressureTaskId();
+        Long jobId = reportResult.getPressureTaskId();
         StatReportDTO statReport = statReport(jobId, taskResult.getSceneId(),
             reportId, taskResult.getTenantId(), transaction);
         if (statReport == null) {
