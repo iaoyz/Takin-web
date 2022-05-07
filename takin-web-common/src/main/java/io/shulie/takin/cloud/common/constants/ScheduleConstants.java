@@ -15,6 +15,7 @@ public class ScheduleConstants {
     public static String TEMP_FAIL_SIGN = "temp-fail-";
     public static String FIRST_SIGN = "-first";
     public static String LAST_SIGN = "-last";
+    public static String TEMP_TIMESTAMP_SIGN = "temp-timestamp-";
     public static String TEMP_LAST_SIGN = "temp-last-";
 
     public static String SCHEDULE_POD_NUM = "schedule-pressure-node-num";

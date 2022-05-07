@@ -16,6 +16,7 @@ import io.shulie.takin.cloud.biz.cloudserver.SceneManageDTOConvert;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneSlaRefOutput;
 import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
+import io.shulie.takin.cloud.common.bean.scenemanage.SceneManageQueryOptions;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleEventConstant;
@@ -206,6 +207,19 @@ public class SceneTaskEventService {
                 result.setStatus(TaskStatusEnum.STARTED);
                 event.setEventName("started");
                 // 扩展配置
+                // 扩展配置
+                Map<String, Object> extendMap = Maps.newHashMap();
+                SceneManageQueryOptions options = new SceneManageQueryOptions();
+                options.setIncludeBusinessActivity(true);
+                SceneManageWrapperOutput dto = cloudSceneManageService.getSceneManage(param.getSceneId(), options);
+                if (dto != null && CollectionUtils.isNotEmpty(dto.getBusinessActivityConfig())) {
+                    extendMap.put("businessActivityCount", dto.getBusinessActivityConfig().size());
+                    extendMap.put("businessActivityBindRef", dto.getBusinessActivityConfig().stream()
+                        .map(SceneManageWrapperOutput.SceneBusinessActivityRefOutput::getBindRef)
+                        .filter(StringUtils::isNoneBlank)
+                        .map(String::trim).distinct().collect(Collectors.toList()));
+                }
+                result.setExtendMap(extendMap);
                 String key = ScheduleConstants.getFileSplitQueue(param.getSceneId(), param.getTaskId(), param.getTenantId());
                 index = stringRedisTemplate.opsForList().leftPop(key);
             } else if ("failed".equals(param.getStatus())) {

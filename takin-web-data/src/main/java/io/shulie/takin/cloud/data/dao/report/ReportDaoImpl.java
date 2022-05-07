@@ -12,7 +12,6 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.google.common.collect.Lists;
-import com.google.errorprone.annotations.Var;
 import io.shulie.takin.cloud.common.constants.ReportConstants;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.CloudPluginUtils;
@@ -77,6 +76,7 @@ public class ReportDaoImpl implements ReportDao {
         if (null != param.getIsDel()) {
             wrapper.eq(ReportEntity::getIsDeleted, param.getIsDel());
         }
+        wrapper.isNotNull(param.isJobIdNotNull(), ReportEntity::getPressureTaskId);
 
         if(Objects.nonNull(param.getPressureTypeRelation())){
             PressureTypeRelation relation = param.getPressureTypeRelation();
