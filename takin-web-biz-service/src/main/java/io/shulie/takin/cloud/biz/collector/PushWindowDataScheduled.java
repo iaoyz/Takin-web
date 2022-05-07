@@ -51,6 +51,11 @@ import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.common.enums.ContextSourceEnum;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
+import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt;
+import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt.TenantEnv;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -572,11 +577,7 @@ public class PushWindowDataScheduled extends AbstractIndicators {
      * 实时数据统计
      */
     public void pushData2() {
-        ReportQueryParam param = new ReportQueryParam();
-        param.setStatus(0);
-        param.setIsDel(0);
-        param.setJobIdNotNull(true);
-        List<ReportResult> results = reportDao.queryReportList(param);
+        List<ReportResult> results = queryAllReport();
         if (CollectionUtils.isEmpty(results)) {
             log.debug("没有需要统计的报告！");
             return;
@@ -770,5 +771,33 @@ public class PushWindowDataScheduled extends AbstractIndicators {
             timestampDate.toString();
         // 返回
         return timestamp + "(" + timeString + ")";
+    }
+
+    private List<ReportResult> queryAllReport() {
+        ReportQueryParam param = new ReportQueryParam();
+        param.setStatus(0);
+        param.setIsDel(0);
+        param.setJobIdNotNull(true);
+        if (WebPluginUtils.isOpenVersion()) {
+            return reportDao.queryReportList(param);
+        }
+        List<TenantInfoExt> tenantInfoExtList = WebPluginUtils.getTenantInfoList();
+        List<ReportResult> results = new ArrayList<>(tenantInfoExtList.size() * 2);
+        for (TenantInfoExt ext : tenantInfoExtList) {
+            if (CollectionUtils.isEmpty(ext.getEnvs())) {
+                continue;
+            }
+            // 开始数据层分片,暂时不使用线程池
+            for (TenantEnv e : ext.getEnvs()) {
+                WebPluginUtils.setTraceTenantContext(
+                    new TenantCommonExt(ext.getTenantId(), ext.getTenantAppKey(), e.getEnvCode(),
+                        ext.getTenantCode(), ContextSourceEnum.JOB.getCode()));
+                List<ReportResult> reportList = reportDao.queryReportList(param);
+                if (CollectionUtils.isNotEmpty(reportList)) {
+                    results.addAll(reportList);
+                }
+            }
+        }
+        return results;
     }
 }
