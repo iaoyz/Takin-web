@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
+import com.google.common.collect.Lists;
 import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
@@ -110,6 +111,10 @@ public abstract class AbstractIndicators {
         });
     }
 
+    public void unlock(String key, String value) {
+        redisTemplate.execute(unlockRedisScript, Lists.newArrayList(getLockPrefix(key)), value);
+    }
+
     private String getLockPrefix(String key) {
         return String.format("COLLECTOR LOCK:%s", key);
     }
@@ -182,6 +187,24 @@ public abstract class AbstractIndicators {
             return (long)object;
         }
         return null;
+    }
+
+    public String getTaskKey(Long sceneId, Long reportId, Long tenantId) {
+        // 兼容原始redis key
+        if (tenantId == null) {
+            return String.format("%s_%s", sceneId, reportId);
+        }
+        return String.format("%s_%s_%s", sceneId, reportId, tenantId);
+    }
+
+    /**
+     * 强行自动标识
+     *
+     * @param taskKey 任务key
+     * @return -
+     */
+    protected String forceCloseTime(String taskKey) {
+        return getIndicatorsKey(String.format("%s:%s", taskKey, "forceClose"), "force");
     }
 
     @PostConstruct

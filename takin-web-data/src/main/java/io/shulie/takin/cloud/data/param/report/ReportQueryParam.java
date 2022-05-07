@@ -17,6 +17,8 @@ public class ReportQueryParam {
      * 是否已删除：0正常，1已删除
      */
     private Integer isDel;
+    // 是否jobId不为空,true-加上notnull条件，false-不加条件
+    private boolean jobIdNotNull;
 
     /**
      * 压测类型
