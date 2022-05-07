@@ -271,6 +271,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         // 状态 更新 失败状态
         clearCache(context.getResourceId(), sceneId);
         cloudReportService.updateReportFeatures(reportId, ReportConstants.FINISH_STATUS, ReportConstants.PRESSURE_MSG, message);
+        reportDao.updateReportEndTime(reportId, new Date());
         SceneManageEntity sceneManage = new SceneManageEntity() {{
             setId(sceneId);
             setLastPtTime(new Date());

@@ -21,13 +21,19 @@ public class PodErrorNotifyProcessor extends AbstractIndicators implements Cloud
     }
 
     @Override
-    public String process(PodErrorNotifyParam context) {
-        ResourceExampleErrorInfo data = context.getData();
+    public String process(PodErrorNotifyParam param) {
+        processError(param);
+        return String.valueOf(param.getData().getResourceExampleId());
+    }
+
+    private void processError(PodErrorNotifyParam param) {
+        ResourceExampleErrorInfo data = param.getData();
         String resourceId = String.valueOf(data.getResourceId());
         String podId = String.valueOf(data.getResourceExampleId());
         if (redisClientUtils.lockNoExpire(PressureStartCache.getPodErrorFirstKey(resourceId), podId)) {
             callStopEventIfNecessary(resourceId, data.getErrorMessage());
         }
-        return resourceId;
+        removeSuccessKey(resourceId, podId, String.valueOf(data.getJobExampleId()));
+        detectEnd(resourceId, param.getTime());
     }
 }

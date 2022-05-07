@@ -90,6 +90,11 @@ public abstract class PressureStartCache {
         return String.format("pressure:resource:pod:first:error:%s", resourceId);
     }
 
+    // 第一个停止的pod id
+    public static String getPodStopFirstKey(String resourceId) {
+        return String.format("pressure:resource:pod:first:stop:%s", resourceId);
+    }
+
     // 第一个异常的jmeter id
     public static String getJmeterErrorFirstKey(String resourceId) {
         return String.format("pressure:resource:jmeter:first:error:%s", resourceId);
@@ -127,6 +132,7 @@ public abstract class PressureStartCache {
             PressureStartCache.getInspectKey(sceneId),
             PressureStartCache.getTryRunKey(sceneId),
             PressureStartCache.getErrorMessageKey(resourceId),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getPodStopFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getJmeterErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getPodErrorFirstKey(resourceId)),
             RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(sceneId, resourceId)),
