@@ -1300,7 +1300,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             try {
                 startTask(JsonHelper.json2Bean(tryRun, SceneTaskStartInput.class));
             } catch (Exception e) {
-                startFail(context, e.getMessage());
+                startFail(context.getResourceId(), e.getMessage());
             }
         }
     }
@@ -1315,7 +1315,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             try {
                 startTask(JsonHelper.json2Bean(flowDebug, SceneTaskStartInput.class));
             } catch (Exception e) {
-                startFail(context, e.getMessage());
+                startFail(context.getResourceId(), e.getMessage());
             }
         }
     }
@@ -1330,7 +1330,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             try {
                 startTask(JsonHelper.json2Bean(inspect, SceneTaskStartInput.class));
             } catch (Exception e) {
-                startFail(context, e.getMessage());
+                startFail(context.getResourceId(), e.getMessage());
             }
         }
     }
@@ -1428,11 +1428,10 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         }
     }
 
-    private void startFail(ResourceContext context, String message) {
+    private void startFail(String resourceId, String message) {
         StopEventSource source = new StopEventSource();
         source.setMessage(message);
-        source.setContext(context);
-
+        source.setContext(getResourceContext(resourceId));
         Event event = new Event();
         event.setEventName(PressureStartCache.START_FAILED);
         event.setExt(source);

@@ -1,5 +1,6 @@
 package io.shulie.takin.cloud.biz.collector.collector;
 
+import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -7,11 +8,17 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
+import io.shulie.takin.cloud.biz.cache.SceneTaskStatusCache;
 import io.shulie.takin.cloud.biz.notify.StopEventSource;
 import io.shulie.takin.cloud.biz.service.scene.CloudSceneManageService;
+import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
+import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
+import io.shulie.takin.cloud.common.constants.ScheduleConstants;
+import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
+import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
@@ -67,6 +74,10 @@ public abstract class AbstractIndicators {
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RedisClientUtils redisClientUtils;
+    @Resource
+    private SceneTaskStatusCache taskStatusCache;
+    @Resource
+    private ReportDao reportDao;
     private DefaultRedisScript<Void> minRedisScript;
     private DefaultRedisScript<Void> maxRedisScript;
     private DefaultRedisScript<Void> unlockRedisScript;
@@ -233,6 +244,56 @@ public abstract class AbstractIndicators {
             event.setExt(source);
             eventCenterTemplate.doEvents(event);
         }
+    }
+
+    protected void removeSuccessKey(String resourceId, String podId, String jmeterId) {
+        redisClientUtils.removeSetValue(
+            PressureStartCache.getResourcePodSuccessKey(resourceId), podId);
+        if (Objects.nonNull(jmeterId)) {
+            redisClientUtils.removeSetValue(
+                PressureStartCache.getResourceJmeterSuccessKey(resourceId), jmeterId);
+        }
+    }
+
+    protected void detectEnd(String resourceId, Date time) {
+        if (redisClientUtils.hasKey(PressureStartCache.getJmeterStartFirstKey(resourceId)) &&
+            (redisClientUtils.getSetSize(PressureStartCache.getResourcePodSuccessKey(resourceId)) == 0 ||
+                redisClientUtils.getSetSize(PressureStartCache.getResourceJmeterSuccessKey(resourceId)) == 0)) {
+            ResourceContext context = getResourceContext(resourceId);
+            Long sceneId = context.getSceneId();
+            Long reportId = context.getReportId();
+            Long tenantId = context.getTenantId();
+            String engineName = ScheduleConstants.getEngineName(sceneId, reportId, tenantId);
+            setLast(last(getPressureTaskKey(sceneId, reportId, tenantId)), ScheduleConstants.LAST_SIGN);
+            setMax(engineName + ScheduleConstants.LAST_SIGN, time.getTime());
+            // 删除临时标识
+            redisClientUtils.del(ScheduleConstants.TEMP_LAST_SIGN + engineName);
+            // 压测停止
+            notifyEnd(context, time);
+        }
+    }
+
+    private void notifyEnd(ResourceContext context, Date time) {
+        Long sceneId = context.getSceneId();
+        Long reportId = context.getReportId();
+        Long tenantId = context.getTenantId();
+        log.info("场景[{}-{}]压测任务已完成,更新结束时间{}", sceneId, reportId, System.currentTimeMillis());
+        // 刷新任务状态的Redis缓存
+        taskStatusCache.cacheStatus(sceneId, reportId, SceneRunTaskStatusEnum.ENDED);
+        // 更新压测场景状态  压测引擎运行中,压测引擎停止压测 ---->压测引擎停止压测
+        cloudSceneManageService.updateSceneLifeCycle(UpdateStatusBean.build(sceneId, reportId, tenantId)
+            .checkEnum(SceneManageStatusEnum.ENGINE_RUNNING, SceneManageStatusEnum.STOP)
+            .updateEnum(SceneManageStatusEnum.STOP)
+            .build());
+        reportDao.updateReportEndTime(reportId, time);
+
+        // 清除 SLA配置  生成报告拦截 状态拦截
+        Event event = new Event();
+        event.setEventName("finished");
+        TaskResult result = new TaskResult(sceneId, reportId, tenantId);
+        result.setResourceId(context.getResourceId());
+        event.setExt(result);
+        eventCenterTemplate.doEvents(event);
     }
 
     @Data

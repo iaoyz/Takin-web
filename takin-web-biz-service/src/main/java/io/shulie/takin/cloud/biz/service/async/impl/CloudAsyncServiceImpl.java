@@ -197,14 +197,12 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
         Long sceneId = context.getSceneId();
         Long reportId = context.getReportId();
         Long tenantId = context.getTenantId();
-        Long taskId = context.getTaskId();
         ResourceContext resourceContext = new ResourceContext();
         resourceContext.setResourceId(resourceId);
         resourceContext.setSceneId(sceneId);
         resourceContext.setReportId(reportId);
-        resourceContext.setTaskId(taskId);
+        resourceContext.setTaskId(context.getTaskId());
         resourceContext.setTenantId(tenantId);
-        resourceContext.setJobId(context.getTaskId());
         resourceContext.setUniqueKey(context.getUniqueKey());
         if (success) {
             Event event = new Event();
