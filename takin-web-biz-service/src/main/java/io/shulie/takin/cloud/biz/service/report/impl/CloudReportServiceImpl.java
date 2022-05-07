@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -1083,7 +1082,7 @@ public class CloudReportServiceImpl implements CloudReportService {
         boolean isConclusion = updateReportBusinessActivity(jobId, taskResult.getSceneId(), taskResult.getTaskId(),
             taskResult.getTenantId());
         //保存报表结果
-        saveReportResult(reportResult, taskResult, statReport, isConclusion);
+        saveReportResult(reportResult, statReport, isConclusion);
 
         //先保存报告内容，再更新报告状态，防止报告内容没有填充，就触发finishReport操作
         if (updateVersion) {
@@ -1249,42 +1248,10 @@ public class CloudReportServiceImpl implements CloudReportService {
         return false;
     }
 
-    private void getRedisInfo(ReportResult reportResult, TaskResult taskResult) {
-        // 压力节点 启动情况
-        String podName = ScheduleConstants.getPressureNodeName(taskResult.getSceneId(), taskResult.getTaskId(),
-            taskResult.getTenantId());
-        String podTotalName = ScheduleConstants.getPressureNodeTotalKey(taskResult.getSceneId(), taskResult.getTaskId(),
-            taskResult.getTenantId());
-        String podTotal = stringRedisTemplate.opsForValue().get(podTotalName);
-        podTotal = null == podTotal ? "" : podTotal;
-        if (!podTotal.equals(stringRedisTemplate.opsForValue().get(podName))) {
-            // 两者不同
-            getReportFeatures(reportResult, ReportConstants.PRESSURE_MSG,
-                StrUtil.format("pod计划启动{}个，实际启动{}个", podTotal, stringRedisTemplate.opsForValue().get(podName)));
-        }
-        // 压测引擎
-        String engineName = ScheduleConstants.getEngineName(taskResult.getSceneId(), taskResult.getTaskId(),
-            taskResult.getTenantId());
-        String redisResult = stringRedisTemplate.opsForValue().get(engineName);
-        if (!podTotal.equals(redisResult)) {
-            // 两者不同
-            getReportFeatures(reportResult, ReportConstants.PRESSURE_MSG,
-                StrUtil.format("压测引擎计划运行{}个，实际运行{}个", podTotal, stringRedisTemplate.opsForValue().get(engineName)));
-        }
-        // 删除缓存
-        stringRedisTemplate.delete(
-            Arrays.asList(podName,
-                podTotalName,
-                ScheduleConstants.TEMP_FAIL_SIGN + engineName,
-                engineName + ScheduleConstants.FIRST_SIGN,
-                engineName + ScheduleConstants.LAST_SIGN, engineName));
-    }
-
     /**
      * 保存报表结果
      */
-    public void saveReportResult(ReportResult reportResult, TaskResult taskResult, StatReportDTO statReport,
-        boolean isConclusion) {
+    public void saveReportResult(ReportResult reportResult, StatReportDTO statReport, boolean isConclusion) {
         //SLA规则优先
 
         if (isSla(reportResult)) {
@@ -1295,13 +1262,6 @@ public class CloudReportServiceImpl implements CloudReportService {
             getReportFeatures(reportResult, ReportConstants.FEATURES_ERROR_MSG, "业务活动指标不达标");
         } else {
             reportResult.setConclusion(ReportConstants.PASS);
-        }
-
-        // 这里 要判断下 压力节点 情况，并记录下来 压力节点 最后一位就是 压力节点 数量 开始时间 结束时间更新
-        try {
-            getRedisInfo(reportResult, taskResult);
-        } catch (Exception e) {
-            log.error("保存报表结果异常，查询redis失败！场景ID:{},报告ID:{}", reportResult.getSceneId(), reportResult.getId());
         }
 
         String engineName = ScheduleConstants.getEngineName(reportResult.getSceneId(), reportResult.getId(),
