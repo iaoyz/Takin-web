@@ -32,25 +32,25 @@ public class InfluxWriter {
     /**
      * 连接地址
      */
-    @Value("${spring.influxdb.url:}")
+    @Value("${cloud.influxdb.url:}")
     private String influxdbUrl;
 
     /**
      * 用户名
      */
-    @Value("${spring.influxdb.user:}")
+    @Value("${cloud.influxdb.user:}")
     private String userName;
 
     /**
      * 密码
      */
-    @Value("${spring.influxdb.password:}")
+    @Value("${cloud.influxdb.password:}")
     private String password;
 
     /**
      * 数据库库名
      */
-    @Value("${spring.influxdb.database:}")
+    @Value("${cloud.influxdb.database:}")
     private String database;
 
     private InfluxDB influx;
