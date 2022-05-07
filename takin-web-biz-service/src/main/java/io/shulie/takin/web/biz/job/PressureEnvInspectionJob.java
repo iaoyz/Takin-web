@@ -31,7 +31,7 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
 
     public static final String SCHEDULED_PRESSURE_ENV_KEY = "scheduled:pressure:env:check";
 
-    private static final String WARNING_PERCENT_DEFAULT = "80";
+    private static final String WARNING_PERCENT_DEFAULT = "20";
 
     private static final BigDecimal WARNING_PERCENT_MIN = new BigDecimal(WARNING_PERCENT_DEFAULT);
 
