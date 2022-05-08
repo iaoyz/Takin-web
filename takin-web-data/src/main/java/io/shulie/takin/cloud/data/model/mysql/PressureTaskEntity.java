@@ -25,8 +25,8 @@ public class PressureTaskEntity {
     /**
      * 压测引擎任务Id
      */
-    @TableField("pressure_task_id")
-    private Long pressureTaskId;
+    @TableField("job_id")
+    private Long jobId;
 
     @TableField("report_id")
     private Long reportId;

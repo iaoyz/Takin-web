@@ -319,7 +319,7 @@ public class CloudReportServiceImpl implements CloudReportService {
 
         // 补充停止原因
         reportDetail.setStopReasons(getStopReasonBean(sceneId, reportResult.getId()));
-        Long jobId = reportResult.getPressureTaskId();
+        Long jobId = reportResult.getJobId();
         // 查询sla熔断数据
         ReportDetailOutput detailOutput = this.getReportByReportId(reportResult.getId());
         reportDetail.setSlaMsg(detailOutput.getSlaMsg());
@@ -824,7 +824,7 @@ public class CloudReportServiceImpl implements CloudReportService {
                 + "avgConcurrenceNum ");
         influxDbSql.append(" from ");
         influxDbSql.append(
-            InfluxUtil.getMeasurement(reportResult.getPressureTaskId(), reportResult.getSceneId(),
+            InfluxUtil.getMeasurement(reportResult.getJobId(), reportResult.getSceneId(),
                 reportResult.getId(), reportResult.getTenantId()));
         influxDbSql.append(" where ");
         influxDbSql.append(" transaction = ").append("'").append(transaction).append("'");
@@ -1071,7 +1071,7 @@ public class CloudReportServiceImpl implements CloudReportService {
         String transaction = StringUtils.isBlank(testPlanXpathMd5) ? ReportConstants.ALL_BUSINESS_ACTIVITY
             : testPlanXpathMd5;
         //汇总所有业务活动数据
-        Long jobId = reportResult.getPressureTaskId();
+        Long jobId = reportResult.getJobId();
         StatReportDTO statReport = statReport(jobId, taskResult.getSceneId(),
             reportId, taskResult.getTenantId(), transaction);
         if (statReport == null) {
@@ -1326,7 +1326,7 @@ public class CloudReportServiceImpl implements CloudReportService {
             reportResult.setStartTime(reportResult.getGmtCreate());
         }
         if (Objects.isNull(reportResult.getEndTime())) {
-            Date finalDateTime = getFinalDateTime(reportResult.getPressureTaskId(), reportResult.getSceneId(),
+            Date finalDateTime = getFinalDateTime(reportResult.getJobId(), reportResult.getSceneId(),
                 reportResult.getId(), reportResult.getTenantId());
             if (Objects.isNull(finalDateTime) || finalDateTime.getTime() < reportResult.getStartTime().getTime()) {
                 finalDateTime = new Date();
@@ -1560,7 +1560,7 @@ public class CloudReportServiceImpl implements CloudReportService {
         context.setSceneId(reportResult.getSceneId());
         context.setResourceId(reportResult.getResourceId());
         context.setTaskId(reportResult.getTaskId());
-        context.setJobId(reportResult.getPressureTaskId());
+        context.setJobId(reportResult.getJobId());
         context.setTenantId(reportResult.getTenantId());
         context.setReportId(reportResult.getId());
         event.setExt(context);

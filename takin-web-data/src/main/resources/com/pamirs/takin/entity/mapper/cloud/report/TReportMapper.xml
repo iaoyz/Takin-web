@@ -170,7 +170,7 @@
         amount,
         customer_id
         from t_report
-        where pressure_task_id = #{sceneId,jdbcType=BIGINT}
+        where job_id = #{sceneId,jdbcType=BIGINT}
         order by id desc
         limit 1
     </select>

@@ -11,7 +11,7 @@ public interface PressureTaskDAO {
 
     void save(PressureTaskEntity entity);
 
-    void updateResourceAssociation(String resourceId, Long pressureTaskId);
+    void updateResourceAssociation(String resourceId, Long jobId);
 
     void updateById(PressureTaskEntity entity);
 

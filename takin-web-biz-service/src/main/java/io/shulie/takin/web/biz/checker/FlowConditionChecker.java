@@ -179,13 +179,17 @@ public class FlowConditionChecker implements StartConditionChecker {
             AssetExtApi assetExtApi = pluginManager.getExtension(AssetExtApi.class);
             if (assetExtApi != null) {
                 boolean unLock;
-                if (StringUtils.isNotBlank(amountLockId)) {
-                    unLock = assetExtApi.unlock(taskResult.getTenantId(), amountLockId);
-                } else {
-                    unLock = assetExtApi.unlock(report.getTenantId(), taskId.toString());
-                }
-                if (!unLock) {
-                    log.error("释放流量失败！");
+                try {
+                    if (StringUtils.isNotBlank(amountLockId)) {
+                        unLock = assetExtApi.unlock(taskResult.getTenantId(), amountLockId);
+                    } else {
+                        unLock = assetExtApi.unlock(report.getTenantId(), taskId.toString());
+                    }
+                    if (!unLock) {
+                        log.error("释放流量失败！");
+                    }
+                } catch (Exception e) {
+                    log.error("释放流量失败", e);
                 }
             }
         }

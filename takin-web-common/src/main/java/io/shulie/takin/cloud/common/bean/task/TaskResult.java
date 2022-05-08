@@ -43,7 +43,6 @@ public class TaskResult extends ContextExt {
      */
     private Map<String, Object> extendMap;
     private String resourceId;
-    private Long pressureTaskId;
 
     public TaskResult(Long sceneId, Long taskId, Long tenantId) {
         this.sceneId = sceneId;

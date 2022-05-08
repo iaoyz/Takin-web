@@ -40,7 +40,6 @@ import com.pamirs.takin.entity.domain.dto.report.ReportTraceDetailDTO;
 import com.pamirs.takin.entity.domain.entity.linkmanage.figure.RpcType;
 
 import io.shulie.takin.web.amdb.api.TraceClient;
-import io.shulie.takin.web.common.util.ActivityUtil;
 import io.shulie.takin.common.beans.page.PagingList;
 import io.shulie.takin.web.biz.service.risk.util.DateUtil;
 import io.shulie.takin.web.biz.service.report.ReportService;
@@ -95,7 +94,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
                 log.warn("get report id by sceneId is empty,sceneId：{}", sceneId);
             } else {
                 ReportDetailOutput response = reportService.getReportByReportId(reportId);
-                queryDTO.setTaskId(response.getPressureTaskId());
+                queryDTO.setTaskId(response.getJobId());
             }
         }
         // 取延迟1分钟时间 前5分钟数据 因为 agent上报数据需要1分钟计算出来：改为前端控制
@@ -111,7 +110,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         if (reportDetail == null || reportDetail.getStartTime() == null) {
             return new PageInfo<>(Lists.newArrayList());
         }
-        queryDTO.setTaskId(response.getPressureTaskId());
+        queryDTO.setTaskId(response.getJobId());
         Long startTime = queryDTO.getStartTime();
         long reportStartTime = DateUtil.parseSecondFormatter(reportDetail.getStartTime()).getTime() - 5 * 60 * 1000L;
         if (startTime == null || startTime.compareTo(0L) <= 0) {

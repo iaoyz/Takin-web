@@ -76,7 +76,7 @@ public class ReportDaoImpl implements ReportDao {
         if (null != param.getIsDel()) {
             wrapper.eq(ReportEntity::getIsDeleted, param.getIsDel());
         }
-        wrapper.isNotNull(param.isJobIdNotNull(), ReportEntity::getPressureTaskId);
+        wrapper.isNotNull(param.isJobIdNotNull(), ReportEntity::getJobId);
 
         if(Objects.nonNull(param.getPressureTypeRelation())){
             PressureTypeRelation relation = param.getPressureTypeRelation();

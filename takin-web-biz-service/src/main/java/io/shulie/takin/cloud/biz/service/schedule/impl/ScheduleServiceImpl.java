@@ -387,7 +387,7 @@ public class ScheduleServiceImpl extends AbstractIndicators implements ScheduleS
     private void updateReportAssociation(ScheduleStartRequestExt startRequest, Long jobId) {
         ReportUpdateParam report = new ReportUpdateParam();
         report.setId(startRequest.getTaskId());
-        report.setPressureTaskId(jobId);
+        report.setJobId(jobId);
         cloudReportService.updateReportById(report);
         String resourceId = startRequest.getResourceId();
         pressureTaskDAO.updateResourceAssociation(resourceId, jobId);

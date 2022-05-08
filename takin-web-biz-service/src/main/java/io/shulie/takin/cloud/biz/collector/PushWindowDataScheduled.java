@@ -51,11 +51,6 @@ import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.utils.json.JsonHelper;
-import io.shulie.takin.web.common.enums.ContextSourceEnum;
-import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
-import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt;
-import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt.TenantEnv;
-import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -233,7 +228,7 @@ public class PushWindowDataScheduled extends AbstractIndicators {
         Long sceneId = report.getSceneId();
         Long reportId = report.getId();
         Long customerId = report.getTenantId();
-        Long jobId = report.getPressureTaskId();
+        Long jobId = report.getJobId();
         String logPre = String.format("reduceMetrics %s-%s-%s:%s",
             sceneId, reportId, customerId, showTime(timeWindow));
         log.info(logPre + " start!");

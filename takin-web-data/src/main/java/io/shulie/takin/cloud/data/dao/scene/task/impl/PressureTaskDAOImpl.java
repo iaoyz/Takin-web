@@ -41,8 +41,8 @@ public class PressureTaskDAOImpl implements PressureTaskDAO {
     }
 
     @Override
-    public void updateResourceAssociation(String resourceId, Long pressureTaskId) {
-        pressureTaskMapper.update(new PressureTaskEntity() {{setPressureTaskId(pressureTaskId);}},
+    public void updateResourceAssociation(String resourceId, Long jobId) {
+        pressureTaskMapper.update(new PressureTaskEntity() {{setJobId(jobId);}},
             Wrappers.lambdaQuery(PressureTaskEntity.class).eq(PressureTaskEntity::getResourceId, resourceId));
     }
 
