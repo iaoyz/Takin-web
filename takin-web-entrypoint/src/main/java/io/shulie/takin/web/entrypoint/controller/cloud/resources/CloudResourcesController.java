@@ -49,6 +49,6 @@ public class CloudResourcesController {
         }
         Resource resource = cloudResourcesService.getDetail(cloudResourceApi.getDetails(taskId, resourceId), taskId, resourceId, sortField, sortType, currentPage, pageSize);
         setHeaders(new HashMap<String, String>(1) {{put(PAGE_TOTAL_HEADER, String.valueOf(resource.getResources().size()));}});
-        return Response.success();
+        return Response.success(resource);
     }
 }
