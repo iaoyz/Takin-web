@@ -187,7 +187,9 @@
                `status`,
                operate_id,
                amount,
-               customer_id
+               customer_id,
+               resource_id,
+               job_id
         from t_report
         where scene_id = #{sceneId,jdbcType=BIGINT}
           and is_deleted = 0
