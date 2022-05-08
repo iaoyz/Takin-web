@@ -16,7 +16,6 @@ import com.pamirs.takin.entity.domain.dto.scenemanage.SceneManageWrapperDTO;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.EnginePluginRefOutput;
 import io.shulie.takin.cloud.biz.output.scene.manage.SceneManageWrapperOutput.SceneScriptRefOutput;
-import io.shulie.takin.cloud.biz.service.engine.EnginePluginFilesService;
 import io.shulie.takin.cloud.biz.utils.FileTypeBusinessUtil;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
@@ -43,9 +42,6 @@ public class ScriptChecker implements StartConditionChecker {
     @Resource
     private ScriptManageService scriptManageService;
 
-    @Resource
-    private EnginePluginFilesService enginePluginFilesService;
-
     private static final String SCRIPT_NAME_SUFFIX = "jmx";
 
     @Value("${script.path}/")
@@ -54,14 +50,16 @@ public class ScriptChecker implements StartConditionChecker {
     @Override
     public CheckResult check(StartConditionCheckerContext context) {
         try {
-            fillPlugins(context);
-            SceneManageWrapperDTO sceneData = context.getSceneDataDTO();
-            // 压测脚本文件检查
-            String scriptCorrelation = sceneTaskService.checkScriptCorrelation(sceneData);
-            if (StringUtils.isNotBlank(scriptCorrelation)) {
-                return CheckResult.fail(type(), scriptCorrelation);
+            if (StringUtils.isBlank(context.getResourceId())) {
+                fillPlugins(context);
+                SceneManageWrapperDTO sceneData = context.getSceneDataDTO();
+                // 压测脚本文件检查
+                String scriptCorrelation = sceneTaskService.checkScriptCorrelation(sceneData);
+                if (StringUtils.isNotBlank(scriptCorrelation)) {
+                    return CheckResult.fail(type(), scriptCorrelation);
+                }
+                doCheck(context);
             }
-            doCheck(context);
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());

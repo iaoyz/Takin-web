@@ -25,6 +25,7 @@ import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
 import io.shulie.takin.cloud.data.model.mysql.ReportEntity;
 import io.shulie.takin.cloud.data.param.report.ReportUpdateParam;
 import io.shulie.takin.cloud.data.result.report.ReportResult;
+import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.cloud.ext.api.AssetExtApi;
 import io.shulie.takin.cloud.ext.content.asset.AccountInfoExt;
 import io.shulie.takin.cloud.ext.content.asset.AssetBillExt;
@@ -34,7 +35,6 @@ import io.shulie.takin.cloud.ext.content.response.Response;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.plugin.framework.core.PluginManager;
-import io.shulie.takin.cloud.data.util.PressureStartCache;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -56,7 +56,9 @@ public class FlowConditionChecker implements StartConditionChecker {
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
         try {
-            flowCheck(context);
+            if (StringUtils.isBlank(context.getResourceId())) {
+                flowCheck(context);
+            }
             return CheckResult.success(type());
         } catch (Exception e) {
             return CheckResult.fail(type(), e.getMessage());
