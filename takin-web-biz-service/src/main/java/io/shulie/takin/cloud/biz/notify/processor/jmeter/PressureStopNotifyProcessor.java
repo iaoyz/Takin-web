@@ -33,6 +33,9 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
     private void processStopped(PressureStopNotifyParam param) {
         JobExample data = param.getData();
         String resourceId = String.valueOf(data.getResourceId());
+        if (!redisClientUtils.hasKey(PressureStartCache.getResourceKey(resourceId))) {
+            return;
+        }
         String podId = String.valueOf(data.getResourceExampleId());
         String jmeterId = String.valueOf(data.getJobExampleId());
         ResourceContext context = getResourceContext(resourceId);

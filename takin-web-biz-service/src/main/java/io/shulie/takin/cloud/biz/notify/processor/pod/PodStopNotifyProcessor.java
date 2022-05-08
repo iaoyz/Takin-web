@@ -30,6 +30,9 @@ public class PodStopNotifyProcessor extends AbstractIndicators implements CloudN
     private void processStop(PodStopNotifyParam param) {
         ResourceExample data = param.getData();
         String resourceId = String.valueOf(data.getResourceId());
+        if (!redisClientUtils.hasKey(PressureStartCache.getResourceKey(resourceId))) {
+            return;
+        }
         String podId = String.valueOf(data.getResourceExampleId());
         if (redisClientUtils.lockNoExpire(PressureStartCache.getPodStopFirstKey(resourceId), podId)) {
             callStopEventIfNecessary(String.valueOf(data.getResourceId()), "pod停止");

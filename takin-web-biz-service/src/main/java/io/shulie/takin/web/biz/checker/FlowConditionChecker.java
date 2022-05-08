@@ -2,6 +2,7 @@ package io.shulie.takin.web.biz.checker;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -19,6 +20,7 @@ import io.shulie.takin.cloud.common.enums.ThreadGroupTypeEnum;
 import io.shulie.takin.cloud.common.enums.TimeUnitEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
+import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.common.utils.JsonUtil;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
 import io.shulie.takin.cloud.data.mapper.mysql.ReportMapper;
@@ -52,6 +54,9 @@ public class FlowConditionChecker implements StartConditionChecker {
 
     @Resource
     private ReportMapper reportMapper;
+
+    @Resource
+    private RedisClientUtils redisClientUtils;
 
     @Override
     public CheckResult check(StartConditionCheckerContext context) throws TakinCloudException {
@@ -169,6 +174,10 @@ public class FlowConditionChecker implements StartConditionChecker {
     public void unLockFlow(Event event) {
         TaskResult taskResult = (TaskResult)event.getExt();
         Long taskId = taskResult.getTaskId();
+        if (!redisClientUtils.lockExpire(PressureStartCache.getReleaseFlowKey(taskId),
+            String.valueOf(System.currentTimeMillis()), 5, TimeUnit.MINUTES)) {
+            return;
+        }
         ReportEntity report = reportMapper.selectById(taskId);
         if (report != null) {
             String amountLockId;
