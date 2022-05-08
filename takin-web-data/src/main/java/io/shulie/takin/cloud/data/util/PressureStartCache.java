@@ -116,6 +116,11 @@ public abstract class PressureStartCache {
         return String.format("pressure:resource:finish_step:%s", resourceId);
     }
 
+    // 释放流量key
+    public static String getReleaseFlowKey(Long reportId) {
+        return String.format("pressure:resource:flow_unlock:%s", reportId);
+    }
+
     public static List<String> clearCacheKey(String resourceId, Long sceneId) {
         return Arrays.asList(PressureStartCache.getResourceKey(resourceId),
             PressureStartCache.getResourcePodSuccessKey(resourceId),

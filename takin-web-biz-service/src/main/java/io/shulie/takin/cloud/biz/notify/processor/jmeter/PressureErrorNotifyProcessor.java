@@ -25,6 +25,9 @@ public class PressureErrorNotifyProcessor extends AbstractIndicators
     private void processError(PressureErrorNotifyParam param) {
         JobExampleErrorInfo data = param.getData();
         String resourceId = String.valueOf(data.getResourceId());
+        if (!redisClientUtils.hasKey(PressureStartCache.getResourceKey(resourceId))) {
+            return;
+        }
         String jmeterId = String.valueOf(data.getJobExampleId());
         if (redisClientUtils.lockNoExpire(PressureStartCache.getJmeterErrorFirstKey(resourceId), jmeterId)) {
             callStopEventIfNecessary(String.valueOf(data.getResourceId()), data.getErrorMessage());
