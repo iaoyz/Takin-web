@@ -120,4 +120,10 @@ public class ReportDetailOutput extends UserCommonExt {
      */
     private Long jobId;
 
+    // TODO:完成测试，前端更改过删除
+    private Long pressureTaskId;
+
+    public Long getPressureTaskId() {
+        return jobId;
+    }
 }
