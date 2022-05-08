@@ -139,4 +139,7 @@ public class Report {
      * 脚本解析结果
      */
     private String scriptNodeTree;
+
+    private String resourceId;
+    private Long jobId;
 }
