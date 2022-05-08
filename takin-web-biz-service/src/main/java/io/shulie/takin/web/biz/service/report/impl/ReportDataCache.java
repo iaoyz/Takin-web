@@ -148,7 +148,7 @@ public class ReportDataCache {
         // 指标 map
         TrendRequest req = new TrendRequest();
         req.setReportId(reportId);
-        req.setJobId(reportDetail.getPressureTaskId());
+        req.setJobId(reportDetail.getJobId());
         req.setSceneId(reportDetail.getSceneId());
         List<MetricesResponse> metricsList = reportService.queryMetrics(req);
 

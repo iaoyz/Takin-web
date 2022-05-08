@@ -133,5 +133,5 @@ public class ReportOutput extends ContextExt {
     /**
      * 压测引擎任务Id
      */
-    private Long pressureTaskId;
+    private Long jobId;
 }

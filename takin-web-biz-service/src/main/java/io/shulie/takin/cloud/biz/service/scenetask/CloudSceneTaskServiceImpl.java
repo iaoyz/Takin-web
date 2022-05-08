@@ -617,7 +617,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             }
 
             PressureTaskStopReq request = new PressureTaskStopReq();
-            request.setJobId(report.getPressureTaskId());
+            request.setJobId(report.getJobId());
             pressureTaskApi.stop(request);
 
             // 触发强制停止

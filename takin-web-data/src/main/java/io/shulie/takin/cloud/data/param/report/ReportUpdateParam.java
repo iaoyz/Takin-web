@@ -109,7 +109,7 @@ public class ReportUpdateParam extends ContextExt {
 
     private String resourceId;
 
-    private Long pressureTaskId;
+    private Long jobId;
 
     public ReportUpdateParam() {
         gmtUpdate = new Date();
