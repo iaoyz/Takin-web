@@ -1,6 +1,7 @@
 package io.shulie.takin.web.entrypoint.controller.cloud.resources;
 
 import io.shulie.takin.adapter.api.entrypoint.resource.CloudResourceApi;
+import io.shulie.takin.adapter.api.model.response.cloud.resources.Resource;
 import io.shulie.takin.cloud.biz.service.cloud.server.resource.CloudResourcesService;
 import io.shulie.takin.web.common.common.Response;
 import io.swagger.annotations.Api;
@@ -11,6 +12,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
+
+import static io.shulie.takin.web.common.common.Response.PAGE_TOTAL_HEADER;
+import static io.shulie.takin.web.common.common.Response.setHeaders;
 
 @RestController
 @Api(tags = "压力机明细接口")
@@ -41,6 +47,8 @@ public class CloudResourcesController {
         if (null == taskId || StringUtils.isBlank(resourceId)) {
             return Response.success();
         }
-        return Response.success(cloudResourcesService.getDetail(cloudResourceApi.getDetails(taskId, resourceId), taskId, resourceId, sortField, sortType, currentPage, pageSize));
+        Resource resource = cloudResourcesService.getDetail(cloudResourceApi.getDetails(taskId, resourceId), taskId, resourceId, sortField, sortType, currentPage, pageSize);
+        setHeaders(new HashMap<String, String>(1) {{put(PAGE_TOTAL_HEADER, String.valueOf(resource.getResources().size()));}});
+        return Response.success();
     }
 }
