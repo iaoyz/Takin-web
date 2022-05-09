@@ -118,9 +118,9 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     }
 
     private CheckResult getResourceStatus(String resourceId) {
-        Object message = redisClientUtils.getObject(PressureStartCache.getErrorMessageKey(resourceId));
-        if (message != null) {
-            return new CheckResult(type(), CheckStatus.FAIL.ordinal(), String.valueOf(message));
+        String message = redisClientUtils.getString(PressureStartCache.getErrorMessageKey(resourceId));
+        if (Objects.nonNull(message)) {
+            return new CheckResult(type(), CheckStatus.FAIL.ordinal(), message);
         }
         String statusKey = PressureStartCache.getResourceKey(resourceId);
         Object redisStatus = redisClientUtils.hmget(statusKey, PressureStartCache.CHECK_STATUS);

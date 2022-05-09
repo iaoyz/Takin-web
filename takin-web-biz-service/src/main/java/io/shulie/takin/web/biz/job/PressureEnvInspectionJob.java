@@ -61,7 +61,7 @@ public class PressureEnvInspectionJob implements SimpleJob, InitializingBean {
         if (errorMessage.isEmpty()) {
             redisClientUtils.delete(SCHEDULED_PRESSURE_ENV_KEY);
         } else {
-            redisClientUtils.setString(SCHEDULED_PRESSURE_ENV_KEY, StringUtils.join(errorMessage, ","));
+            redisClientUtils.setString(SCHEDULED_PRESSURE_ENV_KEY, StringUtils.join(errorMessage, "\n"));
         }
     }
 
