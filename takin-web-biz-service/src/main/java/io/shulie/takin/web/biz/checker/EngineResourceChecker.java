@@ -237,6 +237,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         StopEventSource source = (StopEventSource)event.getExt();
         String message = source.getMessage();
         ResourceContext context = source.getContext();
+        context.setMessage(message);
         Long reportId = context.getReportId();
         setTryRunTaskInfo(context.getSceneId(), reportId, context.getTenantId(), message);
         // 此处手动停止的也会插入此状态

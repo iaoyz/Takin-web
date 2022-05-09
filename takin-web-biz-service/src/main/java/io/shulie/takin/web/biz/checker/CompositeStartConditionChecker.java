@@ -109,13 +109,6 @@ public class CompositeStartConditionChecker implements InitializingBean {
                 return new CheckResult(checker.type(), CheckStatus.FAIL.ordinal(), "取消压测");
             }
         }
-
-        if (StringUtils.isNotBlank(resourceId)) {
-            String errorMessage = redisClientUtils.getString(PressureStartCache.getErrorMessageKey(resourceId));
-            if (Objects.nonNull(errorMessage)) {
-                return new CheckResult(checker.type(), CheckStatus.FAIL.ordinal(), errorMessage);
-            }
-        }
         return checker.check(context);
     }
 
