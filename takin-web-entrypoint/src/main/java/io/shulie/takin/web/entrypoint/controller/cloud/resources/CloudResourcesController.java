@@ -45,7 +45,7 @@ public class CloudResourcesController {
             @RequestParam(value = "pageSize", required = false) Integer pageSize
     ) {
         if (null == taskId || StringUtils.isBlank(resourceId)) {
-            return Response.success();
+            return Response.success(new Resource());
         }
         Resource resource = cloudResourcesService.getDetail(cloudResourceApi.getDetails(taskId, resourceId), taskId, resourceId, sortField, sortType, currentPage, pageSize);
         setHeaders(new HashMap<String, String>(1) {{put(PAGE_TOTAL_HEADER, String.valueOf(resource.getResources().size()));}});
