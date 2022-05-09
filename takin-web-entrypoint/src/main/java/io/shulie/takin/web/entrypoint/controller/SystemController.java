@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
+import javax.annotation.Resource;
+
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
@@ -15,6 +17,9 @@ import com.google.common.collect.Lists;
 import com.pamirs.takin.entity.domain.entity.TBaseConfig;
 import io.shulie.takin.adapter.api.model.request.common.CloudCommonInfoWrapperReq;
 import io.shulie.takin.adapter.api.model.response.common.CommonInfosResp;
+import io.shulie.takin.cloud.biz.service.strategy.StrategyConfigService;
+import io.shulie.takin.cloud.common.utils.CommonUtil;
+import io.shulie.takin.cloud.ext.content.enginecall.StrategyConfigExt;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.shulie.takin.utils.string.StringUtil;
 import io.shulie.takin.web.amdb.util.HttpClientUtil;
@@ -67,6 +72,9 @@ public class SystemController {
     @Autowired
     private BaseConfigService baseConfigService;
 
+    @Resource
+    private StrategyConfigService strategyConfigService;
+
     /**
      * 前端样式存储
      * @return
@@ -110,6 +118,10 @@ public class SystemController {
                 ResponseResult.ErrorInfo error = infos.getError();
                 log.error("cloud接口返回错误：{}", error.getMsg());
             }
+        }
+        StrategyConfigExt config = strategyConfigService.getCurrentStrategyConfig();
+        if (config != null) {
+            data.setEngineVersion(CommonUtil.getValue("", config, StrategyConfigExt::getPressureEngineImage));
         }
         String version = this.getAmdbVersion();
 
