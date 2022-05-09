@@ -58,19 +58,16 @@ public class EntrypointUrl {
     public final static String MATHOD_WATCHMAN_STATUS = "status";
     public final static String MATHOD_WATCHMAN_RESOURCE = "resource";
 
+
     /**
-     * 模块 - 资产
+     * 模块 - 文件管理
      */
-    private final static String MODULE_ASSET = "asset";
+    public final static String MODULE_FILE = "file";
     /**
-     * 模块 - 资产流水
+     * 模块 - 大文件管理
      */
-    public final static String MODULE_ASSET_BALANCE = MODULE_ASSET + "/balance";
-    public final static String METHOD_ASSET_BALANCE_LIST = "list";
-    /**
-     * 模块 - 资产计算
-     */
-    public final static String MODULE_ASSET_CALC = MODULE_ASSET + "/calc";
-    public final static String METHOD_ASSET_CALC_ESTIMATE = "estimate";
-    public final static String METHOD_ASSET_CALC_REALITY = "reality";
+    public final static String MODULE_FILE_BIG = MODULE_FILE + "/big";
+    public final static String METHOD_BIG_FILE_UPLOAD = "upload";
+    public final static String METHOD_BIG_FILE_COMPACT = "compact";
+    public final static String METHOD_BIG_FILE_DOWNLOAD = "download";
 }
