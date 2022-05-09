@@ -4,7 +4,7 @@ import javax.annotation.Resource;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 
-import io.shulie.takin.common.beans.response.ResponseResult;
+import io.shulie.takin.cloud.model.response.ApiResult;
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.adapter.api.entrypoint.common.CommonInfoApi;
 import io.shulie.takin.adapter.api.model.request.common.CloudCommonInfoWrapperReq;
@@ -32,6 +32,6 @@ public class CommonInfoApiImpl implements CommonInfoApi {
     @Override
     public CommonInfosResp getCloudConfigurationInfos(CloudCommonInfoWrapperReq request) {
         return cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.MODULE_COMMON, EntrypointUrl.METHOD_COMMON_VERSION),
-            request, new TypeReference<ResponseResult<CommonInfosResp>>() {}).getData();
+            request, new TypeReference<ApiResult<CommonInfosResp>>() {}).getData();
     }
 }
