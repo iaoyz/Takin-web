@@ -22,8 +22,8 @@ import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.exception.TakinCloudException;
 import io.shulie.takin.cloud.common.exception.TakinCloudExceptionEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
-import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
+import io.shulie.takin.utils.json.JsonHelper;
 import io.shulie.takin.web.biz.service.ApplicationService;
 import io.shulie.takin.web.biz.service.BaseConfigService;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
@@ -100,7 +100,15 @@ public class ApplicationChecker implements StartConditionChecker {
         }
         flag = flag || pressureRunning(context);
         if (flag) {
-            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
+            String message = "当前场景不为待启动状态！";
+            String resourceId = context.getResourceId();
+            if (StringUtils.isNotBlank(resourceId)) {
+                String errorMessage = redisClientUtils.getString(PressureStartCache.getErrorMessageKey(resourceId));
+                if (Objects.nonNull(errorMessage)) {
+                    message = errorMessage;
+                }
+            }
+            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, message);
         }
         cacheAssociation(context);
     }
