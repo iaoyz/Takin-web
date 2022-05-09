@@ -37,7 +37,7 @@ public class CloudResourcesController {
     @GetMapping("/getDetails")
     @ApiOperation("明细")
     public Response getDetails(
-            @RequestParam(value = "taskId",required = false) Integer taskId,
+            @RequestParam(value = "jobId",required = false) Integer taskId,
             @RequestParam(value = "resourceId",required = false) String resourceId,
             @RequestParam(value = "sortField", required = false, defaultValue = "status") String sortField,
             @RequestParam(value = "sortType", required = false, defaultValue = "desc") String sortType,
