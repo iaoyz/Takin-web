@@ -18,11 +18,16 @@ public enum FormulaSymbol {
     private final Integer code;
     private final String symbol;
     private final String description;
+    private static final Map<Integer, FormulaSymbol> ORDINAL_MAPPING = new HashMap<>(6);
     private static final Map<Integer, FormulaSymbol> CODE_MAPPING = new HashMap<>(6);
 
     @JsonCreator
     public static FormulaSymbol of(Integer code) {
         return CODE_MAPPING.get(code);
+    }
+
+    public static FormulaSymbol ofValue(Integer code) {
+        return ORDINAL_MAPPING.get(code);
     }
 
     FormulaSymbol(Integer code, String symbol, String description) {
@@ -32,7 +37,10 @@ public enum FormulaSymbol {
     }
 
     static {
-        Arrays.stream(values()).forEach(t -> CODE_MAPPING.put(t.getCode(), t));
+        Arrays.stream(values()).forEach(t -> {
+            ORDINAL_MAPPING.put(t.ordinal(), t);
+            CODE_MAPPING.put(t.getCode(), t);
+        });
     }
 
     public Integer getCode() {
