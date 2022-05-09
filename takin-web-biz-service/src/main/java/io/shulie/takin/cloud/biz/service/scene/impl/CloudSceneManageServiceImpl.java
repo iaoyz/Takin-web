@@ -721,6 +721,7 @@ public class CloudSceneManageServiceImpl implements CloudSceneManageService {
             context.setTaskId(recentlyReport.getTaskId());
             context.setReportId(recentlyReport.getId());
             context.setResourceId(recentlyReport.getResourceId());
+            context.setMessage(errorMsg);
             source.setContext(context);
             source.setMessage(errorMsg);
             event.setExt(source);
