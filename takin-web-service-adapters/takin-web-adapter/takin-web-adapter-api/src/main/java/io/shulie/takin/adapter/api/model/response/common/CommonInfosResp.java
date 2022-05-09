@@ -15,8 +15,8 @@ import lombok.Data;
 public class CommonInfosResp {
 
     @ApiModelProperty("压测引擎版本号")
-    private String pressureEngineVersion;
+    private String engineVersion;
 
     @ApiModelProperty("cloud版本号")
-    private String cloudVersion;
+    private String version;
 }

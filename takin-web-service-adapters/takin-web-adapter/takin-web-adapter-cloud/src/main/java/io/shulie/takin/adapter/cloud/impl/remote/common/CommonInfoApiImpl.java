@@ -31,7 +31,7 @@ public class CommonInfoApiImpl implements CommonInfoApi {
      */
     @Override
     public CommonInfosResp getCloudConfigurationInfos(CloudCommonInfoWrapperReq request) {
-        return cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.MODULE_COMMON, EntrypointUrl.METHOD_COMMON_CONFIG),
+        return cloudApiSenderService.get(EntrypointUrl.join(EntrypointUrl.MODULE_COMMON, EntrypointUrl.METHOD_COMMON_VERSION),
             request, new TypeReference<ResponseResult<CommonInfosResp>>() {}).getData();
     }
 }
