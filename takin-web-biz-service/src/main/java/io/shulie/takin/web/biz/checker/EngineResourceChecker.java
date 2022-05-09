@@ -138,6 +138,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         request.setCpu(strategy.getCpuNum());
         request.setMemory(strategy.getMemorySize());
         request.setNumber(sceneData.getIpNum());
+        request.setImage(strategy.getPressureEngineImage());
         request.setCallbackUrl(appConfig.getCallbackUrl());
         return cloudResourceApi.lock(request);
     }
