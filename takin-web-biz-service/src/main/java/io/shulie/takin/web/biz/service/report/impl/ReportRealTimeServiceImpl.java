@@ -16,10 +16,11 @@ import com.pamirs.takin.entity.domain.dto.report.ReportTraceQueryDTO;
 import io.shulie.takin.adapter.api.entrypoint.scene.manage.SceneManageApi;
 import io.shulie.takin.adapter.api.model.request.report.ScriptNodeTreeQueryReq;
 import io.shulie.takin.adapter.api.model.response.report.ScriptNodeTreeResp;
+import io.shulie.takin.cloud.data.dao.report.ReportDao;
+import io.shulie.takin.cloud.data.result.report.ReportResult;
 import io.shulie.takin.web.diff.api.report.ReportApi;
 import lombok.extern.slf4j.Slf4j;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.github.pagehelper.PageInfo;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.Lists;
@@ -35,14 +36,11 @@ import com.pamirs.pradar.log.parser.trace.RpcStack;
 import com.pamirs.pradar.log.parser.utils.TraceIdUtil;
 import com.pamirs.pradar.log.parser.utils.ResultCodeUtils;
 import com.pamirs.takin.entity.domain.dto.report.ReportTraceDTO;
-import com.pamirs.takin.entity.domain.dto.report.ReportDetailDTO;
 import com.pamirs.takin.entity.domain.dto.report.ReportTraceDetailDTO;
 import com.pamirs.takin.entity.domain.entity.linkmanage.figure.RpcType;
 
 import io.shulie.takin.web.amdb.api.TraceClient;
 import io.shulie.takin.common.beans.page.PagingList;
-import io.shulie.takin.web.biz.service.risk.util.DateUtil;
-import io.shulie.takin.web.biz.service.report.ReportService;
 import io.shulie.takin.web.amdb.bean.query.trace.EntranceRuleDTO;
 import io.shulie.takin.web.common.enums.trace.TraceNodeAsyncEnum;
 import io.shulie.takin.web.amdb.bean.query.trace.TraceInfoQueryDTO;
@@ -52,7 +50,6 @@ import io.shulie.takin.web.amdb.bean.result.trace.EntryTraceInfoDTO;
 import io.shulie.takin.web.biz.service.scenemanage.SceneTaskService;
 import io.shulie.takin.web.biz.service.report.ReportRealTimeService;
 import io.shulie.takin.web.data.dao.linkmanage.BusinessLinkManageDAO;
-import io.shulie.takin.web.biz.pojo.output.report.ReportDetailOutput;
 import io.shulie.takin.web.biz.utils.business.script.ScriptDebugUtil;
 import io.shulie.takin.adapter.api.model.request.scenemanage.SceneManageIdReq;
 import io.shulie.takin.web.biz.pojo.response.report.ReportLinkDetailResponse;
@@ -70,7 +67,7 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
     @Resource
     SceneManageApi cloudSceneApi;
     @Resource
-    private ReportService reportService;
+    private ReportDao reportDao;
     @Resource
     private TraceClient traceClient;
     @Resource
@@ -93,8 +90,8 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
             if (reportId == null) {
                 log.warn("get report id by sceneId is empty,sceneId：{}", sceneId);
             } else {
-                ReportDetailOutput response = reportService.getReportByReportId(reportId);
-                queryDTO.setTaskId(response.getJobId());
+                ReportResult report = reportDao.getById(reportId);
+                queryDTO.setTaskId(report.getJobId());
             }
         }
         // 取延迟1分钟时间 前5分钟数据 因为 agent上报数据需要1分钟计算出来：改为前端控制
@@ -104,15 +101,13 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
     @Override
     public PageInfo<ReportTraceDTO> getReportLinkListByReportId(ReportTraceQueryDTO queryDTO) {
         Long reportId = queryDTO.getReportId();
-        ReportDetailOutput response = reportService.getReportByReportId(reportId);
-        ReportDetailDTO reportDetail = BeanUtil.copyProperties(response, ReportDetailDTO.class);
-
-        if (reportDetail == null || reportDetail.getStartTime() == null) {
+        ReportResult report = reportDao.getById(reportId);
+        if (report == null || report.getStartTime() == null) {
             return new PageInfo<>(Lists.newArrayList());
         }
-        queryDTO.setTaskId(response.getJobId());
+        queryDTO.setTaskId(report.getJobId());
         Long startTime = queryDTO.getStartTime();
-        long reportStartTime = DateUtil.parseSecondFormatter(reportDetail.getStartTime()).getTime() - 5 * 60 * 1000L;
+        long reportStartTime = report.getStartTime().getTime() - 5 * 60 * 1000L;
         if (startTime == null || startTime.compareTo(0L) <= 0) {
             queryDTO.setStartTime(reportStartTime);
         }
@@ -120,9 +115,9 @@ public class ReportRealTimeServiceImpl implements ReportRealTimeService {
         Long endTime = queryDTO.getEndTime();
         if (endTime == null || endTime.compareTo(queryDTO.getStartTime()) <= 0) {
             queryDTO.setEndTime(
-                reportDetail.getEndTime() != null ? (reportDetail.getEndTime().getTime() + 5 * 60 * 1000L) : (reportStartTime + 10 * 60 * 1000L));
+                report.getEndTime() != null ? (report.getEndTime().getTime() + 5 * 60 * 1000L) : (reportStartTime + 10 * 60 * 1000L));
         }
-        queryDTO.setSceneId(reportDetail.getSceneId());
+        queryDTO.setSceneId(report.getSceneId());
         return getReportTraceDtoList(queryDTO);
     }
 
