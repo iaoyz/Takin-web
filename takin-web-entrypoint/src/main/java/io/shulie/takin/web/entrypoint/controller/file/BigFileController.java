@@ -38,7 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @Slf4j
 @RestController
-@RequestMapping(EntrypointUrl.BASIC + "/" + EntrypointUrl.MODULE_FILE_BIG)
+@RequestMapping("api/" + EntrypointUrl.MODULE_FILE_BIG)
 public class BigFileController {
     @Resource
     private BigFileService bigFileService;
@@ -114,5 +114,4 @@ public class BigFileController {
             writeFile(response, pradarUploadFile);
         }
     }
-
 }
