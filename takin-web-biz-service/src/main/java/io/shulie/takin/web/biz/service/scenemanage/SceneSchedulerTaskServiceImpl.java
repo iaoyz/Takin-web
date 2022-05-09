@@ -152,20 +152,19 @@ public class SceneSchedulerTaskServiceImpl implements SceneSchedulerTaskService 
                 }
                 RedisHelper.setValue(lockKey,true);
                 threadPool.submit(() -> {
+                    // 补充租户信息
+                    TenantCommonExt ext = new TenantCommonExt();
+                    ext.setSource(ContextSourceEnum.JOB.getCode());
+                    ext.setTenantId(scheduler.getTenantId());
+                    ext.setEnvCode(scheduler.getEnvCode());
+                    TenantInfoExt infoExt = WebPluginUtils.getTenantInfo(scheduler.getTenantId());
+                    if(infoExt == null) {
+                        log.error("租户信息未找到【{}】",scheduler.getTenantId());
+                        return;
+                    }
+                    ext.setTenantAppKey(infoExt.getTenantAppKey());
                     try {
-                        // 补充租户信息
-                        TenantCommonExt ext = new TenantCommonExt();
-                        ext.setSource(ContextSourceEnum.JOB.getCode());
-                        ext.setTenantId(scheduler.getTenantId());
-                        ext.setEnvCode(scheduler.getEnvCode());
-                        TenantInfoExt infoExt = WebPluginUtils.getTenantInfo(scheduler.getTenantId());
-                        if(infoExt == null) {
-                            log.error("租户信息未找到【{}】",scheduler.getTenantId());
-                            return;
-                        }
-                        ext.setTenantAppKey(infoExt.getTenantAppKey());
                         WebPluginUtils.setTraceTenantContext(ext);
-
                         SceneActionParam param = new SceneActionParam();
                         param.setSceneId(scheduler.getSceneId());
                         CheckResultVo resultVo;
@@ -199,6 +198,7 @@ public class SceneSchedulerTaskServiceImpl implements SceneSchedulerTaskService 
                         updateRequest.setIsDeleted(true);
                         updateRequest.setIsDeleted(true);
                         this.update(updateRequest, false);
+                        WebPluginUtils.removeTraceContext();
                         // 解锁
                         RedisHelper.delete(lockKey);
                     }
