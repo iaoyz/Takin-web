@@ -21,7 +21,7 @@ public class EntrypointUrl {
      * 模块 - 通用接口
      */
     public final static String MODULE_COMMON = "common";
-    public final static String METHOD_COMMON_CONFIG = "getCloudConfigurationInfos";
+    public final static String METHOD_COMMON_VERSION = "version";
 
 
     /**

@@ -109,7 +109,6 @@ public class SystemController {
             if (!infos.getSuccess()) {
                 ResponseResult.ErrorInfo error = infos.getError();
                 log.error("cloud接口返回错误：{}", error.getMsg());
-                //throw new takinException(ExceptionCode.HTTP_REQUEST_ERROR, error.getMsg());
             }
         }
         String version = this.getAmdbVersion();
@@ -118,8 +117,8 @@ public class SystemController {
         itemVo.setTitle("产品版本信息");
         HashMap<String, String> dataMap = new LinkedHashMap<>();
         dataMap.put("takin版本", ifNull(takinWebVersion));
-        dataMap.put("cloud版本", ifNull(data.getCloudVersion()));
-        dataMap.put("流量引擎版本", ifNull(data.getPressureEngineVersion()));
+        dataMap.put("cloud版本", ifNull(data.getVersion()));
+        dataMap.put("流量引擎版本", ifNull(data.getEngineVersion()));
         dataMap.put("前端版本", ifNull(this.getUiVersion(uiVersion)));
         dataMap.put("AMDB版本", version);
 
