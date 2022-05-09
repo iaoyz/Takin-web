@@ -235,11 +235,19 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         StopEventSource source = (StopEventSource)event.getExt();
         String message = source.getMessage();
         ResourceContext context = source.getContext();
-        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), message);
+        Long reportId = context.getReportId();
+        setTryRunTaskInfo(context.getSceneId(), reportId, context.getTenantId(), message);
         // 此处手动停止的也会插入此状态
         pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.UNUSUAL, message);
         if (!source.isPressureRunning()) {
-            preStartFail(source);
+            if (!redisClientUtils.hasKey(PressureStartCache.getInitActivityKey(reportId))) {
+                Event failEvent = new Event();
+                failEvent.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
+                failEvent.setExt(context);
+                eventCenterTemplate.doEvents(failEvent);
+            } else {
+                preStartFail(source);
+            }
         } else {
             pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.STOPPING, message);
             stopJob(context.getJobId());

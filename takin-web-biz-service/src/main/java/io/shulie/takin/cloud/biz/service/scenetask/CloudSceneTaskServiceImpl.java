@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -1288,6 +1289,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         });
         saveNonTargetNode(scene.getId(), reportId, report.getScriptNodeTree(), scene.getBusinessActivityConfig());
         log.info("启动[{}]场景测试，初始化报表数据,报表ID: {}", scene.getId(), reportId);
+        // 标识已经进行了报告关联数据保存
+        redisClientUtils.setString(PressureStartCache.getInitActivityKey(reportId),
+            String.valueOf(System.currentTimeMillis()), 1, TimeUnit.HOURS);
     }
 
     @IntrestFor(event = PressureStartCache.CHECK_SUCCESS_EVENT, order = 1)
