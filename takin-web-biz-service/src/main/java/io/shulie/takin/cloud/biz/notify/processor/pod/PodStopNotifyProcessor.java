@@ -34,8 +34,15 @@ public class PodStopNotifyProcessor extends AbstractIndicators implements CloudN
             return;
         }
         String podId = String.valueOf(data.getResourceExampleId());
-        if (redisClientUtils.lockNoExpire(PressureStartCache.getPodStopFirstKey(resourceId), podId)) {
-            callStopEventIfNecessary(String.valueOf(data.getResourceId()), "pod停止");
+        ResourceContext context = getResourceContext(resourceId);
+        String message = "pod停止";
+        if (!redisClientUtils.hasKey(PressureStartCache.getJmeterStartFirstKey(resourceId))) {
+            callStopEventIfNecessary(resourceId, message);
+        } else {
+            if (redisClientUtils.lockNoExpire(
+                PressureStartCache.getStopFlag(context.getSceneId(), resourceId), message)) {
+                notifyStop(context);
+            }
         }
         removeSuccessKey(resourceId, podId, String.valueOf(data.getJobExampleId()));
         detectEnd(resourceId, param.getTime());

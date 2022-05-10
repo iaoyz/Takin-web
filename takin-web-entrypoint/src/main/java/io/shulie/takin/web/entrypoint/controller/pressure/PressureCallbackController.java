@@ -8,12 +8,15 @@ import java.util.concurrent.ExecutorService;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
+import com.alibaba.fastjson.JSON;
+
 import io.shulie.takin.adapter.api.constant.EntrypointUrl;
 import io.shulie.takin.cloud.biz.notify.CallbackType;
 import io.shulie.takin.cloud.biz.notify.CloudNotifyParam;
 import io.shulie.takin.cloud.biz.notify.CloudNotifyProcessor;
 import io.shulie.takin.common.beans.response.ResponseResult;
 import io.swagger.annotations.ApiOperation;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("api/" + EntrypointUrl.MODULE_CALLBACK)
+@Slf4j
 public class PressureCallbackController {
 
     @Resource
@@ -37,6 +41,7 @@ public class PressureCallbackController {
     public <T extends CloudNotifyParam> ResponseResult<?> taskResultNotify(@RequestBody T param) {
         CloudNotifyProcessor processor = processorMap.get(param.getType());
         if (processor != null) {
+            log.info("接口cloud回调:【{}】", JSON.toJSONString(param));
             cloudCallbackThreadPool.execute(() -> processor.process(param));
         }
         return ResponseResult.success("SUCCESS");
