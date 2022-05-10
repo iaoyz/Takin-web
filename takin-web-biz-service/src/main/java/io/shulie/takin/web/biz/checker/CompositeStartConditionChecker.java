@@ -100,8 +100,8 @@ public class CompositeStartConditionChecker implements InitializingBean {
     }
 
     private CheckResult doCheck(StartConditionCheckerContext context, StartConditionChecker checker) {
-        String preStopKey = PressureStartCache.getScenePreStopKey(context.getSceneId(),
-            StrUtil.nullToEmpty(context.getResourceId()));
+        String resourceId = context.getResourceId();
+        String preStopKey = PressureStartCache.getScenePreStopKey(context.getSceneId(), StrUtil.nullToEmpty(resourceId));
         String preStopTime = redisClientUtils.getString(preStopKey);
         if (StringUtils.isNotBlank(preStopTime)) {
             if (Long.parseLong(preStopTime) > context.getTime()) {

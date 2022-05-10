@@ -42,19 +42,19 @@ public class CloudAsyncServiceImpl extends AbstractIndicators implements CloudAs
     /**
      * 压力节点 启动时间超时
      */
-    @Value("${pressure.pod.start.expireTime: 300}")
+    @Value("${pressure.pod.start.expireTime: 30}")
     private Integer pressurePodStartExpireTime;
 
     /**
      * 压力引擎 启动时间超时
      */
-    @Value("${pressure.node.start.expireTime: 300}")
+    @Value("${pressure.node.start.expireTime: 30}")
     private Integer pressureNodeStartExpireTime;
 
     /**
      * 压力引擎 心跳时间超时
      */
-    @Value("${pressure.node.heartbeat.expireTime: 300}")
+    @Value("${pressure.node.heartbeat.expireTime: 30}")
     private Integer pressureNodeHeartbeatExpireTime;
 
     /**

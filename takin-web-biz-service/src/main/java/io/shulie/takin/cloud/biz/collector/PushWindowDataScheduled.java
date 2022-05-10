@@ -51,6 +51,10 @@ import io.shulie.takin.cloud.ext.content.script.ScriptNode;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.annotation.IntrestFor;
 import io.shulie.takin.utils.json.JsonHelper;
+import io.shulie.takin.web.common.enums.ContextSourceEnum;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
+import io.shulie.takin.web.ext.entity.tenant.TenantInfoExt;
+import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
@@ -592,7 +596,18 @@ public class PushWindowDataScheduled extends AbstractIndicators {
                 if (!lock(lockKey, "1")) {
                     return;
                 }
+                TenantCommonExt ext = new TenantCommonExt();
+                ext.setSource(ContextSourceEnum.JOB.getCode());
+                ext.setTenantId(customerId);
+                ext.setEnvCode(r.getEnvCode());
+                TenantInfoExt infoExt = WebPluginUtils.getTenantInfo(customerId);
+                if(infoExt == null) {
+                    log.error("租户信息未找到【{}】", customerId);
+                    return;
+                }
+                ext.setTenantAppKey(infoExt.getTenantAppKey());
                 try {
+                    WebPluginUtils.setTraceTenantContext(ext);
                     List<ScriptNode> nodes = JsonUtil.parseArray(r.getScriptNodeTree(), ScriptNode.class);
                     SceneManageWrapperOutput scene = cloudSceneManageService.getSceneManage(sceneId, null);
                     if (null == scene) {
@@ -638,6 +653,7 @@ public class PushWindowDataScheduled extends AbstractIndicators {
                     log.error("pushData2 error!", t);
                 } finally {
                     unlock(lockKey, "0");
+                    WebPluginUtils.removeTraceContext();
                 }
             })
             .forEach(Executors::execute);

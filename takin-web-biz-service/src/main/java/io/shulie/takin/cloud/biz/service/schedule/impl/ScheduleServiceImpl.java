@@ -379,7 +379,7 @@ public class ScheduleServiceImpl extends AbstractIndicators implements ScheduleS
         info.setRef(config.getActivity());
         info.setAttach(String.valueOf(config.getId()));
         info.setFormulaTarget(FormulaTarget.of(config.getIndexInfo()));
-        info.setFormulaSymbol(FormulaSymbol.of(config.getCondition()));
+        info.setFormulaSymbol(FormulaSymbol.ofValue(config.getCondition()));
         info.setFormulaNumber(config.getDuring().doubleValue());
         return info;
     }

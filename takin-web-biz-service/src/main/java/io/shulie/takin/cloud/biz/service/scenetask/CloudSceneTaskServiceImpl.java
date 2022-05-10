@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -261,14 +262,12 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         }
         //文件是否继续读取
         sceneData.setContinueRead(input.getContinueRead());
+        checkStartCondition(sceneData);
 
         Long sceneId = sceneData.getId();
         Object reportId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.REPORT_ID);
         ReportResult report = cloudReportService.getReportBaseInfo(Long.valueOf(String.valueOf(reportId)));
-
-        if (!Objects.equals(input.getAssetType(), AssetTypeEnum.PRESS_REPORT.getCode())) {
-            frozenAccountFlow(input, report, sceneData);
-        }
+        lockFlowIfNecessary(sceneData, input, report);
         sceneData.setResourceId(report.getResourceId());
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());
@@ -514,6 +513,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         redisClientUtils.setString(flowDebugKey, JsonHelper.bean2Json(sceneTaskStartInput));
 
         StartConditionCheckerContext context = StartConditionCheckerContext.of(sceneManageId);
+        context.setUniqueKey(PressureStartCache.getSceneResourceLockingKey(sceneManageId));
         CheckResult checkResult = engineResourceChecker.check(context);
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
             redisClientUtils.del(flowDebugKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
@@ -589,6 +589,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         redisClientUtils.setString(inspectKey, JsonHelper.bean2Json(sceneTaskStartInput));
 
         StartConditionCheckerContext context = StartConditionCheckerContext.of(sceneManageId);
+        context.setUniqueKey(PressureStartCache.getSceneResourceLockingKey(sceneManageId));
         CheckResult checkResult = engineResourceChecker.check(context);
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
             redisClientUtils.del(inspectKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
@@ -722,6 +723,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         redisClientUtils.setString(tryRunKey, JsonHelper.bean2Json(sceneTaskStartInput));
 
         StartConditionCheckerContext context = StartConditionCheckerContext.of(sceneManageId);
+        context.setUniqueKey(PressureStartCache.getSceneResourceLockingKey(sceneManageId));
         CheckResult checkResult = engineResourceChecker.check(context);
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
             redisClientUtils.del(tryRunKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
@@ -822,8 +824,8 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             }
         }
 
-        if (!SceneManageStatusEnum.RESOURCE_LOCKING.getValue().equals(sceneData.getStatus())) {
-            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为资源已锁定状态！");
+        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus())) {
+            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
         }
         //检测脚本文件是否有变更
         SceneScriptRefOutput scriptRefOutput = sceneData.getUploadFile().stream().filter(Objects::nonNull)
@@ -1288,6 +1290,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         });
         saveNonTargetNode(scene.getId(), reportId, report.getScriptNodeTree(), scene.getBusinessActivityConfig());
         log.info("启动[{}]场景测试，初始化报表数据,报表ID: {}", scene.getId(), reportId);
+        // 标识已经进行了报告关联数据保存
+        redisClientUtils.setString(PressureStartCache.getInitActivityKey(reportId),
+            String.valueOf(System.currentTimeMillis()), 1, TimeUnit.HOURS);
     }
 
     @IntrestFor(event = PressureStartCache.CHECK_SUCCESS_EVENT, order = 1)
@@ -1450,5 +1455,19 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         ResourceUnLockRequest request = new ResourceUnLockRequest();
         request.setResourceId(resourceId);
         cloudResourceApi.unLock(request);
+    }
+
+    private void checkStartCondition(SceneManageWrapperOutput sceneData) {
+        if (!SceneManageStatusEnum.RESOURCE_LOCKING.getValue().equals(sceneData.getStatus())) {
+            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为资源锁定中状态！");
+        }
+    }
+
+    private void lockFlowIfNecessary(SceneManageWrapperOutput sceneData, SceneTaskStartInput input, ReportResult report) {
+        if (!Objects.equals(input.getAssetType(), AssetTypeEnum.PRESS_REPORT.getCode())) {
+            frozenAccountFlow(input, report, sceneData);
+            redisClientUtils.setString(PressureStartCache.getLockFlowKey(report.getId()),
+                String.valueOf(System.currentTimeMillis()));
+        }
     }
 }

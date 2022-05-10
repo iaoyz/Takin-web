@@ -118,9 +118,9 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
     }
 
     private CheckResult getResourceStatus(String resourceId) {
-        Object message = redisClientUtils.getObject(PressureStartCache.getErrorMessageKey(resourceId));
-        if (message != null) {
-            return new CheckResult(type(), CheckStatus.FAIL.ordinal(), String.valueOf(message));
+        String message = redisClientUtils.getString(PressureStartCache.getErrorMessageKey(resourceId));
+        if (Objects.nonNull(message)) {
+            return new CheckResult(type(), CheckStatus.FAIL.ordinal(), message);
         }
         String statusKey = PressureStartCache.getResourceKey(resourceId);
         Object redisStatus = redisClientUtils.hmget(statusKey, PressureStartCache.CHECK_STATUS);
@@ -138,6 +138,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         request.setCpu(strategy.getCpuNum());
         request.setMemory(strategy.getMemorySize());
         request.setNumber(sceneData.getIpNum());
+        request.setImage(strategy.getPressureEngineImage());
         request.setCallbackUrl(appConfig.getCallbackUrl());
         return cloudResourceApi.lock(request);
     }
@@ -191,6 +192,7 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         if (StringUtils.isNotBlank(resourceId)) {
             redisClientUtils.del(PressureStartCache.getResourceKey(resourceId),
                 PressureStartCache.getResourcePodSuccessKey(resourceId),
+                RedisClientUtils.getLockPrefix(PressureStartCache.getStopFlag(context.getSceneId(), resourceId)),
                 PressureStartCache.getPodStartFirstKey(resourceId));
             ResourceUnLockRequest request = new ResourceUnLockRequest();
             request.setResourceId(resourceId);
@@ -235,11 +237,20 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         StopEventSource source = (StopEventSource)event.getExt();
         String message = source.getMessage();
         ResourceContext context = source.getContext();
-        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), message);
+        context.setMessage(message);
+        Long reportId = context.getReportId();
+        setTryRunTaskInfo(context.getSceneId(), reportId, context.getTenantId(), message);
         // 此处手动停止的也会插入此状态
         pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.UNUSUAL, message);
         if (!source.isPressureRunning()) {
-            preStartFail(source);
+            if (!redisClientUtils.hasKey(PressureStartCache.getInitActivityKey(reportId))) {
+                Event failEvent = new Event();
+                failEvent.setEventName(PressureStartCache.CHECK_FAIL_EVENT);
+                failEvent.setExt(context);
+                eventCenterTemplate.doEvents(failEvent);
+            } else {
+                preStartFail(source);
+            }
         } else {
             pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.STOPPING, message);
             stopJob(context.getJobId());
@@ -260,6 +271,8 @@ public class EngineResourceChecker extends AbstractIndicators implements StartCo
         stringRedisTemplate.opsForHash().put(
             statusKey, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY, SceneRunTaskStatusEnum.ENDED.getText());
         pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.INACTIVE, null);
+        redisClientUtils.del(PressureStartCache.getLockFlowKey(reportId),
+            RedisClientUtils.getLockPrefix(PressureStartCache.getReleaseFlowKey(reportId)));
     }
 
     // 启动前失败，即启动异常
