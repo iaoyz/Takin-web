@@ -86,6 +86,8 @@ public class FlowConditionChecker implements StartConditionChecker {
             ReportResult report = reportDao.selectById(context.getReportId());
             //流量冻结
             frozenAccountFlow(input, report, sceneData);
+            redisClientUtils.setString(PressureStartCache.getLockFlowKey(report.getId()),
+                String.valueOf(System.currentTimeMillis()));
         }
     }
 
@@ -174,10 +176,13 @@ public class FlowConditionChecker implements StartConditionChecker {
     public void unLockFlow(Event event) {
         TaskResult taskResult = (TaskResult)event.getExt();
         Long taskId = taskResult.getTaskId();
-        if (!redisClientUtils.lockExpire(PressureStartCache.getReleaseFlowKey(taskId),
+        String lockFlowKey = PressureStartCache.getLockFlowKey(taskId);
+        if (!redisClientUtils.hasKey(lockFlowKey)
+            || !redisClientUtils.lockExpire(PressureStartCache.getReleaseFlowKey(taskId),
             String.valueOf(System.currentTimeMillis()), 5, TimeUnit.MINUTES)) {
             return;
         }
+        redisClientUtils.del(lockFlowKey);
         ReportEntity report = reportMapper.selectById(taskId);
         if (report != null) {
             String amountLockId;

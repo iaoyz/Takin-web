@@ -118,10 +118,15 @@ public abstract class PressureStartCache {
 
     // 释放流量key
     public static String getReleaseFlowKey(Long reportId) {
-        return String.format("pressure:resource:flow_unlock:%s", reportId);
+        return String.format("pressure:resource:flow:unlock:%s", reportId);
     }
 
-    // 释放流量key
+    // 锁定流量key
+    public static String getLockFlowKey(Long reportId) {
+        return String.format("pressure:resource:flow:lock:%s", reportId);
+    }
+
+    // 报告相关数据补充key
     public static String getInitActivityKey(Long reportId) {
         return String.format("pressure:resource:activity:%s", reportId);
     }
