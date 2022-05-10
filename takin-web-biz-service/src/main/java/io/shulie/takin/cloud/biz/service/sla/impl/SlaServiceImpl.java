@@ -100,7 +100,7 @@ public class SlaServiceImpl implements SlaService {
                 //从redis中获取条件数据
                 String object = (String) stringRedisTemplate.opsForHash().get(SLA_DESTROY_KEY, id);
                 AchieveModel model = (object != null ? JSON.parseObject(object, AchieveModel.class) : null);
-                if (!matchContinue(model, System.currentTimeMillis())) {//为空记录条件数据
+                if (!matchContinue(model, System.currentTimeMillis(),output.getRule().getTimes() == 1)) {//为空记录条件数据或者当次命中
                     Map<String, Object> dataMap = Maps.newHashMap();
                     dataMap.put(id,
                             JSON.toJSONString(new AchieveModel(1, System.currentTimeMillis())));
@@ -165,8 +165,12 @@ public class SlaServiceImpl implements SlaService {
         keyList.forEach(key -> stringRedisTemplate.opsForHash().delete(SLA_DESTROY_KEY, key));
     }
 
-    private Boolean matchContinue(AchieveModel model, Long timestamp) {
+    private Boolean matchContinue(AchieveModel model, Long timestamp,boolean isHit) {
         if (model == null) {
+            if (isHit) {
+                model = new AchieveModel();
+                return true;
+            }
             return false;
         }
         log.info("【sla】校验是否连续，上次触发时间={}, 当前时间={}，相差={}",

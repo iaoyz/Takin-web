@@ -1,6 +1,7 @@
 package io.shulie.takin.cloud.biz.service.scene;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -255,11 +256,16 @@ public class SceneTaskEventService {
 
         for (String activity : businessActivity) {
             SlaConfig config = base.clone();
+            if (NO_EXE_NODE_REF.contains(activity)) {
+                activity = "";
+            }
             config.setActivity(activity);
             configs.add(config);
         }
         return configs;
     }
+
+    private static final List<String> NO_EXE_NODE_REF = Arrays.asList("0f1a197a2040e645dcdb4dfff8a3f960", "all");
 
     private String reWritePathIfNecessary(String filePath) {
         String prefix = scriptPath.replaceAll(nfsDir, "");

@@ -21,9 +21,6 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
     @Resource
     private RedisClientUtils redisClientUtils;
 
-    @Resource
-    private PressureTaskDAO pressureTaskDAO;
-
     @Override
     public String process(PressureStopNotifyParam param) {
         processStopped(param);
@@ -45,11 +42,6 @@ public class PressureStopNotifyProcessor extends AbstractIndicators
         }
         removeSuccessKey(resourceId, podId, jmeterId);
         detectEnd(resourceId, param.getTime());
-    }
-
-    private void notifyStop(ResourceContext context) {
-        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), null);
-        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.STOPPING, null);
     }
 
     @Override

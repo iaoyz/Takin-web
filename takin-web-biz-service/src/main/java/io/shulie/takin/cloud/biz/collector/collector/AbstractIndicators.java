@@ -16,10 +16,12 @@ import io.shulie.takin.cloud.common.bean.scenemanage.UpdateStatusBean;
 import io.shulie.takin.cloud.common.bean.task.TaskResult;
 import io.shulie.takin.cloud.common.constants.SceneTaskRedisConstants;
 import io.shulie.takin.cloud.common.constants.ScheduleConstants;
+import io.shulie.takin.cloud.common.enums.PressureTaskStateEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneManageStatusEnum;
 import io.shulie.takin.cloud.common.enums.scenemanage.SceneRunTaskStatusEnum;
 import io.shulie.takin.cloud.common.redis.RedisClientUtils;
 import io.shulie.takin.cloud.data.dao.report.ReportDao;
+import io.shulie.takin.cloud.data.dao.scene.task.PressureTaskDAO;
 import io.shulie.takin.cloud.data.util.PressureStartCache;
 import io.shulie.takin.eventcenter.Event;
 import io.shulie.takin.eventcenter.EventCenterTemplate;
@@ -79,6 +81,8 @@ public abstract class AbstractIndicators {
     private SceneTaskStatusCache taskStatusCache;
     @Resource
     private ReportDao reportDao;
+    @Resource
+    private PressureTaskDAO pressureTaskDAO;
     private DefaultRedisScript<Void> minRedisScript;
     private DefaultRedisScript<Void> maxRedisScript;
     private DefaultRedisScript<Void> unlockRedisScript;
@@ -259,6 +263,7 @@ public abstract class AbstractIndicators {
         redisClientUtils.setString(PressureStartCache.getErrorMessageKey(resourceId), message, 15, TimeUnit.SECONDS);
         if (context != null
             && redisClientUtils.lockNoExpire(PressureStartCache.getStopFlag(context.getSceneId(), resourceId), message)) {
+            // 此处要判断一下是否是正常停止
             Event event = new Event();
             event.setEventName(PressureStartCache.START_FAILED);
             StopEventSource source = new StopEventSource();
@@ -318,6 +323,11 @@ public abstract class AbstractIndicators {
         result.setResourceId(context.getResourceId());
         event.setExt(result);
         eventCenterTemplate.doEvents(event);
+    }
+
+    protected void notifyStop(ResourceContext context) {
+        setTryRunTaskInfo(context.getSceneId(), context.getReportId(), context.getTenantId(), null);
+        pressureTaskDAO.updateStatus(context.getTaskId(), PressureTaskStateEnum.STOPPING, null);
     }
 
     @Data
