@@ -513,6 +513,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         redisClientUtils.setString(flowDebugKey, JsonHelper.bean2Json(sceneTaskStartInput));
 
         StartConditionCheckerContext context = StartConditionCheckerContext.of(sceneManageId);
+        context.setUniqueKey(PressureStartCache.getSceneResourceLockingKey(sceneManageId));
         CheckResult checkResult = engineResourceChecker.check(context);
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
             redisClientUtils.del(flowDebugKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
@@ -588,6 +589,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         redisClientUtils.setString(inspectKey, JsonHelper.bean2Json(sceneTaskStartInput));
 
         StartConditionCheckerContext context = StartConditionCheckerContext.of(sceneManageId);
+        context.setUniqueKey(PressureStartCache.getSceneResourceLockingKey(sceneManageId));
         CheckResult checkResult = engineResourceChecker.check(context);
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
             redisClientUtils.del(inspectKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
@@ -721,6 +723,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         redisClientUtils.setString(tryRunKey, JsonHelper.bean2Json(sceneTaskStartInput));
 
         StartConditionCheckerContext context = StartConditionCheckerContext.of(sceneManageId);
+        context.setUniqueKey(PressureStartCache.getSceneResourceLockingKey(sceneManageId));
         CheckResult checkResult = engineResourceChecker.check(context);
         if (checkResult.getStatus().equals(CheckStatus.FAIL.ordinal())) {
             redisClientUtils.del(tryRunKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
@@ -1463,6 +1466,8 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
     private void lockFlowIfNecessary(SceneManageWrapperOutput sceneData, SceneTaskStartInput input, ReportResult report) {
         if (!Objects.equals(input.getAssetType(), AssetTypeEnum.PRESS_REPORT.getCode())) {
             frozenAccountFlow(input, report, sceneData);
+            redisClientUtils.setString(PressureStartCache.getLockFlowKey(report.getId()),
+                String.valueOf(System.currentTimeMillis()));
         }
     }
 }
