@@ -61,12 +61,14 @@ public class CalcApplicationSummaryJob extends AbstractSceneTask implements Simp
                         if (task == null) {
                             reportThreadPool.execute(() -> {
                                 try {
+                                    WebPluginUtils.setTraceTenantContext(taskDto);
                                     reportTaskService.calcApplicationSummary(reportId);
                                 } catch (Throwable e) {
                                     log.error(
                                         "execute CalcApplicationSummaryJob occured error. reportId= {},errorMsg={}",
                                         reportId, e.getMessage(), e);
                                 } finally {
+                                    WebPluginUtils.removeTraceContext();
                                     runningTasks.remove(reportId);
                                 }
                             });
