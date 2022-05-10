@@ -71,6 +71,7 @@ public class SlaServiceImpl implements SlaService {
 
     @Override
     public void detection(List<Sla.SlaInfo> slaInfo) {
+        log.info("触发sla slaInfo = " + JSON.toJSONString(slaInfo));
         Set<Object> keys = stringRedisTemplate.opsForHash().keys(SLA_DESTROY_KEY);
         List keyList = new ArrayList(keys);
         for (Sla.SlaInfo info : slaInfo) {
