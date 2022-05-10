@@ -262,14 +262,12 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         }
         //文件是否继续读取
         sceneData.setContinueRead(input.getContinueRead());
+        checkStartCondition(sceneData);
 
         Long sceneId = sceneData.getId();
         Object reportId = redisClientUtils.hmget(PressureStartCache.getSceneResourceKey(sceneId), PressureStartCache.REPORT_ID);
         ReportResult report = cloudReportService.getReportBaseInfo(Long.valueOf(String.valueOf(reportId)));
-
-        if (!Objects.equals(input.getAssetType(), AssetTypeEnum.PRESS_REPORT.getCode())) {
-            frozenAccountFlow(input, report, sceneData);
-        }
+        lockFlowIfNecessary(sceneData, input, report);
         sceneData.setResourceId(report.getResourceId());
         SceneActionOutput sceneAction = new SceneActionOutput();
         sceneAction.setData(report.getId());
@@ -823,8 +821,8 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             }
         }
 
-        if (!SceneManageStatusEnum.RESOURCE_LOCKING.getValue().equals(sceneData.getStatus())) {
-            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为资源已锁定状态！");
+        if (!SceneManageStatusEnum.ifFree(sceneData.getStatus())) {
+            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为待启动状态！");
         }
         //检测脚本文件是否有变更
         SceneScriptRefOutput scriptRefOutput = sceneData.getUploadFile().stream().filter(Objects::nonNull)
@@ -1454,5 +1452,17 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         ResourceUnLockRequest request = new ResourceUnLockRequest();
         request.setResourceId(resourceId);
         cloudResourceApi.unLock(request);
+    }
+
+    private void checkStartCondition(SceneManageWrapperOutput sceneData) {
+        if (!SceneManageStatusEnum.RESOURCE_LOCKING.getValue().equals(sceneData.getStatus())) {
+            throw new TakinCloudException(TakinCloudExceptionEnum.TASK_START_VERIFY_ERROR, "当前场景不为资源锁定中状态！");
+        }
+    }
+
+    private void lockFlowIfNecessary(SceneManageWrapperOutput sceneData, SceneTaskStartInput input, ReportResult report) {
+        if (!Objects.equals(input.getAssetType(), AssetTypeEnum.PRESS_REPORT.getCode())) {
+            frozenAccountFlow(input, report, sceneData);
+        }
     }
 }
