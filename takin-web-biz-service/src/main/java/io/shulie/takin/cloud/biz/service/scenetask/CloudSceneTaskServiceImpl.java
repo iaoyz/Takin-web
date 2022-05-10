@@ -131,6 +131,7 @@ import io.shulie.takin.web.biz.checker.EngineResourceChecker;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckResult;
 import io.shulie.takin.web.biz.checker.StartConditionChecker.CheckStatus;
 import io.shulie.takin.web.biz.checker.StartConditionCheckerContext;
+import io.shulie.takin.web.ext.entity.tenant.TenantCommonExt;
 import io.shulie.takin.web.ext.util.WebPluginUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -507,6 +508,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         // 设置用户主键
         sceneTaskStartInput.setOperateId(input.getOperateId());
         sceneTaskStartInput.setOperateName(input.getOperateName());
+        CloudPluginUtils.fillUserData(input);
         preCheckStart(sceneManageId, sceneTaskStartInput);
 
         String flowDebugKey = PressureStartCache.getFlowDebugKey(sceneManageId);
@@ -585,6 +587,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         sceneTaskStartInput.setOperateId(input.getOperateId());
         sceneTaskStartInput.setOperateName(input.getOperateName());
         sceneTaskStartInput.setAssetType(AssetTypeEnum.PATRO_SCENE.getCode());
+        CloudPluginUtils.fillUserData(input);
         preCheckStart(sceneManageId, sceneTaskStartInput);
 
         String inspectKey = PressureStartCache.getInspectKey(sceneManageId);
@@ -716,6 +719,7 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
         sceneTaskStartInput.setResourceName(input.getScriptName());
         sceneTaskStartInput.setOperateId(input.getOperateId());
         sceneTaskStartInput.setOperateName(input.getOperateName());
+        CloudPluginUtils.fillUserData(input);
         preCheckStart(sceneManageId, sceneTaskStartInput);
         //启动该压测场景
         String tryRunKey = PressureStartCache.getTryRunKey(sceneManageId);
@@ -1304,7 +1308,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             String tryRun = redisClientUtils.getString(tryRunKey);
             redisClientUtils.del(tryRunKey);
             try {
-                startTask(JsonHelper.json2Bean(tryRun, SceneTaskStartInput.class));
+                SceneTaskStartInput input = JsonHelper.json2Bean(tryRun, SceneTaskStartInput.class);
+                fillContext(input);
+                startTask(input);
             } catch (Exception e) {
                 startFail(context.getResourceId(), e.getMessage());
             }
@@ -1319,7 +1325,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             String flowDebug = redisClientUtils.getString(flowDebugKey);
             redisClientUtils.del(flowDebugKey);
             try {
-                startTask(JsonHelper.json2Bean(flowDebug, SceneTaskStartInput.class));
+                SceneTaskStartInput input = JsonHelper.json2Bean(flowDebug, SceneTaskStartInput.class);
+                fillContext(input);
+                startTask(input);
             } catch (Exception e) {
                 startFail(context.getResourceId(), e.getMessage());
             }
@@ -1334,7 +1342,9 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             String inspect = redisClientUtils.getString(inspectKey);
             redisClientUtils.del(inspectKey);
             try {
-                startTask(JsonHelper.json2Bean(inspect, SceneTaskStartInput.class));
+                SceneTaskStartInput input = JsonHelper.json2Bean(inspect, SceneTaskStartInput.class);
+                fillContext(input);
+                startTask(input);
             } catch (Exception e) {
                 startFail(context.getResourceId(), e.getMessage());
             }
@@ -1470,5 +1480,13 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             redisClientUtils.setString(PressureStartCache.getLockFlowKey(report.getId()),
                 String.valueOf(System.currentTimeMillis()));
         }
+    }
+
+    private void fillContext(SceneTaskStartInput input) {
+        TenantCommonExt commonExt = new TenantCommonExt();
+        commonExt.setTenantId(input.getTenantId());
+        commonExt.setEnvCode(input.getEnvCode());
+        commonExt.setTenantAppKey(input.getUserAppKey());
+        WebPluginUtils.setTraceTenantContext(commonExt);
     }
 }
