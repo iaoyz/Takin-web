@@ -519,6 +519,8 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             redisClientUtils.del(flowDebugKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
             throw new RuntimeException(checkResult.getMessage());
         }
+        //设置缓存，用以检查压测场景启动状态
+        taskStatusCache.cacheStatus(sceneManageId, context.getReportId(), SceneRunTaskStatusEnum.STARTING);
         //返回报告id
         return context.getReportId();
     }
@@ -595,14 +597,11 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             redisClientUtils.del(inspectKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
             throw new RuntimeException(checkResult.getMessage());
         }
-        SceneActionOutput sceneActionOutput = new SceneActionOutput();
         startOutput.setSceneId(sceneManageId);
         startOutput.setReportId(context.getReportId());
         //开始试跑就设置一个状态，后面区分试跑任务和正常压测
-        String key = String.format(SceneTaskRedisConstants.SCENE_TASK_RUN_KEY + "%s_%s", sceneManageId,
-            sceneActionOutput.getData());
-        stringRedisTemplate.opsForHash().put(key, SceneTaskRedisConstants.SCENE_RUN_TASK_STATUS_KEY,
-            SceneRunTaskStatusEnum.STARTING.getText());
+        //设置缓存，用以检查压测场景启动状态
+        taskStatusCache.cacheStatus(sceneManageId, context.getReportId(), SceneRunTaskStatusEnum.STARTING);
         return startOutput;
     }
 
@@ -729,6 +728,8 @@ public class CloudSceneTaskServiceImpl extends AbstractIndicators implements Clo
             redisClientUtils.del(tryRunKey, PressureStartCache.getSceneResourceLockingKey(sceneManageId));
             throw new RuntimeException(checkResult.getMessage());
         }
+        //设置缓存，用以检查压测场景启动状态
+        taskStatusCache.cacheStatus(sceneManageId, context.getReportId(), SceneRunTaskStatusEnum.STARTING);
         sceneTryRunTaskStartOutput.setSceneId(sceneManageId);
         sceneTryRunTaskStartOutput.setReportId(context.getReportId());
         return sceneTryRunTaskStartOutput;

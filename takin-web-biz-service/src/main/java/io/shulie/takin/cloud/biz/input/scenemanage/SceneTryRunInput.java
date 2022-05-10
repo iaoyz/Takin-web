@@ -1,11 +1,13 @@
 package io.shulie.takin.cloud.biz.input.scenemanage;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * @author -
  */
 @Data
+@NoArgsConstructor
 public class SceneTryRunInput {
     /**
      * 循环次数
