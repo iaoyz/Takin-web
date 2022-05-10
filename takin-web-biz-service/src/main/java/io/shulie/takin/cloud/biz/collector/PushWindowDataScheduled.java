@@ -653,7 +653,6 @@ public class PushWindowDataScheduled extends AbstractIndicators {
                     log.error("pushData2 error!", t);
                 } finally {
                     unlock(lockKey, "0");
-                    WebPluginUtils.removeTraceContext();
                 }
             })
             .forEach(Executors::execute);

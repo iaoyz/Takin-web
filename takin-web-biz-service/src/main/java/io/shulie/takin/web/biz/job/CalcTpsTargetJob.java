@@ -63,7 +63,6 @@ public class CalcTpsTargetJob extends AbstractSceneTask implements SimpleJob {
                                 } catch (Throwable e) {
                                     log.error("execute CalcTpsTargetJob occured error. reportId={}", reportId, e);
                                 } finally {
-                                    WebPluginUtils.removeTraceContext();
                                     runningTasks.remove(reportId);
                                 }
 

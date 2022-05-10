@@ -68,7 +68,6 @@ public class CalcApplicationSummaryJob extends AbstractSceneTask implements Simp
                                         "execute CalcApplicationSummaryJob occured error. reportId= {},errorMsg={}",
                                         reportId, e.getMessage(), e);
                                 } finally {
-                                    WebPluginUtils.removeTraceContext();
                                     runningTasks.remove(reportId);
                                 }
                             });

@@ -198,7 +198,6 @@ public class SceneSchedulerTaskServiceImpl implements SceneSchedulerTaskService 
                         updateRequest.setIsDeleted(true);
                         updateRequest.setIsDeleted(true);
                         this.update(updateRequest, false);
-                        WebPluginUtils.removeTraceContext();
                         // 解锁
                         RedisHelper.delete(lockKey);
                     }
